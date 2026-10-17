@@ -26,7 +26,7 @@ class RepaymentService
 
     /**
      * Record a payment against a loan, allocating it to the outstanding
-     * installments oldest-first (fee, then interest, then principal) and
+     * installments oldest-first (penalty, then fee, interest and principal) and
      * closing the loan once it is fully repaid.
      */
     public function recordPayment(
@@ -54,7 +54,7 @@ class RepaymentService
 
         $targets = $this->outstandingTargets($loan);
         $totalOutstanding = round(
-            collect($targets)->sum(fn (array $target): float => $target['fee'] + $target['interest'] + $target['principal']),
+            collect($targets)->sum(fn (array $target): float => $target['penalty'] + $target['fee'] + $target['interest'] + $target['principal']),
             2,
         );
 
@@ -83,6 +83,9 @@ class RepaymentService
                     break;
                 }
 
+                $penalty = min($remaining, $target['penalty']);
+                $remaining = round($remaining - $penalty, 2);
+
                 $fee = min($remaining, $target['fee']);
                 $remaining = round($remaining - $fee, 2);
 
@@ -92,13 +95,15 @@ class RepaymentService
                 $principal = min($remaining, $target['principal']);
                 $remaining = round($remaining - $principal, 2);
 
-                if ($fee <= 0 && $interest <= 0 && $principal <= 0) {
+                if ($penalty <= 0 && $fee <= 0 && $interest <= 0 && $principal <= 0) {
                     continue;
                 }
 
                 $payment->allocations()->create([
                     'loan_id' => $loan->id,
                     'installment_id' => $target['installment']->id,
+                    'sequence' => $target['installment']->sequence,
+                    'penalty_allocated' => $penalty,
                     'fee_allocated' => $fee,
                     'interest_allocated' => $interest,
                     'principal_allocated' => $principal,
@@ -126,7 +131,7 @@ class RepaymentService
     /**
      * Determine what is still owed on each installment, oldest sequence first.
      *
-     * @return array<int, array{installment: LoanInstallment, fee: float, interest: float, principal: float}>
+     * @return array<int, array{installment: LoanInstallment, penalty: float, fee: float, interest: float, principal: float}>
      */
     private function outstandingTargets(Loan $loan): array
     {
@@ -135,12 +140,14 @@ class RepaymentService
             ->orderBy('sequence')
             ->get()
             ->map(function (LoanInstallment $installment): array {
-                $feePaid = round((float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->fee_allocated), 2);
-                $interestPaid = round((float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->interest_allocated), 2);
-                $principalPaid = round((float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated), 2);
+                $penaltyPaid = round($installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->penalty_allocated), 2);
+                $feePaid = round($installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->fee_allocated), 2);
+                $interestPaid = round($installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->interest_allocated), 2);
+                $principalPaid = round($installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated), 2);
 
                 return [
                     'installment' => $installment,
+                    'penalty' => max(round((float) $installment->penalty_accrued - $penaltyPaid, 2), 0.0),
                     'fee' => max(round((float) $installment->fee_due - $feePaid, 2), 0.0),
                     'interest' => max(round((float) $installment->interest_due - $interestPaid, 2), 0.0),
                     'principal' => max(round((float) $installment->principal_due - $principalPaid, 2), 0.0),

@@ -23,11 +23,13 @@ use Illuminate\Support\Carbon;
  * @property int $min_term_months
  * @property int $max_term_months
  * @property string $processing_fee_rate
+ * @property string $penalty_rate
+ * @property int $grace_period_days
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'description', 'interest_method', 'interest_rate', 'repayment_frequency', 'min_amount', 'max_amount', 'min_term_months', 'max_term_months', 'processing_fee_rate', 'is_active'])]
+#[Fillable(['name', 'description', 'interest_method', 'interest_rate', 'repayment_frequency', 'min_amount', 'max_amount', 'min_term_months', 'max_term_months', 'processing_fee_rate', 'penalty_rate', 'grace_period_days', 'is_active'])]
 class LoanProduct extends Model
 {
     /** @use HasFactory<LoanProductFactory> */
@@ -47,6 +49,8 @@ class LoanProduct extends Model
             'min_amount' => 'decimal:2',
             'max_amount' => 'decimal:2',
             'processing_fee_rate' => 'decimal:4',
+            'penalty_rate' => 'decimal:4',
+            'grace_period_days' => 'integer',
             'is_active' => 'boolean',
         ];
     }

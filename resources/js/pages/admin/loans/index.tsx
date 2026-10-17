@@ -16,10 +16,12 @@ export default function LoansIndex({
     loans,
     statuses,
     currentStatus,
+    overdueOnly,
 }: {
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
     currentStatus: string | null;
+    overdueOnly: boolean;
 }) {
     const previous = loans.links.find((link) =>
         link.label.includes('Previous'),
@@ -30,6 +32,21 @@ export default function LoansIndex({
         { value: '', label: 'All' },
         ...statuses,
     ];
+
+    const withFilters = (overrides: {
+        status?: string | null;
+        overdue?: boolean;
+    }) => {
+        const status = overrides.status ?? currentStatus ?? '';
+        const overdue = overrides.overdue ?? overdueOnly;
+
+        return loansIndex({
+            query: {
+                ...(status ? { status } : {}),
+                ...(overdue ? { overdue: '1' } : {}),
+            },
+        });
+    };
 
     return (
         <>
@@ -62,10 +79,9 @@ export default function LoansIndex({
                             }
                         >
                             <Link
-                                href={loansIndex({
-                                    query: filter.value
-                                        ? { status: filter.value }
-                                        : {},
+                                href={withFilters({
+                                    status: filter.value,
+                                    overdue: false,
                                 })}
                                 preserveScroll
                             >
@@ -73,6 +89,19 @@ export default function LoansIndex({
                             </Link>
                         </Button>
                     ))}
+
+                    <Button
+                        asChild
+                        size="sm"
+                        variant={overdueOnly ? 'default' : 'outline'}
+                    >
+                        <Link
+                            href={withFilters({ overdue: !overdueOnly })}
+                            preserveScroll
+                        >
+                            Overdue only
+                        </Link>
+                    </Button>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -94,6 +123,9 @@ export default function LoansIndex({
                                     </th>
                                     <th className="px-4 py-3 font-medium">
                                         Status
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Arrears
                                     </th>
                                     <th className="px-4 py-3 font-medium">
                                         Applied
@@ -129,6 +161,29 @@ export default function LoansIndex({
                                             <LoanStatusBadge
                                                 status={loan.status}
                                             />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {loan.days_past_due > 0 ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-destructive">
+                                                        {Number(
+                                                            loan.arrears,
+                                                        ).toFixed(2)}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {loan.days_past_due} day
+                                                        {loan.days_past_due ===
+                                                        1
+                                                            ? ''
+                                                            : 's'}{' '}
+                                                        late
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
                                             {loan.applied_at
@@ -190,7 +245,7 @@ export default function LoansIndex({
                                 {loans.data.length === 0 && (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={8}
                                             className="px-4 py-8 text-center text-muted-foreground"
                                         >
                                             No loans found.

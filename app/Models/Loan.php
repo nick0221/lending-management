@@ -24,6 +24,9 @@ use Illuminate\Support\Carbon;
  * @property RepaymentFrequency $repayment_frequency
  * @property int $term_months
  * @property string $processing_fee_rate
+ * @property string $penalty_rate
+ * @property int $grace_period_days
+ * @property int $days_past_due
  * @property LoanStatus $status
  * @property Carbon|null $applied_at
  * @property Carbon|null $approved_at
@@ -43,6 +46,9 @@ use Illuminate\Support\Carbon;
     'repayment_frequency',
     'term_months',
     'processing_fee_rate',
+    'penalty_rate',
+    'grace_period_days',
+    'days_past_due',
     'status',
     'applied_at',
     'approved_at',
@@ -69,6 +75,9 @@ class Loan extends Model
             'interest_method' => InterestMethod::class,
             'repayment_frequency' => RepaymentFrequency::class,
             'processing_fee_rate' => 'decimal:4',
+            'penalty_rate' => 'decimal:4',
+            'grace_period_days' => 'integer',
+            'days_past_due' => 'integer',
             'status' => LoanStatus::class,
             'applied_at' => 'datetime',
             'approved_at' => 'datetime',
@@ -134,5 +143,13 @@ class Loan extends Model
     public function scopeOfStatus(Builder $query, LoanStatus $status): Builder
     {
         return $query->where('status', $status);
+    }
+
+    /**
+     * Scope the query to loans with at least one overdue installment.
+     */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->where('days_past_due', '>', 0);
     }
 }

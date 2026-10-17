@@ -211,6 +211,48 @@ export function LoanProductForm({
 
                     <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
                         <div className="grid gap-2">
+                            <Label htmlFor="penalty_rate">
+                                Late penalty (% per month)
+                            </Label>
+
+                            <Input
+                                id="penalty_rate"
+                                name="penalty_rate"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                defaultValue={loanProduct?.penalty_rate ?? 0}
+                                required
+                            />
+
+                            <InputError message={errors.penalty_rate} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="grace_period_days">
+                                Grace period (days)
+                            </Label>
+
+                            <Input
+                                id="grace_period_days"
+                                name="grace_period_days"
+                                type="number"
+                                step="1"
+                                min="0"
+                                max="365"
+                                defaultValue={
+                                    loanProduct?.grace_period_days ?? 0
+                                }
+                                required
+                            />
+
+                            <InputError message={errors.grace_period_days} />
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+                        <div className="grid gap-2">
                             <Label htmlFor="min_amount">
                                 Minimum amount
                             </Label>

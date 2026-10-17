@@ -67,3 +67,27 @@ test('payments may only be recorded against active loans by administrators', fun
         ->and($policy->recordPayment($admin, $closed))->toBeFalse()
         ->and($policy->recordPayment($user, $active))->toBeFalse();
 });
+
+test('arrears actions are limited to administrators and open loans', function () {
+    $policy = new LoanPolicy;
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $active = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $defaulted = Loan::factory()->withStatus(LoanStatus::Defaulted)->create();
+    $closed = Loan::factory()->withStatus(LoanStatus::Closed)->create();
+
+    expect($policy->markDefaulted($admin, $active))->toBeTrue()
+        ->and($policy->markDefaulted($admin, $defaulted))->toBeFalse()
+        ->and($policy->markDefaulted($admin, $closed))->toBeFalse()
+        ->and($policy->markDefaulted($user, $active))->toBeFalse()
+        ->and($policy->writeOff($admin, $active))->toBeTrue()
+        ->and($policy->writeOff($admin, $defaulted))->toBeTrue()
+        ->and($policy->writeOff($admin, $closed))->toBeFalse()
+        ->and($policy->writeOff($user, $active))->toBeFalse()
+        ->and($policy->restructure($admin, $active))->toBeTrue()
+        ->and($policy->restructure($admin, $defaulted))->toBeTrue()
+        ->and($policy->restructure($admin, $closed))->toBeFalse()
+        ->and($policy->restructure($user, $active))->toBeFalse();
+});

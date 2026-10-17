@@ -44,8 +44,8 @@ enum LoanStatus: string
             self::Pending => [self::Approved, self::Rejected],
             self::Approved => [self::Disbursed],
             self::Disbursed => [self::Active],
-            self::Active => [self::Closed, self::Defaulted],
-            self::Defaulted => [self::WrittenOff, self::Closed],
+            self::Active => [self::Closed, self::Defaulted, self::WrittenOff],
+            self::Defaulted => [self::Active, self::WrittenOff, self::Closed],
             self::Rejected, self::Closed, self::WrittenOff => [],
         };
     }

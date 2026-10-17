@@ -9,6 +9,8 @@ use App\Models\Borrower;
 use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanEvent;
+use App\Models\LoanInstallment;
+use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -33,6 +35,8 @@ class LoanService
             'repayment_frequency' => $loanProduct->repayment_frequency,
             'term_months' => $termMonths,
             'processing_fee_rate' => $loanProduct->processing_fee_rate,
+            'penalty_rate' => $loanProduct->penalty_rate,
+            'grace_period_days' => $loanProduct->grace_period_days,
             'status' => LoanStatus::Pending,
             'applied_at' => now(),
             'notes' => $notes,
@@ -120,6 +124,72 @@ class LoanService
         $loan = $this->transition($loan, LoanStatus::Disbursed, $actor, $disbursedAt);
 
         return $this->transition($loan, LoanStatus::Active, $actor);
+    }
+
+    /**
+     * Flag a loan as defaulted.
+     */
+    public function markDefaulted(Loan $loan, ?User $actor = null): Loan
+    {
+        return $this->transition($loan, LoanStatus::Defaulted, $actor);
+    }
+
+    /**
+     * Write off a loan that is not expected to be repaid.
+     */
+    public function writeOff(Loan $loan, ?User $actor = null): Loan
+    {
+        return $this->transition($loan, LoanStatus::WrittenOff, $actor);
+    }
+
+    /**
+     * Reschedule the outstanding principal of an active or defaulted loan onto
+     * a fresh schedule, reactivating defaulted loans.
+     */
+    public function restructure(Loan $loan, User $actor, int $termMonths, ?CarbonInterface $startsOn = null): Loan
+    {
+        if (! in_array($loan->status, [LoanStatus::Active, LoanStatus::Defaulted], true)) {
+            throw ValidationException::withMessages([
+                'status' => __('Only active or defaulted loans can be restructured.'),
+            ]);
+        }
+
+        $outstandingPrincipal = $this->outstandingPrincipal($loan);
+
+        if ($outstandingPrincipal <= 0) {
+            throw ValidationException::withMessages([
+                'loan' => __('This loan has no outstanding principal to restructure.'),
+            ]);
+        }
+
+        $fromStatus = $loan->status;
+
+        $loan->term_months = $termMonths;
+        $loan->status = LoanStatus::Active;
+        $loan->save();
+
+        $this->scheduleService->generate($loan, $startsOn ?? now(), $outstandingPrincipal);
+
+        $this->recordEvent($loan, LoanEventType::Restructured, $fromStatus, $loan->status, $actor);
+
+        return $loan;
+    }
+
+    /**
+     * Sum the unpaid principal across the loan's installments.
+     */
+    private function outstandingPrincipal(Loan $loan): float
+    {
+        return round($loan->installments()
+            ->with('allocations')
+            ->get()
+            ->sum(function (LoanInstallment $installment): float {
+                $principalPaid = $installment->allocations->sum(
+                    fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated,
+                );
+
+                return max(round((float) $installment->principal_due - $principalPaid, 2), 0.0);
+            }), 2);
     }
 
     /**

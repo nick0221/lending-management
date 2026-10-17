@@ -31,6 +31,8 @@ class LoanFactory extends Factory
             'repayment_frequency' => $loanProduct->repayment_frequency->value,
             'term_months' => 12,
             'processing_fee_rate' => $loanProduct->processing_fee_rate,
+            'penalty_rate' => $loanProduct->penalty_rate,
+            'grace_period_days' => $loanProduct->grace_period_days,
             'status' => LoanStatus::Pending->value,
             'applied_at' => now(),
             'notes' => null,
@@ -48,6 +50,8 @@ class LoanFactory extends Factory
             'interest_method' => $loanProduct->interest_method->value,
             'repayment_frequency' => $loanProduct->repayment_frequency->value,
             'processing_fee_rate' => $loanProduct->processing_fee_rate,
+            'penalty_rate' => $loanProduct->penalty_rate,
+            'grace_period_days' => $loanProduct->grace_period_days,
         ]);
     }
 

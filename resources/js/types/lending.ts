@@ -53,6 +53,8 @@ export type LoanProduct = {
     min_term_months: number;
     max_term_months: number;
     processing_fee_rate: string;
+    penalty_rate: string;
+    grace_period_days: number;
     is_active: boolean;
     created_at: string | null;
 };
@@ -104,7 +106,9 @@ export type LoanEventType =
     | 'closed'
     | 'defaulted'
     | 'written_off'
-    | 'payment_recorded';
+    | 'payment_recorded'
+    | 'penalty_accrued'
+    | 'restructured';
 
 export type BorrowerOption = SelectOption<number>;
 
@@ -132,17 +136,22 @@ export type Loan = {
     repayment_frequency_label: string;
     term_months: number;
     processing_fee_rate: string;
+    penalty_rate: string;
+    grace_period_days: number;
+    days_past_due: number;
     status: LoanStatus;
     status_label: string;
     applied_at: string | null;
     approved_at: string | null;
     rejected_at: string | null;
     disbursed_at: string | null;
+    closed_at: string | null;
     notes: string | null;
     created_at: string | null;
 };
 
 export type LoanListItem = Loan & {
+    arrears: string;
     can: {
         view: boolean;
         delete: boolean;
@@ -154,6 +163,9 @@ export type LoanAbilities = {
     reject: boolean;
     disburse: boolean;
     pay: boolean;
+    default: boolean;
+    write_off: boolean;
+    restructure: boolean;
     delete: boolean;
 };
 
@@ -164,8 +176,11 @@ export type LoanInstallment = {
     interest_due: string;
     fee_due: string;
     balance: string;
+    penalty_accrued: string;
     paid: string;
     outstanding: string;
+    overdue: boolean;
+    days_past_due: number;
 };
 
 export type Disbursement = {
@@ -183,6 +198,7 @@ export type PaymentAllocation = {
     principal_allocated: string;
     interest_allocated: string;
     fee_allocated: string;
+    penalty_allocated: string;
 };
 
 export type Payment = {
@@ -197,11 +213,21 @@ export type Payment = {
     allocations: PaymentAllocation[];
 };
 
+export type PaymentAging = {
+    current: string;
+    days_1_30: string;
+    days_31_60: string;
+    days_61_90: string;
+    days_over_90: string;
+};
+
 export type PaymentTotals = {
     payable: string;
     paid: string;
     outstanding: string;
     arrears: string;
+    penalty: string;
+    aging: PaymentAging;
 };
 
 export type LoanEvent = {

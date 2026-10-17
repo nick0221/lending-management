@@ -13,10 +13,12 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $payment_id
  * @property int $loan_id
- * @property int $installment_id
+ * @property int|null $installment_id
+ * @property int|null $sequence
  * @property string $principal_allocated
  * @property string $interest_allocated
  * @property string $fee_allocated
+ * @property string $penalty_allocated
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -24,9 +26,11 @@ use Illuminate\Support\Carbon;
     'payment_id',
     'loan_id',
     'installment_id',
+    'sequence',
     'principal_allocated',
     'interest_allocated',
     'fee_allocated',
+    'penalty_allocated',
 ])]
 class LoanPaymentAllocation extends Model
 {
@@ -41,9 +45,11 @@ class LoanPaymentAllocation extends Model
     protected function casts(): array
     {
         return [
+            'sequence' => 'integer',
             'principal_allocated' => 'decimal:2',
             'interest_allocated' => 'decimal:2',
             'fee_allocated' => 'decimal:2',
+            'penalty_allocated' => 'decimal:2',
         ];
     }
 

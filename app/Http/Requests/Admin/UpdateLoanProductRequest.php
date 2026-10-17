@@ -42,6 +42,8 @@ class UpdateLoanProductRequest extends FormRequest
             'min_term_months' => ['required', 'integer', 'min:1', 'max:600'],
             'max_term_months' => ['required', 'integer', 'gte:min_term_months', 'max:600'],
             'processing_fee_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'penalty_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'grace_period_days' => ['required', 'integer', 'min:0', 'max:365'],
             'is_active' => ['boolean'],
         ];
     }

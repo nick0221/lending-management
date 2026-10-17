@@ -1,8 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Check, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Ban, Check, Trash2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
+import { RestructureLoanDialog } from '@/components/admin/restructure-loan-dialog';
 import Heading from '@/components/heading';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,10 @@ import {
     approve as approveLoan,
     destroy as destroyLoan,
     index as loansIndex,
+    markDefault as markLoanDefault,
     reject as rejectLoan,
     show as showLoan,
+    writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
 import type {
     Disbursement,
@@ -28,6 +31,16 @@ import type {
 
 function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleString() : '—';
+}
+
+/**
+ * Render a date-only value (e.g. an installment due date) without letting the
+ * browser timezone shift it onto the previous or next day.
+ */
+function formatDateOnly(value: string): string {
+    const [date] = value.split('T');
+
+    return new Date(`${date}T00:00:00`).toLocaleDateString();
 }
 
 function DetailField({ label, value }: { label: string; value: ReactNode }) {
@@ -65,6 +78,7 @@ export default function ShowLoan({
             principal: totals.principal + Number(installment.principal_due),
             interest: totals.interest + Number(installment.interest_due),
             fee: totals.fee + Number(installment.fee_due),
+            penalty: totals.penalty + Number(installment.penalty_accrued),
             paid: totals.paid + Number(installment.paid),
             outstanding:
                 totals.outstanding + Number(installment.outstanding),
@@ -74,7 +88,15 @@ export default function ShowLoan({
                 Number(installment.interest_due) +
                 Number(installment.fee_due),
         }),
-        { principal: 0, interest: 0, fee: 0, paid: 0, outstanding: 0, total: 0 },
+        {
+            principal: 0,
+            interest: 0,
+            fee: 0,
+            penalty: 0,
+            paid: 0,
+            outstanding: 0,
+            total: 0,
+        },
     );
 
     return (
@@ -149,6 +171,49 @@ export default function ShowLoan({
                             methods={paymentMethods}
                             outstanding={totals.outstanding}
                         />
+                    )}
+
+                    {can.restructure && (
+                        <RestructureLoanDialog
+                            loan={loan}
+                            outstanding={totals.outstanding}
+                        />
+                    )}
+
+                    {can.default && (
+                        <Form
+                            {...markLoanDefault.form(loan.id)}
+                            options={{ preserveScroll: true }}
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                    data-test="mark-default-loan-button"
+                                >
+                                    <AlertTriangle /> Mark defaulted
+                                </Button>
+                            )}
+                        </Form>
+                    )}
+
+                    {can.write_off && (
+                        <Form
+                            {...writeOffLoan.form(loan.id)}
+                            options={{ preserveScroll: true }}
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={processing}
+                                    data-test="write-off-loan-button"
+                                >
+                                    <Ban /> Write off
+                                </Button>
+                            )}
+                        </Form>
                     )}
 
                     {can.delete && (
@@ -243,6 +308,18 @@ export default function ShowLoan({
 
                         <div className="space-y-1">
                             <dt className="text-xs text-muted-foreground uppercase">
+                                Late penalty
+                            </dt>
+                            <dd className="text-sm font-medium">
+                                {Number(loan.penalty_rate).toFixed(2)}% / month
+                                {loan.grace_period_days > 0
+                                    ? ` · ${loan.grace_period_days} day grace`
+                                    : ''}
+                            </dd>
+                        </div>
+
+                        <div className="space-y-1">
+                            <dt className="text-xs text-muted-foreground uppercase">
                                 Applied
                             </dt>
                             <dd className="text-sm font-medium">
@@ -289,47 +366,91 @@ export default function ShowLoan({
                 </div>
 
                 {installments.length > 0 && (
-                    <div className="grid gap-4 rounded-xl border border-sidebar-border/70 p-6 sm:grid-cols-4 dark:border-sidebar-border">
-                        <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">
-                                Payable
-                            </p>
-                            <p className="text-lg font-semibold">
-                                {Number(totals.payable).toFixed(2)}
-                            </p>
+                    <div className="space-y-6 rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
+                        <div className="grid gap-4 sm:grid-cols-5">
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">
+                                    Payable
+                                </p>
+                                <p className="text-lg font-semibold">
+                                    {Number(totals.payable).toFixed(2)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">
+                                    Paid
+                                </p>
+                                <p className="text-lg font-semibold">
+                                    {Number(totals.paid).toFixed(2)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">
+                                    Outstanding
+                                </p>
+                                <p className="text-lg font-semibold">
+                                    {Number(totals.outstanding).toFixed(2)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">
+                                    Penalties
+                                </p>
+                                <p
+                                    className={
+                                        Number(totals.penalty) > 0
+                                            ? 'text-lg font-semibold text-destructive'
+                                            : 'text-lg font-semibold'
+                                    }
+                                >
+                                    {Number(totals.penalty).toFixed(2)}
+                                </p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">
+                                    Arrears
+                                </p>
+                                <p
+                                    className={
+                                        Number(totals.arrears) > 0
+                                            ? 'text-lg font-semibold text-destructive'
+                                            : 'text-lg font-semibold'
+                                    }
+                                >
+                                    {Number(totals.arrears).toFixed(2)}
+                                </p>
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">
-                                Paid
+                        <div className="border-t border-sidebar-border/70 pt-4 dark:border-sidebar-border">
+                            <p className="mb-3 text-xs text-muted-foreground uppercase">
+                                Aging of outstanding balance
                             </p>
-                            <p className="text-lg font-semibold">
-                                {Number(totals.paid).toFixed(2)}
-                            </p>
-                        </div>
 
-                        <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">
-                                Outstanding
-                            </p>
-                            <p className="text-lg font-semibold">
-                                {Number(totals.outstanding).toFixed(2)}
-                            </p>
-                        </div>
-
-                        <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">
-                                Arrears
-                            </p>
-                            <p
-                                className={
-                                    Number(totals.arrears) > 0
-                                        ? 'text-lg font-semibold text-destructive'
-                                        : 'text-lg font-semibold'
-                                }
-                            >
-                                {Number(totals.arrears).toFixed(2)}
-                            </p>
+                            <div className="grid gap-4 sm:grid-cols-5">
+                                {(
+                                    [
+                                        ['Current', totals.aging.current],
+                                        ['1–30 days', totals.aging.days_1_30],
+                                        ['31–60 days', totals.aging.days_31_60],
+                                        ['61–90 days', totals.aging.days_61_90],
+                                        ['90+ days', totals.aging.days_over_90],
+                                    ] as const
+                                ).map(([label, amount]) => (
+                                    <div key={label} className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">
+                                            {label}
+                                        </p>
+                                        <p className="text-sm font-semibold">
+                                            {Number(amount).toFixed(2)}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -530,6 +651,9 @@ export default function ShowLoan({
                                             Fee
                                         </th>
                                         <th className="px-6 py-3 text-right font-medium">
+                                            Penalty
+                                        </th>
+                                        <th className="px-6 py-3 text-right font-medium">
                                             Paid
                                         </th>
                                         <th className="px-6 py-3 text-right font-medium">
@@ -548,9 +672,20 @@ export default function ShowLoan({
                                                 {installment.sequence}
                                             </td>
                                             <td className="px-6 py-3">
-                                                {new Date(
-                                                    installment.due_date,
-                                                ).toLocaleDateString()}
+                                                <div className="flex items-center gap-2">
+                                                    {formatDateOnly(
+                                                        installment.due_date,
+                                                    )}
+
+                                                    {installment.overdue && (
+                                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                                                            {
+                                                                installment.days_past_due
+                                                            }{' '}
+                                                            d late
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-3 text-right">
                                                 {Number(
@@ -565,6 +700,11 @@ export default function ShowLoan({
                                             <td className="px-6 py-3 text-right">
                                                 {Number(
                                                     installment.fee_due,
+                                                ).toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-3 text-right">
+                                                {Number(
+                                                    installment.penalty_accrued,
                                                 ).toFixed(2)}
                                             </td>
                                             <td className="px-6 py-3 text-right">
@@ -597,6 +737,9 @@ export default function ShowLoan({
                                         </td>
                                         <td className="px-6 py-3 text-right">
                                             {scheduleTotals.fee.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right">
+                                            {scheduleTotals.penalty.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-3 text-right">
                                             {scheduleTotals.paid.toFixed(2)}

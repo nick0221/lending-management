@@ -74,6 +74,32 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the user can flag the loan as defaulted.
+     */
+    public function markDefaulted(User $user, Loan $loan): bool
+    {
+        return $user->canAccessAdminPanel() && $loan->status === LoanStatus::Active;
+    }
+
+    /**
+     * Determine whether the user can write off the loan.
+     */
+    public function writeOff(User $user, Loan $loan): bool
+    {
+        return $user->canAccessAdminPanel()
+            && in_array($loan->status, [LoanStatus::Active, LoanStatus::Defaulted], true);
+    }
+
+    /**
+     * Determine whether the user can restructure the loan.
+     */
+    public function restructure(User $user, Loan $loan): bool
+    {
+        return $user->canAccessAdminPanel()
+            && in_array($loan->status, [LoanStatus::Active, LoanStatus::Defaulted], true);
+    }
+
+    /**
      * Determine whether the user can delete the given loan.
      */
     public function delete(User $user, Loan $loan): bool

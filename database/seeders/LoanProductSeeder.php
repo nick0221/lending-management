@@ -25,6 +25,8 @@ class LoanProductSeeder extends Seeder
             'min_term_months' => 6,
             'max_term_months' => 48,
             'processing_fee_rate' => 2,
+            'penalty_rate' => 2,
+            'grace_period_days' => 5,
             'is_active' => true,
         ]);
 
@@ -38,6 +40,8 @@ class LoanProductSeeder extends Seeder
             'min_term_months' => 12,
             'max_term_months' => 60,
             'processing_fee_rate' => 1.5,
+            'penalty_rate' => 1.5,
+            'grace_period_days' => 7,
             'is_active' => true,
         ]);
 
@@ -51,6 +55,8 @@ class LoanProductSeeder extends Seeder
             'min_term_months' => 1,
             'max_term_months' => 12,
             'processing_fee_rate' => 3,
+            'penalty_rate' => 3,
+            'grace_period_days' => 3,
             'is_active' => true,
         ]);
     }

@@ -30,6 +30,8 @@ class LoanProductFactory extends Factory
             'min_term_months' => 3,
             'max_term_months' => 36,
             'processing_fee_rate' => fake()->randomFloat(2, 0, 5),
+            'penalty_rate' => 0,
+            'grace_period_days' => 0,
             'is_active' => true,
         ];
     }
@@ -51,6 +53,17 @@ class LoanProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_active' => false,
+        ]);
+    }
+
+    /**
+     * Indicate that the product charges a monthly penalty after a grace period.
+     */
+    public function withPenalty(float $ratePerMonth, int $gracePeriodDays = 0): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'penalty_rate' => $ratePerMonth,
+            'grace_period_days' => $gracePeriodDays,
         ]);
     }
 

@@ -128,6 +128,8 @@ class LoanProductController extends Controller
             'min_term_months' => $loanProduct->min_term_months,
             'max_term_months' => $loanProduct->max_term_months,
             'processing_fee_rate' => $loanProduct->processing_fee_rate,
+            'penalty_rate' => $loanProduct->penalty_rate,
+            'grace_period_days' => $loanProduct->grace_period_days,
             'is_active' => $loanProduct->is_active,
             'created_at' => $loanProduct->created_at?->toIso8601String(),
         ];

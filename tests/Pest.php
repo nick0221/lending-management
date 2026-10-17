@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\LoanStatus;
+use App\Models\Loan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +49,34 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Build an active loan with a hand-written, dated schedule so overdue and
+ * penalty behaviour can be asserted against exact figures.
+ *
+ * @param  array<int, array{principal: float|int, interest: float|int, fee: float|int, due_date: string}>  $installments
+ */
+function activeLoanWithDatedSchedule(array $installments, float $penaltyRate = 0, int $gracePeriodDays = 0): Loan
+{
+    $loan = Loan::factory()
+        ->withStatus(LoanStatus::Active)
+        ->create([
+            'principal' => array_sum(array_column($installments, 'principal')),
+            'penalty_rate' => $penaltyRate,
+            'grace_period_days' => $gracePeriodDays,
+        ]);
+
+    foreach ($installments as $index => $row) {
+        $loan->installments()->create([
+            'sequence' => $index + 1,
+            'due_date' => $row['due_date'],
+            'principal_due' => $row['principal'],
+            'interest_due' => $row['interest'],
+            'fee_due' => $row['fee'],
+            'balance' => 0,
+        ]);
+    }
+
+    return $loan;
 }

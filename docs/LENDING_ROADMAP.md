@@ -140,7 +140,7 @@ the loan detail page, and golden-number unit tests plus schedule feature tests.
 
 ---
 
-## Phase 6 — Arrears, Penalties & Rescheduling ⏳
+## Phase 6 — Arrears, Penalties & Rescheduling ✅
 
 **Goal:** handle the real world (late payers).
 
@@ -151,6 +151,31 @@ the loan detail page, and golden-number unit tests plus schedule feature tests.
 
 **Acceptance:** overdue installments flagged daily; penalties accrue per
 configured rule.
+
+**Delivered:** penalty configuration on both `loan_products` and `loans`
+(`penalty_rate` percent per month, `grace_period_days`, snapshotted at
+origination like the other product terms) and `days_past_due` on loans.
+`PenaltyService` accrues one month's penalty per whole 30-day period an
+installment sits past its due date plus the grace period, tracking
+`penalty_accrued` / `penalty_accrued_periods` per installment so repeated runs
+are idempotent, and records `LoanEventType::PenaltyAccrued`. Two scheduled
+commands run daily: `loans:accrue-penalties` (01:00) and `loans:flag-overdue`
+(01:30, refreshes `days_past_due`, clears it on terminal loans and defaults
+active loans past `config('lending.default_after_days')`). Payments now settle
+penalties first (`penalty_allocated` on allocations, overpayment guard and
+auto-close include penalties). Loan detail exposes per-installment
+`penalty_accrued` / `overdue` / `days_past_due`, penalty and aging totals
+(current / 1–30 / 31–60 / 61–90 / 90+) and the loans index gains an arrears
+column plus an "Overdue only" filter. Lifecycle actions `markDefaulted`,
+`writeOff` and `restructure` (re-amortises the outstanding principal onto a
+fresh term, reactivates defaulted loans) with policies, Form Request, routes
+and dialogs. Restructuring preserves the payment audit trail: allocations
+detach from deleted installments (`nullOnDelete`) but keep their `sequence`,
+and the paid total is now lifetime cash received. Covered by penalty accrual
+tests (grace, idempotency, repeat periods, command, event), arrears tests
+(flag refresh, threshold defaulting, index filter, detail payload) and
+lifecycle tests (default, write-off, restructure, validation, authorisation,
+history preservation) plus policy coverage.
 
 ---
 
@@ -206,3 +231,6 @@ Settled during Phase 1, except where noted.
 | 4 | Borrower vs. User | Borrower is a staff-managed record with an optional `user_id` link |
 | 5 | Schedule generation trigger | On approval, regenerated on disbursement (Phase 4 re-runs the calculator against the actual disbursed amount and date) |
 | 6 | Permissions model | Stick with the three roles |
+| 7 | Overpayment handling | Rejected — a payment may not exceed the outstanding balance (incl. accrued penalties); no advance-credit ledger |
+| 8 | Penalty model | Per product, a monthly percentage of the overdue amount plus a grace period; accrued by a daily command, one period per whole 30 days past due |
+| 9 | Restructuring | Re-amortises the outstanding principal onto a new term from the loan's own snapshotted terms; payment history is preserved and never rewritten |

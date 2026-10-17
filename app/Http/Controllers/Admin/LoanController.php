@@ -8,6 +8,7 @@ use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DisburseLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
+use App\Http\Requests\Admin\RestructureLoanRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\Borrower;
 use App\Models\Disbursement;
@@ -38,15 +39,18 @@ class LoanController extends Controller
 
         $actor = $request->user();
         $status = LoanStatus::tryFrom($request->string('status')->toString());
+        $overdueOnly = $request->boolean('overdue');
 
         $loans = Loan::query()
-            ->with(['borrower', 'loanProduct'])
+            ->with(['borrower', 'loanProduct', 'installments.allocations'])
             ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
+            ->when($overdueOnly, fn (Builder $query) => $query->overdue())
             ->latest()
             ->paginate(15)
             ->withQueryString()
             ->through(fn (Loan $loan): array => [
                 ...$this->toPayload($loan),
+                'arrears' => number_format($this->loanArrears($loan), 2, '.', ''),
                 'can' => [
                     'view' => $actor->can('view', $loan),
                     'delete' => $actor->can('delete', $loan),
@@ -57,6 +61,7 @@ class LoanController extends Controller
             'loans' => $loans,
             'statuses' => $this->statusOptions(),
             'currentStatus' => $status?->value,
+            'overdueOnly' => $overdueOnly,
         ]);
     }
 
@@ -126,6 +131,9 @@ class LoanController extends Controller
                 'reject' => $actor->can('reject', $loan),
                 'disburse' => $actor->can('disburse', $loan),
                 'pay' => $actor->can('recordPayment', $loan),
+                'default' => $actor->can('markDefaulted', $loan),
+                'write_off' => $actor->can('writeOff', $loan),
+                'restructure' => $actor->can('restructure', $loan),
                 'delete' => $actor->can('delete', $loan),
             ],
         ]);
@@ -203,6 +211,53 @@ class LoanController extends Controller
     }
 
     /**
+     * Flag the given loan as defaulted.
+     */
+    public function markDefaulted(Request $request, Loan $loan, LoanService $loanService): RedirectResponse
+    {
+        Gate::authorize('markDefaulted', $loan);
+
+        $loanService->markDefaulted($loan, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan marked as defaulted.')]);
+
+        return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Write off the given loan.
+     */
+    public function writeOff(Request $request, Loan $loan, LoanService $loanService): RedirectResponse
+    {
+        Gate::authorize('writeOff', $loan);
+
+        $loanService->writeOff($loan, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan written off.')]);
+
+        return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Restructure the given loan onto a fresh schedule.
+     */
+    public function restructure(RestructureLoanRequest $request, Loan $loan, LoanService $loanService): RedirectResponse
+    {
+        $data = $request->validated();
+
+        $loanService->restructure(
+            $loan,
+            $request->user(),
+            (int) $data['term_months'],
+            isset($data['starts_on']) ? Date::parse($data['starts_on']) : null,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan restructured.')]);
+
+        return to_route('admin.loans.show', $loan);
+    }
+
+    /**
      * Remove the given loan.
      */
     public function destroy(Loan $loan): RedirectResponse
@@ -237,12 +292,16 @@ class LoanController extends Controller
             'repayment_frequency_label' => $loan->repayment_frequency->label(),
             'term_months' => $loan->term_months,
             'processing_fee_rate' => $loan->processing_fee_rate,
+            'penalty_rate' => $loan->penalty_rate,
+            'grace_period_days' => $loan->grace_period_days,
+            'days_past_due' => $loan->days_past_due,
             'status' => $loan->status->value,
             'status_label' => $loan->status->label(),
             'applied_at' => $loan->applied_at?->toIso8601String(),
             'approved_at' => $loan->approved_at?->toIso8601String(),
             'rejected_at' => $loan->rejected_at?->toIso8601String(),
             'disbursed_at' => $loan->disbursed_at?->toIso8601String(),
+            'closed_at' => $loan->closed_at?->toIso8601String(),
             'notes' => $loan->notes,
             'created_at' => $loan->created_at?->toIso8601String(),
         ];
@@ -261,14 +320,8 @@ class LoanController extends Controller
                 $paid = round(
                     (float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated
                         + (float) $allocation->interest_allocated
-                        + (float) $allocation->fee_allocated),
-                    2,
-                );
-
-                $due = round(
-                    (float) $installment->principal_due
-                        + (float) $installment->interest_due
-                        + (float) $installment->fee_due,
+                        + (float) $allocation->fee_allocated
+                        + (float) $allocation->penalty_allocated),
                     2,
                 );
 
@@ -279,12 +332,25 @@ class LoanController extends Controller
                     'interest_due' => $installment->interest_due,
                     'fee_due' => $installment->fee_due,
                     'balance' => $installment->balance,
+                    'penalty_accrued' => $installment->penalty_accrued,
                     'paid' => number_format($paid, 2, '.', ''),
-                    'outstanding' => number_format(max(round($due - $paid, 2), 0), 2, '.', ''),
+                    'outstanding' => number_format($installment->outstandingTotal(), 2, '.', ''),
+                    'overdue' => $installment->isOverdue(),
+                    'days_past_due' => $installment->daysPastDue(),
                 ];
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Sum the overdue outstanding amount across the loan's installments.
+     */
+    private function loanArrears(Loan $loan): float
+    {
+        return round($loan->installments->sum(
+            fn (LoanInstallment $installment): float => $installment->isOverdue() ? $installment->outstandingTotal() : 0.0,
+        ), 2);
     }
 
     /**
@@ -329,10 +395,11 @@ class LoanController extends Controller
                 'recorded_by' => $payment->recordedBy?->name,
                 'allocations' => $payment->allocations
                     ->map(fn (LoanPaymentAllocation $allocation): array => [
-                        'installment_sequence' => $allocation->installment?->sequence,
+                        'installment_sequence' => $allocation->sequence,
                         'principal_allocated' => $allocation->principal_allocated,
                         'interest_allocated' => $allocation->interest_allocated,
                         'fee_allocated' => $allocation->fee_allocated,
+                        'penalty_allocated' => $allocation->penalty_allocated,
                     ])
                     ->values()
                     ->all(),
@@ -342,42 +409,50 @@ class LoanController extends Controller
     }
 
     /**
-     * Summarise the amounts payable, paid, outstanding and in arrears.
+     * Summarise the amounts payable, paid, outstanding, in arrears, penalties
+     * and the aging of the overdue balance.
      *
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function paymentTotals(Loan $loan): array
     {
         $payable = 0.0;
-        $paid = 0.0;
+        $paid = round((float) $loan->payments->sum('amount'), 2);
         $outstanding = 0.0;
         $arrears = 0.0;
+        $penalty = 0.0;
 
-        $today = Date::today();
+        $aging = [
+            'current' => 0.0,
+            'days_1_30' => 0.0,
+            'days_31_60' => 0.0,
+            'days_61_90' => 0.0,
+            'days_over_90' => 0.0,
+        ];
 
         foreach ($loan->installments as $installment) {
-            $due = round(
-                (float) $installment->principal_due
-                    + (float) $installment->interest_due
-                    + (float) $installment->fee_due,
-                2,
-            );
+            $outstandingDue = $installment->outstandingDue();
+            $outstandingPenalty = $installment->outstandingPenalty();
+            $installmentOutstanding = $installment->outstandingTotal();
 
-            $allocated = round(
-                (float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated
-                    + (float) $allocation->interest_allocated
-                    + (float) $allocation->fee_allocated),
-                2,
-            );
-
-            $installmentOutstanding = max(round($due - $allocated, 2), 0);
-
-            $payable += $due;
-            $paid += min($allocated, $due);
+            $payable += $installment->dueAmount();
             $outstanding += $installmentOutstanding;
+            $penalty += $outstandingPenalty;
 
-            if ($installment->due_date->lessThan($today)) {
+            if ($installment->isOverdue()) {
                 $arrears += $installmentOutstanding;
+
+                $days = $installment->daysPastDue();
+                $bucket = match (true) {
+                    $days <= 30 => 'days_1_30',
+                    $days <= 60 => 'days_31_60',
+                    $days <= 90 => 'days_61_90',
+                    default => 'days_over_90',
+                };
+
+                $aging[$bucket] += $installmentOutstanding;
+            } else {
+                $aging['current'] += $outstandingDue + $outstandingPenalty;
             }
         }
 
@@ -386,6 +461,11 @@ class LoanController extends Controller
             'paid' => number_format(round($paid, 2), 2, '.', ''),
             'outstanding' => number_format(round($outstanding, 2), 2, '.', ''),
             'arrears' => number_format(round($arrears, 2), 2, '.', ''),
+            'penalty' => number_format(round($penalty, 2), 2, '.', ''),
+            'aging' => array_map(
+                fn (float $amount): string => number_format(round($amount, 2), 2, '.', ''),
+                $aging,
+            ),
         ];
     }
 

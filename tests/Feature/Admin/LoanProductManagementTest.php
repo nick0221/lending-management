@@ -36,6 +36,8 @@ test('admins can create a loan product', function () {
             'min_term_months' => 12,
             'max_term_months' => 48,
             'processing_fee_rate' => 2.5,
+            'penalty_rate' => 3.5,
+            'grace_period_days' => 5,
             'is_active' => true,
         ])
         ->assertSessionHasNoErrors()
@@ -46,6 +48,8 @@ test('admins can create a loan product', function () {
     expect($loanProduct)->not->toBeNull()
         ->and($loanProduct->interest_method)->toBe(InterestMethod::DecliningBalance)
         ->and($loanProduct->repayment_frequency)->toBe(RepaymentFrequency::Monthly)
+        ->and((float) $loanProduct->penalty_rate)->toBe(3.5)
+        ->and($loanProduct->grace_period_days)->toBe(5)
         ->and($loanProduct->is_active)->toBeTrue();
 });
 
@@ -64,6 +68,8 @@ test('creating a loan product validates its terms', function () {
             'min_term_months' => 24,
             'max_term_months' => 12,
             'processing_fee_rate' => -1,
+            'penalty_rate' => -1,
+            'grace_period_days' => 500,
         ])
         ->assertSessionHasErrors([
             'name',
@@ -73,6 +79,8 @@ test('creating a loan product validates its terms', function () {
             'max_amount',
             'max_term_months',
             'processing_fee_rate',
+            'penalty_rate',
+            'grace_period_days',
         ]);
 });
 
@@ -91,6 +99,8 @@ test('admins can update a loan product', function () {
             'min_term_months' => $loanProduct->min_term_months,
             'max_term_months' => $loanProduct->max_term_months,
             'processing_fee_rate' => $loanProduct->processing_fee_rate,
+            'penalty_rate' => 4,
+            'grace_period_days' => 10,
             'is_active' => false,
         ])
         ->assertSessionHasNoErrors()
@@ -100,6 +110,8 @@ test('admins can update a loan product', function () {
 
     expect($loanProduct->interest_method)->toBe(InterestMethod::DecliningBalance)
         ->and($loanProduct->repayment_frequency)->toBe(RepaymentFrequency::Biweekly)
+        ->and((float) $loanProduct->penalty_rate)->toBe(4.0)
+        ->and($loanProduct->grace_period_days)->toBe(10)
         ->and($loanProduct->is_active)->toBeFalse();
 });
 
