@@ -1,5 +1,14 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    BookOpen,
+    FolderGit2,
+    HandCoins,
+    Landmark,
+    LayoutGrid,
+    ShieldCheck,
+    Users,
+    Wallet,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,6 +23,11 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as adminBorrowers } from '@/routes/admin/borrowers';
+import { index as adminLoanProducts } from '@/routes/admin/loan-products';
+import { index as adminLoans } from '@/routes/admin/loans';
+import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -21,6 +35,34 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+];
+
+const adminNavItems: NavItem[] = [
+    {
+        title: 'Overview',
+        href: adminDashboard(),
+        icon: ShieldCheck,
+    },
+    {
+        title: 'Users',
+        href: adminUsers(),
+        icon: Users,
+    },
+    {
+        title: 'Borrowers',
+        href: adminBorrowers(),
+        icon: HandCoins,
+    },
+    {
+        title: 'Loan products',
+        href: adminLoanProducts(),
+        icon: Landmark,
+    },
+    {
+        title: 'Loans',
+        href: adminLoans(),
+        icon: Wallet,
     },
 ];
 
@@ -38,6 +80,10 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage().props;
+    const canAccessAdmin =
+        auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -54,6 +100,10 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} />
+
+                {canAccessAdmin && (
+                    <NavMain items={adminNavItems} label="Administration" />
+                )}
             </SidebarContent>
 
             <SidebarFooter>

@@ -15,11 +15,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::factory()->superAdmin()->create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@example.com',
+        ]);
+
+        User::factory()->admin()->create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+        ]);
 
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+        ]);
+
+        User::factory()->create([
+            'name' => 'Default User',
+            'email' => 'default@example.com',
+        ]);
+
+        $this->call([
+            LoanProductSeeder::class,
+            BorrowerSeeder::class,
+            LoanSeeder::class,
         ]);
     }
 }

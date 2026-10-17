@@ -1,0 +1,55 @@
+import { Head } from '@inertiajs/react';
+import { LoanProductForm } from '@/components/admin/loan-product-form';
+import Heading from '@/components/heading';
+import { dashboard as adminDashboard } from '@/routes/admin';
+import {
+    create as createLoanProduct,
+    index as loanProductsIndex,
+    store,
+} from '@/routes/admin/loan-products';
+import type { InterestMethodOption, RepaymentFrequencyOption } from '@/types';
+
+export default function CreateLoanProduct({
+    interestMethods,
+    frequencies,
+}: {
+    interestMethods: InterestMethodOption[];
+    frequencies: RepaymentFrequencyOption[];
+}) {
+    return (
+        <>
+            <Head title="Create loan product" />
+
+            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
+                <Heading
+                    title="Create loan product"
+                    description="Define the interest, amounts, and terms for this product."
+                />
+
+                <LoanProductForm
+                    action={store.form()}
+                    interestMethods={interestMethods}
+                    frequencies={frequencies}
+                    submitLabel="Create product"
+                />
+            </div>
+        </>
+    );
+}
+
+CreateLoanProduct.layout = {
+    breadcrumbs: [
+        {
+            title: 'Administration',
+            href: adminDashboard(),
+        },
+        {
+            title: 'Loan products',
+            href: loanProductsIndex(),
+        },
+        {
+            title: 'Create product',
+            href: createLoanProduct(),
+        },
+    ],
+};

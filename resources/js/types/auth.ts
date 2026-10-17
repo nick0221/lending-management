@@ -1,7 +1,10 @@
+export type Role = 'super_admin' | 'admin' | 'user';
+
 export type User = {
     id: number;
     name: string;
     email: string;
+    role: Role;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
@@ -12,6 +15,45 @@ export type User = {
 
 export type Auth = {
     user: User;
+};
+
+export type RoleOption = {
+    value: Role;
+    label: string;
+};
+
+export type AdminUser = {
+    id: number;
+    name: string;
+    email: string;
+    role: Role;
+    role_label: string;
+    email_verified_at: string | null;
+    created_at: string | null;
+};
+
+export type AdminUserListItem = AdminUser & {
+    can: {
+        update: boolean;
+        delete: boolean;
+    };
+};
+
+export type PaginationLink = {
+    url: string | null;
+    label: string;
+    active: boolean;
+};
+
+export type Paginated<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    links: PaginationLink[];
 };
 
 export type Passkey = {

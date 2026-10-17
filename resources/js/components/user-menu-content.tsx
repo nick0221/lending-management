@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
+import { RoleBadge } from '@/components/role-badge';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -27,8 +28,11 @@ export function UserMenuContent({ user }: Props) {
     return (
         <>
             <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <UserInfo user={user} showEmail={true} />
+                <div className="flex flex-col gap-2 px-1 py-1.5 text-left text-sm">
+                    <div className="flex items-center gap-2">
+                        <UserInfo user={user} showEmail={true} />
+                    </div>
+                    <RoleBadge role={user.role} className="ml-10" />
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
