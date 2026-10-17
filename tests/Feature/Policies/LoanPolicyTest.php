@@ -51,3 +51,19 @@ test('only approved loans may be disbursed and disbursed loans are immutable', f
         ->and($policy->delete($admin, $active))->toBeFalse()
         ->and($policy->update($admin, $active))->toBeFalse();
 });
+
+test('payments may only be recorded against active loans by administrators', function () {
+    $policy = new LoanPolicy;
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $active = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $pending = Loan::factory()->pending()->create();
+    $closed = Loan::factory()->withStatus(LoanStatus::Closed)->create();
+
+    expect($policy->recordPayment($admin, $active))->toBeTrue()
+        ->and($policy->recordPayment($admin, $pending))->toBeFalse()
+        ->and($policy->recordPayment($admin, $closed))->toBeFalse()
+        ->and($policy->recordPayment($user, $active))->toBeFalse();
+});

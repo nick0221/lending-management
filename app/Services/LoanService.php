@@ -145,6 +145,7 @@ class LoanService
             LoanStatus::Approved => 'approved_at',
             LoanStatus::Rejected => 'rejected_at',
             LoanStatus::Disbursed => 'disbursed_at',
+            LoanStatus::Closed => 'closed_at',
             default => null,
         };
     }

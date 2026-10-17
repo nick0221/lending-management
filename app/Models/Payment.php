@@ -60,7 +60,7 @@ class Payment extends Model
 
     public function installment(): BelongsTo
     {
-        return $this->belongsTo(LoanInstallment::class);
+        return $this->belongsTo(LoanInstallment::class, 'installment_id');
     }
 
     public function allocations(): HasMany

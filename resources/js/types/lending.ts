@@ -86,6 +86,15 @@ export type DisbursementMethod =
 
 export type DisbursementMethodOption = SelectOption<DisbursementMethod>;
 
+export type PaymentMethod =
+    | 'bank_transfer'
+    | 'cash'
+    | 'cheque'
+    | 'mobile_money'
+    | 'other';
+
+export type PaymentMethodOption = SelectOption<PaymentMethod>;
+
 export type LoanEventType =
     | 'created'
     | 'approved'
@@ -94,7 +103,8 @@ export type LoanEventType =
     | 'activated'
     | 'closed'
     | 'defaulted'
-    | 'written_off';
+    | 'written_off'
+    | 'payment_recorded';
 
 export type BorrowerOption = SelectOption<number>;
 
@@ -143,6 +153,7 @@ export type LoanAbilities = {
     approve: boolean;
     reject: boolean;
     disburse: boolean;
+    pay: boolean;
     delete: boolean;
 };
 
@@ -153,6 +164,8 @@ export type LoanInstallment = {
     interest_due: string;
     fee_due: string;
     balance: string;
+    paid: string;
+    outstanding: string;
 };
 
 export type Disbursement = {
@@ -163,6 +176,32 @@ export type Disbursement = {
     reference: string | null;
     disbursed_at: string;
     recorded_by: string | null;
+};
+
+export type PaymentAllocation = {
+    installment_sequence: number | null;
+    principal_allocated: string;
+    interest_allocated: string;
+    fee_allocated: string;
+};
+
+export type Payment = {
+    id: number;
+    amount: string;
+    method: PaymentMethod;
+    method_label: string;
+    reference: string | null;
+    notes: string | null;
+    payment_date: string;
+    recorded_by: string | null;
+    allocations: PaymentAllocation[];
+};
+
+export type PaymentTotals = {
+    payable: string;
+    paid: string;
+    outstanding: string;
+    arrears: string;
 };
 
 export type LoanEvent = {

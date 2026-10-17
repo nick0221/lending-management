@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\DisbursementMethod;
 use App\Enums\LoanStatus;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DisburseLoanRequest;
+use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\Borrower;
 use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanEvent;
 use App\Models\LoanInstallment;
+use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
+use App\Models\Payment;
 use App\Services\LoanService;
+use App\Services\RepaymentService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -95,7 +100,15 @@ class LoanController extends Controller
     {
         Gate::authorize('view', $loan);
 
-        $loan->load(['borrower', 'loanProduct', 'installments', 'disbursements.recordedBy', 'events.user']);
+        $loan->load([
+            'borrower',
+            'loanProduct',
+            'installments.allocations',
+            'disbursements.recordedBy',
+            'payments.recordedBy',
+            'payments.allocations.installment',
+            'events.user',
+        ]);
 
         $actor = $request->user();
 
@@ -103,12 +116,16 @@ class LoanController extends Controller
             'loan' => $this->toPayload($loan),
             'installments' => $this->installmentPayload($loan),
             'disbursements' => $this->disbursementPayload($loan),
+            'payments' => $this->paymentPayload($loan),
+            'totals' => $this->paymentTotals($loan),
             'events' => $this->eventPayload($loan),
             'disbursementMethods' => $this->disbursementMethodOptions(),
+            'paymentMethods' => $this->paymentMethodOptions(),
             'can' => [
                 'approve' => $actor->can('approve', $loan),
                 'reject' => $actor->can('reject', $loan),
                 'disburse' => $actor->can('disburse', $loan),
+                'pay' => $actor->can('recordPayment', $loan),
                 'delete' => $actor->can('delete', $loan),
             ],
         ]);
@@ -159,6 +176,28 @@ class LoanController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan disbursed.')]);
+
+        return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Record a repayment against the given loan.
+     */
+    public function recordPayment(RecordPaymentRequest $request, Loan $loan, RepaymentService $repaymentService): RedirectResponse
+    {
+        $data = $request->validated();
+
+        $repaymentService->recordPayment(
+            $loan,
+            $request->user(),
+            (float) $data['amount'],
+            PaymentMethod::from($data['method']),
+            $data['reference'] ?? null,
+            $data['notes'] ?? null,
+            isset($data['payment_date']) ? Date::parse($data['payment_date']) : null,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
 
         return to_route('admin.loans.show', $loan);
     }
@@ -218,14 +257,32 @@ class LoanController extends Controller
     {
         return $loan->installments
             ->sortBy('sequence')
-            ->map(fn (LoanInstallment $installment): array => [
-                'sequence' => $installment->sequence,
-                'due_date' => $installment->due_date->toIso8601String(),
-                'principal_due' => $installment->principal_due,
-                'interest_due' => $installment->interest_due,
-                'fee_due' => $installment->fee_due,
-                'balance' => $installment->balance,
-            ])
+            ->map(function (LoanInstallment $installment): array {
+                $paid = round(
+                    (float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated
+                        + (float) $allocation->interest_allocated
+                        + (float) $allocation->fee_allocated),
+                    2,
+                );
+
+                $due = round(
+                    (float) $installment->principal_due
+                        + (float) $installment->interest_due
+                        + (float) $installment->fee_due,
+                    2,
+                );
+
+                return [
+                    'sequence' => $installment->sequence,
+                    'due_date' => $installment->due_date->toIso8601String(),
+                    'principal_due' => $installment->principal_due,
+                    'interest_due' => $installment->interest_due,
+                    'fee_due' => $installment->fee_due,
+                    'balance' => $installment->balance,
+                    'paid' => number_format($paid, 2, '.', ''),
+                    'outstanding' => number_format(max(round($due - $paid, 2), 0), 2, '.', ''),
+                ];
+            })
             ->values()
             ->all();
     }
@@ -250,6 +307,86 @@ class LoanController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Transform the recorded payments into the payload shared with the client.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function paymentPayload(Loan $loan): array
+    {
+        return $loan->payments
+            ->sortByDesc('payment_date')
+            ->map(fn (Payment $payment): array => [
+                'id' => $payment->id,
+                'amount' => $payment->amount,
+                'method' => $payment->method->value,
+                'method_label' => $payment->method->label(),
+                'reference' => $payment->reference,
+                'notes' => $payment->notes,
+                'payment_date' => $payment->payment_date->toIso8601String(),
+                'recorded_by' => $payment->recordedBy?->name,
+                'allocations' => $payment->allocations
+                    ->map(fn (LoanPaymentAllocation $allocation): array => [
+                        'installment_sequence' => $allocation->installment?->sequence,
+                        'principal_allocated' => $allocation->principal_allocated,
+                        'interest_allocated' => $allocation->interest_allocated,
+                        'fee_allocated' => $allocation->fee_allocated,
+                    ])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Summarise the amounts payable, paid, outstanding and in arrears.
+     *
+     * @return array<string, string>
+     */
+    private function paymentTotals(Loan $loan): array
+    {
+        $payable = 0.0;
+        $paid = 0.0;
+        $outstanding = 0.0;
+        $arrears = 0.0;
+
+        $today = Date::today();
+
+        foreach ($loan->installments as $installment) {
+            $due = round(
+                (float) $installment->principal_due
+                    + (float) $installment->interest_due
+                    + (float) $installment->fee_due,
+                2,
+            );
+
+            $allocated = round(
+                (float) $installment->allocations->sum(fn (LoanPaymentAllocation $allocation): float => (float) $allocation->principal_allocated
+                    + (float) $allocation->interest_allocated
+                    + (float) $allocation->fee_allocated),
+                2,
+            );
+
+            $installmentOutstanding = max(round($due - $allocated, 2), 0);
+
+            $payable += $due;
+            $paid += min($allocated, $due);
+            $outstanding += $installmentOutstanding;
+
+            if ($installment->due_date->lessThan($today)) {
+                $arrears += $installmentOutstanding;
+            }
+        }
+
+        return [
+            'payable' => number_format(round($payable, 2), 2, '.', ''),
+            'paid' => number_format(round($paid, 2), 2, '.', ''),
+            'outstanding' => number_format(round($outstanding, 2), 2, '.', ''),
+            'arrears' => number_format(round($arrears, 2), 2, '.', ''),
+        ];
     }
 
     /**
@@ -286,6 +423,19 @@ class LoanController extends Controller
         return array_map(
             fn (DisbursementMethod $method): array => ['value' => $method->value, 'label' => $method->label()],
             DisbursementMethod::cases(),
+        );
+    }
+
+    /**
+     * Map the payment methods to select options.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function paymentMethodOptions(): array
+    {
+        return array_map(
+            fn (PaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()],
+            PaymentMethod::cases(),
         );
     }
 

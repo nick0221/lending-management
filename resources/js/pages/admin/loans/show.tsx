@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Check, Trash2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
+import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
 import Heading from '@/components/heading';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,9 @@ import type {
     LoanAbilities,
     LoanEvent,
     LoanInstallment,
+    Payment,
+    PaymentMethodOption,
+    PaymentTotals,
 } from '@/types';
 
 function formatDate(value: string | null): string {
@@ -39,15 +43,21 @@ export default function ShowLoan({
     loan,
     installments,
     disbursements,
+    payments,
+    totals,
     events,
     disbursementMethods,
+    paymentMethods,
     can,
 }: {
     loan: Loan;
     installments: LoanInstallment[];
     disbursements: Disbursement[];
+    payments: Payment[];
+    totals: PaymentTotals;
     events: LoanEvent[];
     disbursementMethods: DisbursementMethodOption[];
+    paymentMethods: PaymentMethodOption[];
     can: LoanAbilities;
 }) {
     const scheduleTotals = installments.reduce(
@@ -55,13 +65,16 @@ export default function ShowLoan({
             principal: totals.principal + Number(installment.principal_due),
             interest: totals.interest + Number(installment.interest_due),
             fee: totals.fee + Number(installment.fee_due),
+            paid: totals.paid + Number(installment.paid),
+            outstanding:
+                totals.outstanding + Number(installment.outstanding),
             total:
                 totals.total +
                 Number(installment.principal_due) +
                 Number(installment.interest_due) +
                 Number(installment.fee_due),
         }),
-        { principal: 0, interest: 0, fee: 0, total: 0 },
+        { principal: 0, interest: 0, fee: 0, paid: 0, outstanding: 0, total: 0 },
     );
 
     return (
@@ -127,6 +140,14 @@ export default function ShowLoan({
                         <DisburseLoanDialog
                             loan={loan}
                             methods={disbursementMethods}
+                        />
+                    )}
+
+                    {can.pay && (
+                        <RecordPaymentDialog
+                            loan={loan}
+                            methods={paymentMethods}
+                            outstanding={totals.outstanding}
                         />
                     )}
 
@@ -267,6 +288,52 @@ export default function ShowLoan({
                     </dl>
                 </div>
 
+                {installments.length > 0 && (
+                    <div className="grid gap-4 rounded-xl border border-sidebar-border/70 p-6 sm:grid-cols-4 dark:border-sidebar-border">
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">
+                                Payable
+                            </p>
+                            <p className="text-lg font-semibold">
+                                {Number(totals.payable).toFixed(2)}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">
+                                Paid
+                            </p>
+                            <p className="text-lg font-semibold">
+                                {Number(totals.paid).toFixed(2)}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">
+                                Outstanding
+                            </p>
+                            <p className="text-lg font-semibold">
+                                {Number(totals.outstanding).toFixed(2)}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground uppercase">
+                                Arrears
+                            </p>
+                            <p
+                                className={
+                                    Number(totals.arrears) > 0
+                                        ? 'text-lg font-semibold text-destructive'
+                                        : 'text-lg font-semibold'
+                                }
+                            >
+                                {Number(totals.arrears).toFixed(2)}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {disbursements.length > 0 && (
                     <section className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-sidebar-border/70 px-6 py-4 dark:border-sidebar-border">
@@ -313,6 +380,79 @@ export default function ShowLoan({
                         </div>
                     </section>
                 )}
+
+                <section className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-sidebar-border/70 px-6 py-4 dark:border-sidebar-border">
+                        <h2 className="text-sm font-medium">Repayments</h2>
+
+                        <p className="text-xs text-muted-foreground">
+                            {payments.length} payment
+                            {payments.length === 1 ? '' : 's'}
+                        </p>
+                    </div>
+
+                    {payments.length === 0 ? (
+                        <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+                            No payments recorded yet.
+                        </p>
+                    ) : (
+                        <div className="divide-y divide-sidebar-border/70 dark:divide-sidebar-border">
+                            {payments.map((payment) => (
+                                <dl
+                                    key={payment.id}
+                                    className="grid gap-x-8 gap-y-5 p-6 sm:grid-cols-2"
+                                >
+                                    <DetailField
+                                        label="Amount"
+                                        value={Number(payment.amount).toFixed(2)}
+                                    />
+                                    <DetailField
+                                        label="Method"
+                                        value={payment.method_label}
+                                    />
+                                    <DetailField
+                                        label="Reference"
+                                        value={payment.reference || '—'}
+                                    />
+                                    <DetailField
+                                        label="Received"
+                                        value={formatDate(payment.payment_date)}
+                                    />
+                                    <DetailField
+                                        label="Recorded by"
+                                        value={payment.recorded_by || '—'}
+                                    />
+                                    <DetailField
+                                        label="Allocated to"
+                                        value={
+                                            payment.allocations.length === 0
+                                                ? 'Unallocated'
+                                                : payment.allocations
+                                                      .map(
+                                                          (allocation) =>
+                                                              `#${
+                                                                  allocation.installment_sequence ??
+                                                                  '—'
+                                                              }`,
+                                                      )
+                                                      .join(', ')
+                                        }
+                                    />
+                                    {payment.notes && (
+                                        <div className="space-y-1 sm:col-span-2">
+                                            <dt className="text-xs text-muted-foreground uppercase">
+                                                Notes
+                                            </dt>
+                                            <dd className="text-sm whitespace-pre-line">
+                                                {payment.notes}
+                                            </dd>
+                                        </div>
+                                    )}
+                                </dl>
+                            ))}
+                        </div>
+                    )}
+                </section>
 
                 <section className="rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-sidebar-border/70 px-6 py-4 dark:border-sidebar-border">
@@ -390,7 +530,10 @@ export default function ShowLoan({
                                             Fee
                                         </th>
                                         <th className="px-6 py-3 text-right font-medium">
-                                            Balance
+                                            Paid
+                                        </th>
+                                        <th className="px-6 py-3 text-right font-medium">
+                                            Outstanding
                                         </th>
                                     </tr>
                                 </thead>
@@ -424,9 +567,14 @@ export default function ShowLoan({
                                                     installment.fee_due,
                                                 ).toFixed(2)}
                                             </td>
+                                            <td className="px-6 py-3 text-right">
+                                                {Number(
+                                                    installment.paid,
+                                                ).toFixed(2)}
+                                            </td>
                                             <td className="px-6 py-3 text-right text-muted-foreground">
                                                 {Number(
-                                                    installment.balance,
+                                                    installment.outstanding,
                                                 ).toFixed(2)}
                                             </td>
                                         </tr>
@@ -451,7 +599,10 @@ export default function ShowLoan({
                                             {scheduleTotals.fee.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-3 text-right">
-                                            {scheduleTotals.total.toFixed(2)}
+                                            {scheduleTotals.paid.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-3 text-right">
+                                            {scheduleTotals.outstanding.toFixed(2)}
                                         </td>
                                     </tr>
                                 </tfoot>

@@ -12,6 +12,7 @@ enum LoanEventType: string
     case Closed = 'closed';
     case Defaulted = 'defaulted';
     case WrittenOff = 'written_off';
+    case PaymentRecorded = 'payment_recorded';
 
     /**
      * Get the human readable label for the event.
@@ -27,6 +28,7 @@ enum LoanEventType: string
             self::Closed => 'Loan closed',
             self::Defaulted => 'Loan defaulted',
             self::WrittenOff => 'Loan written off',
+            self::PaymentRecorded => 'Payment recorded',
         };
     }
 

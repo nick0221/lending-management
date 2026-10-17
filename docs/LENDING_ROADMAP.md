@@ -136,7 +136,7 @@ the loan detail page, and golden-number unit tests plus schedule feature tests.
 
 **Acceptance:** fully repaid loan closes automatically; partial payments allocate correctly; cannot pay closed/rejected loans.
 
-**Delivered:** `Payment`/`LoanPaymentAllocation` models+migrations+factories, `PaymentMethod` enum, `RecordPaymentRequest` with Active-only guard, `LoanPolicy::recordPayment`, `Loan` relations (`payments`, `allocations`), `closed_at` added to loans (model + schema context). Test skeletons added. Next: implement `RepaymentService` allocation, auto-close logic, controller action, routes, and frontend UI.
+**Delivered:** `Payment`/`LoanPaymentAllocation` models + migrations + factories, `PaymentMethod` enum, `RecordPaymentRequest` with Active-only guard, `LoanPolicy::recordPayment`, `Loan` relations (`payments`, `allocations`), `RepaymentService` (oldest-installment-first allocation, fee → interest → principal priority, overpayment rejection, auto-close) and `closed_at` on loans. Controller action + `loans.payments.store` route, payment methods/totals payloads, record-payment dialog, payments history and paid/outstanding/arrears totals on the loan detail page, per-installment paid/outstanding progress, and `LoanEventType::PaymentRecorded` audit entries. Covered by allocation tests (oldest-first, partial, spill-over, overpayment, auto-close) and feature tests (record, block non-active, validation, auto-close, audit, detail payload) plus policy coverage.
 
 ---
 
