@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ReportingService;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -17,14 +18,20 @@ class ReportController extends Controller
     /**
      * Show the portfolio reports.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $currentTab = $request->string('tab')->toString();
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears'], true)
+            ? $currentTab
+            : 'portfolio';
+
         return Inertia::render('admin/reports/index', [
             'summary' => $this->reporting->portfolioSummary(),
             'aging' => $this->reporting->agingBuckets(),
             'risk' => $this->reporting->portfolioAtRisk(),
             'collections' => $this->reporting->collections(),
             'loans' => $this->reporting->loanRows()->values()->all(),
+            'currentTab' => $currentTab,
         ]);
     }
 

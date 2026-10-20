@@ -176,9 +176,9 @@ file — not a wall of sections.
 
 | ID   | Item        | Detail                                                                       | Status |
 | ---- | ----------- | ---------------------------------------------------------------------------- | ------ |
-| E7.1 | Report tabs | Portfolio / Aging / Collections / Arrears as tabs instead of one long page.  | ⏳     |
+| E7.1 | Report tabs | Portfolio / Aging / Collections / Arrears as tabs instead of one long page.  | ✅     |
 | E7.2 | Date range  | Shared date-range control (E0.12) applied to every report.                   | 🔒     |
-| E7.3 | Export menu | One `DropdownMenu` with a CSV action per report instead of separate buttons. | ⏳     |
+| E7.3 | Export menu | One `DropdownMenu` with a CSV action per report instead of separate buttons. | ✅     |
 | E7.4 | Charts      | Simple bars first (CSS); upgrade to `recharts` only if approved.             | 🔒     |
 | E7.5 | Print view  | Print stylesheet for the portfolio summary.                                  | ⏳     |
 
@@ -257,3 +257,4 @@ file — not a wall of sections.
 | 2026-10-20 | Loan queue: sortable Principal/Arrears/Applied headers backed by query params (E2.4), and row actions moved into a `DropdownMenu` with View, Email statement and Delete behind the shared confirm dialog (E2.5). Sorting by arrears uses a correlated subquery that mirrors the list calculation. |
 | 2026-10-20 | Borrower file: `/admin/borrowers/{borrower}` with summary stats, profile, notification preferences, loans, payments and super-admin activity (E1.6). Added `SectionCard` for detail sections (E0.7); the register links names to the file and uses a View/Edit/Delete row menu (E1.4). Row statements stay on the loan file. M2 complete. |
 | 2026-10-20 | Loan file redesigned around URL-backed tabs (Overview, Schedule, Payments, Payouts, Activity) with a sticky summary of status, principal, outstanding, arrears and next due (E2.7, E2.8). Actions are split into primary decisions and a More menu for restructure, statement, default, write-off and delete (E2.9); the lifecycle is now a vertical timeline (E2.10). |
+| 2026-10-20 | Reports split into URL-backed Portfolio, Aging, Collections and Arrears tabs, with a new arrears view sorted by exposure and consolidated loan tables (E7.1). The three CSV buttons became one Export menu (E7.3). E7.2 stays gated on the date-range dependency. |
