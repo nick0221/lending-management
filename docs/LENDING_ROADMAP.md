@@ -277,11 +277,12 @@ authorization).
   queues run on the database driver locally and Cloud managed queues are
   the production target; Cloud supplies database backups.
 
-**Remaining:** install `laravel/cloud-cli` (dependency approval needed),
-authenticate the CLI, provision the application, environment, database,
-cache and managed queue, set production mail/SMTP and tuning variables,
-deploy, monitor the deployment, and verify the URL, logs, queues and
-scheduled tasks.
+**Remaining:** restore the email-verification gate (the `verified`
+middleware was removed for development), then install `laravel/cloud-cli`
+(dependency approval needed), authenticate the CLI, provision the
+application, environment, database, cache and managed queue, set production
+mail/SMTP and tuning variables, deploy, monitor the deployment, and verify
+the URL, logs, queues and scheduled tasks.
 
 ---
 
