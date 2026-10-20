@@ -26,4 +26,19 @@ return [
 
     'due_reminder_days' => (int) env('LENDING_DUE_REMINDER_DAYS', 3),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Endpoint rate limits
+    |--------------------------------------------------------------------------
+    |
+    | Requests per minute, per user, for money-moving endpoints and report
+    | downloads. Raise or lower these through the environment when needed.
+    |
+    */
+
+    'rate_limits' => [
+        'money' => (int) env('LENDING_MONEY_RATE_LIMIT', 30),
+        'reports' => (int) env('LENDING_REPORTS_RATE_LIMIT', 10),
+    ],
+
 ];

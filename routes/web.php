@@ -27,15 +27,20 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');
-        Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])->name('loans.disburse');
-        Route::post('loans/{loan}/payments', [LoanController::class, 'recordPayment'])->name('loans.payments.store');
-        Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
-        Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
-        Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');
-        Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
+
+        Route::middleware('throttle:money')->group(function () {
+            Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])->name('loans.disburse');
+            Route::post('loans/{loan}/payments', [LoanController::class, 'recordPayment'])->name('loans.payments.store');
+            Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
+            Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
+            Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');
+            Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
+        });
+
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/download/{report}', [ReportController::class, 'download'])
             ->whereIn('report', ['summary', 'loans', 'collections'])
+            ->middleware('throttle:reports')
             ->name('reports.download');
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
     });

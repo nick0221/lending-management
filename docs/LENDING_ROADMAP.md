@@ -247,6 +247,42 @@ authorization).
 - Backups, queue workers, scheduled tasks
 - Deploy via Laravel Cloud (`deploying-to-cloud` skill)
 
+**Delivered so far:**
+
+- **Audit trail** — `activity_logs` records sign-ins, sign-outs, failed
+  sign-ins and every create/update/delete on users, borrowers, products,
+  loans, disbursements and payments, with actor, IP, user agent and
+  old/new values. Updates are diffed, sensitive fields (password, remember
+  token, 2FA secrets) and timestamps are never stored, and no-op updates
+  produce no entry. `/admin/activity` filters by event, record type, user
+  and date range; it is restricted to super admins by
+  `ActivityLogPolicy`, with a sidebar entry only for them.
+- **Permissions** — the existing policy layer remains the single source of
+  authority for the three-role model (Decision 6); Phase 9 adds the
+  super-admin-only audit trail on top of it.
+- **Rate limiting** — `throttle:money` covers disburse, payment,
+  mark-default, write-off, restructure and statement emails at 30
+  requests/minute per user; `throttle:reports` covers CSV downloads at 10
+  per minute. Both are configurable through `LENDING_MONEY_RATE_LIMIT`
+  and `LENDING_REPORTS_RATE_LIMIT`, return `429` with `Retry-After`, and
+  are covered by `RateLimitTest`.
+- **Security headers** — `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy` and `Permissions-Policy` are applied to every web
+  response by `SecurityHeaders`, covered by `SecurityHeadersTest`.
+- **Scheduling** — all four collection commands are now
+  `withoutOverlapping()->onOneServer()` (01:00 penalties, 01:30 overdue
+  flag, 08:00 due reminders, 08:15 overdue notices), so replicas cannot
+  double-run them.
+- **Operations** — `.env.example` documents the lending tuning knobs;
+  queues run on the database driver locally and Cloud managed queues are
+  the production target; Cloud supplies database backups.
+
+**Remaining:** install `laravel/cloud-cli` (dependency approval needed),
+authenticate the CLI, provision the application, environment, database,
+cache and managed queue, set production mail/SMTP and tuning variables,
+deploy, monitor the deployment, and verify the URL, logs, queues and
+scheduled tasks.
+
 ---
 
 ## Cross-cutting (every phase)
