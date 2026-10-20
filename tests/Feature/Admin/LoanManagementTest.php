@@ -4,6 +4,7 @@ use App\Enums\InterestMethod;
 use App\Enums\LoanStatus;
 use App\Models\Borrower;
 use App\Models\Loan;
+use App\Models\LoanInstallment;
 use App\Models\LoanProduct;
 use App\Models\User;
 
@@ -18,6 +19,7 @@ test('the loan list exposes the abilities for every row', function () {
             ->component('admin/loans/index')
             ->has('loans.data', 1)
             ->where('loans.data.0.can.view', true)
+            ->where('loans.data.0.can.statement', true)
             ->where('loans.data.0.can.delete', true)
             ->has('statuses')
         );
@@ -78,6 +80,83 @@ test('the loan list can be searched by borrower name or loan id', function () {
         ->assertInertia(fn ($page) => $page
             ->has('loans.data', 1)
             ->where('loans.data.0.id', $other->id)
+        );
+});
+
+test('the loan list can be sorted by principal and applied date', function () {
+    $admin = User::factory()->admin()->create();
+    $large = Loan::factory()->create([
+        'principal' => 900,
+        'applied_at' => now()->subDays(2),
+    ]);
+    $small = Loan::factory()->create([
+        'principal' => 100,
+        'applied_at' => now()->subDay(),
+    ]);
+    $medium = Loan::factory()->create([
+        'principal' => 500,
+        'applied_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['sort' => 'principal', 'direction' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loans.data.0.id', $small->id)
+            ->where('loans.data.1.id', $medium->id)
+            ->where('loans.data.2.id', $large->id)
+            ->where('currentSort', 'principal')
+            ->where('currentDirection', 'asc')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['sort' => 'applied_at', 'direction' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loans.data.0.id', $medium->id)
+            ->where('loans.data.1.id', $small->id)
+            ->where('loans.data.2.id', $large->id)
+        );
+});
+
+test('the loan list can be sorted by arrears', function () {
+    $admin = User::factory()->admin()->create();
+    $low = Loan::factory()->create();
+    $high = Loan::factory()->create();
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $low->id,
+        'due_date' => now()->subDays(10),
+        'principal_due' => 100,
+        'interest_due' => 0,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+    LoanInstallment::factory()->create([
+        'loan_id' => $high->id,
+        'due_date' => now()->subDays(10),
+        'principal_due' => 1000,
+        'interest_due' => 0,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['sort' => 'arrears', 'direction' => 'desc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loans.data.0.id', $high->id)
+            ->where('loans.data.1.id', $low->id)
+            ->where('currentSort', 'arrears')
+            ->where('currentDirection', 'desc')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['sort' => 'arrears', 'direction' => 'asc']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loans.data.0.id', $low->id)
+            ->where('loans.data.1.id', $high->id)
         );
 });
 

@@ -159,6 +159,7 @@ export type LoanListItem = Loan & {
     arrears: string;
     can: {
         view: boolean;
+        statement: boolean;
         delete: boolean;
     };
 };

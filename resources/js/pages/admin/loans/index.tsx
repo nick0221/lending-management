@@ -1,12 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
-import { Eye, FileText, Plus, TriangleAlert } from 'lucide-react';
-import { ConfirmDelete } from '@/components/confirm-delete';
+import { FileText, Plus, TriangleAlert } from 'lucide-react';
+import { LoanRowActions } from '@/components/admin/loan-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
 import { SearchInput } from '@/components/search-input';
+import { SortableHeader } from '@/components/sortable-header';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -20,9 +21,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createLoan,
-    destroy as destroyLoan,
     index as loansIndex,
-    show as showLoan,
 } from '@/routes/admin/loans';
 import type { LoanListItem, LoanStatusOption, Paginated } from '@/types';
 
@@ -33,6 +32,8 @@ export default function LoansIndex({
     overdueOnly,
     counts,
     search,
+    currentSort,
+    currentDirection,
 }: {
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
@@ -40,19 +41,26 @@ export default function LoansIndex({
     overdueOnly: boolean;
     counts: Record<string, number>;
     search: string;
+    currentSort: string | null;
+    currentDirection: 'asc' | 'desc';
 }) {
     const withFilters = (overrides: {
         status?: string | null;
         overdue?: boolean;
+        sort?: string;
+        direction?: 'asc' | 'desc';
     }) => {
         const status = overrides.status ?? currentStatus ?? '';
         const overdue = overrides.overdue ?? overdueOnly;
+        const sort = overrides.sort ?? currentSort ?? '';
+        const direction = overrides.direction ?? currentDirection;
 
         return loansIndex({
             query: {
                 ...(status ? { status } : {}),
                 ...(overdue ? { overdue: '1' } : {}),
                 ...(search ? { search } : {}),
+                ...(sort ? { sort, direction } : {}),
             },
         });
     };
@@ -144,11 +152,50 @@ export default function LoansIndex({
                                 <TableRow>
                                     <TableHead>Borrower</TableHead>
                                     <TableHead>Product</TableHead>
-                                    <TableHead>Principal</TableHead>
+                                    <TableHead>
+                                        <SortableHeader
+                                            label="Principal"
+                                            column="principal"
+                                            currentSort={currentSort}
+                                            direction={currentDirection}
+                                            href={(direction) =>
+                                                withFilters({
+                                                    sort: 'principal',
+                                                    direction,
+                                                })
+                                            }
+                                        />
+                                    </TableHead>
                                     <TableHead>Terms</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Arrears</TableHead>
-                                    <TableHead>Applied</TableHead>
+                                    <TableHead>
+                                        <SortableHeader
+                                            label="Arrears"
+                                            column="arrears"
+                                            currentSort={currentSort}
+                                            direction={currentDirection}
+                                            href={(direction) =>
+                                                withFilters({
+                                                    sort: 'arrears',
+                                                    direction,
+                                                })
+                                            }
+                                        />
+                                    </TableHead>
+                                    <TableHead>
+                                        <SortableHeader
+                                            label="Applied"
+                                            column="applied_at"
+                                            currentSort={currentSort}
+                                            direction={currentDirection}
+                                            href={(direction) =>
+                                                withFilters({
+                                                    sort: 'applied_at',
+                                                    direction,
+                                                })
+                                            }
+                                        />
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -207,35 +254,8 @@ export default function LoansIndex({
                                                 : '—'}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center justify-end gap-2">
-                                                {loan.can.view && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={showLoan(
-                                                                loan.id,
-                                                            )}
-                                                            prefetch
-                                                        >
-                                                            <Eye />
-                                                            View
-                                                        </Link>
-                                                    </Button>
-                                                )}
-
-                                                {loan.can.delete && (
-                                                    <ConfirmDelete
-                                                        form={destroyLoan.form(
-                                                            loan.id,
-                                                        )}
-                                                        title={`Delete loan #${loan.id}?`}
-                                                        description={`This permanently deletes the loan for ${loan.borrower_name}, including its schedule, payments and audit trail. This cannot be undone.`}
-                                                        testId="delete-loan-button"
-                                                    />
-                                                )}
+                                            <div className="flex items-center justify-end">
+                                                <LoanRowActions loan={loan} />
                                             </div>
                                         </TableCell>
                                     </TableRow>

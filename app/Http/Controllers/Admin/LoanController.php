@@ -43,6 +43,10 @@ class LoanController extends Controller
         $overdueOnly = $request->boolean('overdue');
         $search = trim($request->string('search')->toString());
 
+        $sort = $request->string('sort')->toString();
+        $sort = in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null;
+        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+
         $applySearch = function (Builder $query) use ($search): void {
             $query->where(function (Builder $query) use ($search): void {
                 $query->whereHas('borrower', fn (Builder $borrower) => $borrower
@@ -69,7 +73,12 @@ class LoanController extends Controller
             ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
             ->when($overdueOnly, fn (Builder $query) => $query->overdue())
             ->when($search !== '', fn (Builder $query) => $applySearch($query))
-            ->latest()
+            ->when($sort === null, fn (Builder $query) => $query->latest())
+            ->when($sort === 'arrears', fn (Builder $query) => $query->orderByArrears($direction))
+            ->when(
+                in_array($sort, ['principal', 'applied_at'], true),
+                fn (Builder $query) => $query->orderBy($sort, $direction),
+            )
             ->paginate(15)
             ->withQueryString()
             ->through(fn (Loan $loan): array => [
@@ -77,6 +86,7 @@ class LoanController extends Controller
                 'arrears' => number_format($this->loanArrears($loan), 2, '.', ''),
                 'can' => [
                     'view' => $actor->can('view', $loan),
+                    'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
                     'delete' => $actor->can('delete', $loan),
                 ],
             ]);
@@ -87,6 +97,8 @@ class LoanController extends Controller
             'currentStatus' => $status?->value,
             'overdueOnly' => $overdueOnly,
             'search' => $search,
+            'currentSort' => $sort,
+            'currentDirection' => $direction,
             'counts' => [
                 'all' => (int) $statusCounts->sum(),
                 ...collect(LoanStatus::cases())

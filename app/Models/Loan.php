@@ -153,4 +153,32 @@ class Loan extends Model
     {
         return $query->where('days_past_due', '>', 0);
     }
+
+    /**
+     * Order the query by the amount still owed on overdue installments.
+     */
+    public function scopeOrderByArrears(Builder $query, string $direction = 'desc'): Builder
+    {
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        $sql = <<<SQL
+            COALESCE((
+                SELECT SUM(
+                    (installments.principal_due + installments.interest_due + installments.fee_due + installments.penalty_accrued)
+                    - COALESCE(allocated.total, 0)
+                )
+                FROM loan_installments AS installments
+                LEFT JOIN (
+                    SELECT installment_id,
+                           SUM(principal_allocated + interest_allocated + fee_allocated + penalty_allocated) AS total
+                    FROM loan_payment_allocations
+                    GROUP BY installment_id
+                ) AS allocated ON allocated.installment_id = installments.id
+                WHERE installments.loan_id = loans.id
+                  AND installments.due_date < ?
+            ), 0) {$direction}
+            SQL;
+
+        return $query->orderByRaw($sql, [today()->toDateString()]);
+    }
 }
