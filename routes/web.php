@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController as BorrowerDashboardController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             ->middleware('throttle:reports')
             ->name('reports.download');
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+        Route::get('system', [SystemStatusController::class, 'index'])->name('system.index');
     });
 
 require __DIR__.'/settings.php';

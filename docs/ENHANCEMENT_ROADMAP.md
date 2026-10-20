@@ -202,7 +202,7 @@ file — not a wall of sections.
 | E9.1 | Audit table   | `ui/table` with event badges, actor and relative time.                                             | ✅     |
 | E9.2 | Diff sheet    | Open an audit row in a `Sheet` showing before/after values.                                        | ✅     |
 | E9.3 | Settings page | Organisation name, currency symbol, default penalty/grace and rate limits — currently `.env` only. | ⏳     |
-| E9.4 | System status | Cards for queue, scheduler, mail and storage health.                                               | ⏳     |
+| E9.4 | System status | Cards for queue, scheduler, mail and storage health.                                               | ✅     |
 | E9.5 | Role matrix   | Read-only table of what each role can do, sourced from the policies.                               | ⏳     |
 
 ---
@@ -263,3 +263,4 @@ file — not a wall of sections.
 | 2026-10-20 | Added a Notifications tab to the loan file listing the emails sent to the borrower, with type labels and sent times from `notification_logs` (E8.1). The loan and report tab strips now scroll the active tab into view on narrow screens. |
 | 2026-10-20 | Rebuilt the audit log on the shared table, page header, cards and pagination with event badges, actor details and relative times (E9.1). Every row opens a `Sheet` with the actor, record, IP, user agent and a before/after table for each changed field (E9.2); the payload now carries old and new values for every attribute. |
 | 2026-10-20 | Overdue loans can now be selected on the loan list, all at once or one by one, and sent an overdue reminder from a confirmation dialog (E6.3). The endpoint reuses the scheduled notice logic, so preferences and the once-a-day dedupe still apply, and reports how many were queued or skipped through a flash toast. |
+| 2026-10-20 | Added a super-admin system status page with application, database, queue, mail, scheduler and storage cards (E9.4). The queue card reports pending, failed and the oldest pending job, the scheduler lists each command with its next run, and storage shows free space and a usage bar. |
