@@ -64,13 +64,13 @@ Do these once, then reuse everywhere.
 | ID    | Item              | Detail                                                                | Effort | Status |
 | ----- | ----------------- | --------------------------------------------------------------------- | ------ | ------ |
 | E0.1  | `ui/tabs`         | Standard shadcn Tabs on `@radix-ui/react-tabs`.                       | S      | ✅     |
-| E0.2  | `ui/table`        | Styled Table primitives with consistent header, row and cell spacing. | S      | ⏳     |
-| E0.3  | `ui/alert-dialog` | Confirmation dialog for destructive actions.                          | S      | 🔒     |
-| E0.4  | `ui/pagination`   | Shared page navigator with first/last and current page.               | S      | ⏳     |
+| E0.2  | `ui/table`        | Styled Table primitives with consistent header, row and cell spacing. | S      | ✅     |
+| E0.3  | `ui/alert-dialog` | Confirmation dialog for destructive actions.                          | S      | ✅     |
+| E0.4  | `ui/pagination`   | Shared page navigator with first/last and current page.               | S      | ✅     |
 | E0.5  | `PageHeader`      | Title, description, breadcrumbs slot and action slot.                 | S      | ⏳     |
-| E0.6  | `EmptyState`      | Icon, title, description and optional action.                         | S      | ⏳     |
+| E0.6  | `EmptyState`      | Icon, title, description and optional action.                         | S      | ✅     |
 | E0.7  | `SectionCard`     | `Card` wrapper with header, description and actions.                  | S      | ⏳     |
-| E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | 🔒     |
+| E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | ✅     |
 | E0.9  | `FilterTabs`      | URL-driven tabs used by every list page.                              | S      | ✅     |
 | E0.10 | Status badges     | Keep `LoanStatusBadge`, `KycBadge`, `RoleBadge`; align colour tokens. | S      | ⏳     |
 | E0.11 | `ui/switch`       | Boolean preferences instead of raw checkboxes.                        | S      | 🔒     |
@@ -81,7 +81,7 @@ Do these once, then reuse everywhere.
 | Package                         | Needed for           | State                  |
 | ------------------------------- | -------------------- | ---------------------- |
 | `@radix-ui/react-tabs`          | E0.1                 | ✅ approved, installed |
-| `@radix-ui/react-alert-dialog`  | E0.3 / E0.8          | 🔒 awaiting approval   |
+| `@radix-ui/react-alert-dialog`  | E0.3 / E0.8          | ✅ approved, installed |
 | `@radix-ui/react-switch`        | E0.11                | 🔒 awaiting approval   |
 | `react-day-picker` + `date-fns` | E0.12                | 🔒 awaiting approval   |
 | `cmdk`                          | global search (F2)   | 🔒 awaiting approval   |
@@ -93,11 +93,11 @@ Do these once, then reuse everywhere.
 
 | ID   | Item                 | Detail                                                                                                                                                              | Status |
 | ---- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| E1.1 | Borrower tabs        | All / Verified / Pending / Rejected with counts, using `FilterTabs`. Requires a `kyc_status` filter on the index query.                                             | ⏳     |
+| E1.1 | Borrower tabs        | All / Verified / Pending / Rejected with counts, using `FilterTabs`. Requires a `kyc_status` filter on the index query.                                             | ✅     |
 | E1.2 | Borrower search      | Search by name, email or phone; debounced, URL-backed.                                                                                                              | ⏳     |
-| E1.3 | Borrower table       | `ui/table` + `EmptyState` + shared pagination.                                                                                                                      | ⏳     |
+| E1.3 | Borrower table       | `ui/table` + `EmptyState` + shared pagination.                                                                                                                      | ✅     |
 | E1.4 | Row actions          | `DropdownMenu` with View, Edit, Email statement, Delete.                                                                                                            | ⏳     |
-| E1.5 | Delete confirmation  | `ConfirmDelete` on borrowers, users, products and loans.                                                                                                            | 🔒     |
+| E1.5 | Delete confirmation  | `ConfirmDelete` on borrowers, users, products and loans.                                                                                                            | ✅     |
 | E1.6 | Borrower detail page | `/admin/borrowers/{borrower}`: profile card, KYC status, notification preferences, active loans, payment history and activity. The biggest missing flow in the app. | ⏳     |
 | E1.7 | Product tabs         | Active / Inactive with usage counts (how many loans reference the product).                                                                                         | ⏳     |
 | E1.8 | Product cards        | Terms at a glance: rate, method, frequency, min/max amount and term.                                                                                                | ⏳     |
@@ -113,16 +113,16 @@ without leaving the list; products show their status and usage.
 | ID    | Item                | Detail                                                                                                                | Status |
 | ----- | ------------------- | --------------------------------------------------------------------------------------------------------------------- | ------ |
 | E2.1  | Status tabs         | Replace 8 filter buttons with `FilterTabs`; keep the overdue toggle.                                                  | ✅     |
-| E2.2  | Tab counts          | Show per-status counts in tab labels (single grouped query).                                                          | ⏳     |
+| E2.2  | Tab counts          | Show per-status counts in tab labels (single grouped query).                                                          | ✅     |
 | E2.3  | Loan search         | Search by borrower name or loan id; URL-backed.                                                                       | ⏳     |
 | E2.4  | Sortable columns    | Principal, applied date and arrears via query params and table header buttons.                                        | ⏳     |
 | E2.5  | Row actions         | `DropdownMenu`: View, Email statement, Delete — instead of two inline buttons.                                        | ⏳     |
-| E2.6  | Delete confirmation | `ConfirmDelete` before deleting a loan.                                                                               | 🔒     |
+| E2.6  | Delete confirmation | `ConfirmDelete` before deleting a loan.                                                                               | ✅     |
 | E2.7  | Detail tabs         | Loan page split into Overview / Schedule / Payments / Disbursements / Activity.                                       | ⏳     |
 | E2.8  | Sticky summary      | Principal, outstanding, arrears and next due pinned while scrolling.                                                  | ⏳     |
 | E2.9  | Action hierarchy    | Approve / Reject / Disburse as primary actions; default, write-off, restructure and statement under an overflow menu. | ⏳     |
 | E2.10 | Status timeline     | Vertical timeline built from `loan_events`.                                                                           | ⏳     |
-| E2.11 | Empty states        | Explain what each status filter means and offer "New loan".                                                           | ⏳     |
+| E2.11 | Empty states        | Explain what each status filter means and offer "New loan".                                                           | ✅     |
 
 **Done when:** the loan list reads like a queue, and the detail page reads like a
 file — not a wall of sections.
@@ -228,7 +228,7 @@ file — not a wall of sections.
 | Milestone              | Scope                              | Status  |
 | ---------------------- | ---------------------------------- | ------- |
 | M1 — Foundations       | E0.1, E0.9, E2.1                   | ✅      |
-| M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | 🔨 next |
+| M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | 🔨 in progress |
 | M3 — Detail pages      | E1.6, E2.7–E2.10, E7.1–E7.3        | ⏳      |
 | M4 — Find anything     | E1.2, E2.3, F1, F2                 | ⏳      |
 | M5 — Operational depth | E5.5, E6.3, E8.1, E9.1–E9.4, F3–F5 | ⏳      |
@@ -252,3 +252,4 @@ file — not a wall of sections.
 | Date       | Item                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------- |
 | 2026-10-20 | Added `ui/tabs`, `FilterTabs`, and moved the Loans status filter from 8 buttons to tabs (E0.1, E0.9, E2.1). |
+| 2026-10-20 | Shared list kit: `ui/table`, `ui/pagination`, `DataPagination`, `EmptyState`, `ui/alert-dialog`, `ConfirmDelete`; applied to borrowers, users, loan products and loans. Borrowers filter by KYC status with counts (E1.1); loans show per-status counts (E2.2) and keep the overdue toggle across tabs (E0.2, E0.3, E0.4, E0.6, E0.8, E1.1, E1.3, E1.5, E2.2, E2.6, E2.11). |

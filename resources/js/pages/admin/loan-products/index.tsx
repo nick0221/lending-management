@@ -1,8 +1,19 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Landmark, Pencil, Plus } from 'lucide-react';
+import { ConfirmDelete } from '@/components/confirm-delete';
+import { DataPagination } from '@/components/data-pagination';
+import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createLoanProduct,
@@ -17,11 +28,6 @@ export default function LoanProductsIndex({
 }: {
     loanProducts: Paginated<LoanProductListItem>;
 }) {
-    const previous = loanProducts.links.find((link) =>
-        link.label.includes('Previous'),
-    );
-    const next = loanProducts.links.find((link) => link.label.includes('Next'));
-
     return (
         <>
             <Head title="Loan products" />
@@ -41,66 +47,62 @@ export default function LoanProductsIndex({
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Product
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Interest
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Frequency
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Amount
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Term
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-4 py-3 text-right font-medium">
+                    {loanProducts.data.length === 0 ? (
+                        <EmptyState
+                            icon={Landmark}
+                            title="No loan products found"
+                            description="Create a product to define the interest, fees and terms you offer."
+                            action={
+                                <Button asChild size="sm">
+                                    <Link href={createLoanProduct()}>
+                                        <Plus /> Add product
+                                    </Link>
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Product</TableHead>
+                                    <TableHead>Interest</TableHead>
+                                    <TableHead>Frequency</TableHead>
+                                    <TableHead>Amount</TableHead>
+                                    <TableHead>Term</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">
                                         Actions
-                                    </th>
-                                </tr>
-                            </thead>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
 
-                            <tbody>
+                            <TableBody>
                                 {loanProducts.data.map((loanProduct) => (
-                                    <tr
-                                        key={loanProduct.id}
-                                        className="border-t border-sidebar-border/70 dark:border-sidebar-border"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
+                                    <TableRow key={loanProduct.id}>
+                                        <TableCell className="font-medium">
                                             {loanProduct.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {Number(
                                                 loanProduct.interest_rate,
                                             ).toFixed(2)}
                                             %{' '}
-                                            {
-                                                loanProduct.interest_method_label
-                                            }
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                            {loanProduct.interest_method_label}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {
                                                 loanProduct.repayment_frequency_label
                                             }
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {loanProduct.min_amount} –{' '}
                                             {loanProduct.max_amount}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {loanProduct.min_term_months}–
                                             {loanProduct.max_term_months} mo
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge
                                                 variant={
                                                     loanProduct.is_active
@@ -112,8 +114,8 @@ export default function LoanProductsIndex({
                                                     ? 'Active'
                                                     : 'Inactive'}
                                             </Badge>
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 {loanProduct.can.update && (
                                                     <Button
@@ -134,82 +136,25 @@ export default function LoanProductsIndex({
                                                 )}
 
                                                 {loanProduct.can.delete && (
-                                                    <Form
-                                                        {...destroyLoanProduct.form(
+                                                    <ConfirmDelete
+                                                        form={destroyLoanProduct.form(
                                                             loanProduct.id,
                                                         )}
-                                                        options={{
-                                                            preserveScroll: true,
-                                                        }}
-                                                    >
-                                                        {({ processing }) => (
-                                                            <Button
-                                                                type="submit"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                data-test="delete-loan-product-button"
-                                                            >
-                                                                <Trash2 />
-                                                                Delete
-                                                            </Button>
-                                                        )}
-                                                    </Form>
+                                                        title={`Delete ${loanProduct.name}?`}
+                                                        description="This permanently deletes the product and every loan originated from it, including payments and schedules. Deactivate it instead if you only want to stop offering it."
+                                                        testId="delete-loan-product-button"
+                                                    />
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-
-                                {loanProducts.data.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={7}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            No loan products found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
 
-                {loanProducts.last_page > 1 && (
-                    <div className="flex items-center justify-between gap-4">
-                        {previous?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={previous.url} preserveScroll>
-                                    Previous
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Previous
-                            </Button>
-                        )}
-
-                        <span className="text-sm text-muted-foreground">
-                            Page {loanProducts.current_page} of{' '}
-                            {loanProducts.last_page}
-                        </span>
-
-                        {next?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={next.url} preserveScroll>
-                                    Next
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Next
-                            </Button>
-                        )}
-                    </div>
-                )}
+                <DataPagination paginator={loanProducts} />
             </div>
         </>
     );

@@ -1,8 +1,19 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Pencil, Plus, Users } from 'lucide-react';
+import { ConfirmDelete } from '@/components/confirm-delete';
+import { DataPagination } from '@/components/data-pagination';
+import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { RoleBadge } from '@/components/role-badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createUser,
@@ -17,9 +28,6 @@ export default function UsersIndex({
 }: {
     users: Paginated<AdminUserListItem>;
 }) {
-    const previous = users.links.find((link) => link.label.includes('Previous'));
-    const next = users.links.find((link) => link.label.includes('Next'));
-
     return (
         <>
             <Head title="Users" />
@@ -40,41 +48,45 @@ export default function UsersIndex({
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Email
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Role
-                                    </th>
-                                    <th className="px-4 py-3 text-right font-medium">
+                    {users.data.length === 0 ? (
+                        <EmptyState
+                            icon={Users}
+                            title="No users found"
+                            description="Create the first account to give someone access to the admin panel."
+                            action={
+                                <Button asChild size="sm">
+                                    <Link href={createUser()}>
+                                        <Plus /> New user
+                                    </Link>
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead className="text-right">
                                         Actions
-                                    </th>
-                                </tr>
-                            </thead>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
 
-                            <tbody>
+                            <TableBody>
                                 {users.data.map((user) => (
-                                    <tr
-                                        key={user.id}
-                                        className="border-t border-sidebar-border/70 dark:border-sidebar-border"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">
                                             {user.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {user.email}
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <RoleBadge role={user.role} />
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 {user.can.update && (
                                                     <Button
@@ -95,81 +107,25 @@ export default function UsersIndex({
                                                 )}
 
                                                 {user.can.delete && (
-                                                    <Form
-                                                        {...destroyUser.form(
+                                                    <ConfirmDelete
+                                                        form={destroyUser.form(
                                                             user.id,
                                                         )}
-                                                        options={{
-                                                            preserveScroll: true,
-                                                        }}
-                                                    >
-                                                        {({ processing }) => (
-                                                            <Button
-                                                                type="submit"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                data-test="delete-user-button"
-                                                            >
-                                                                <Trash2 />
-                                                                Delete
-                                                            </Button>
-                                                        )}
-                                                    </Form>
+                                                        title={`Delete ${user.name}?`}
+                                                        description="This permanently removes the account and revokes access. Any linked borrower profile and its loan history are kept."
+                                                        testId="delete-user-button"
+                                                    />
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-
-                                {users.data.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={4}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            No users found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
 
-                {users.last_page > 1 && (
-                    <div className="flex items-center justify-between gap-4">
-                        {previous?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={previous.url} preserveScroll>
-                                    Previous
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Previous
-                            </Button>
-                        )}
-
-                        <span className="text-sm text-muted-foreground">
-                            Page {users.current_page} of {users.last_page}
-                        </span>
-
-                        {next?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={next.url} preserveScroll>
-                                    Next
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Next
-                            </Button>
-                        )}
-                    </div>
-                )}
+                <DataPagination paginator={users} />
             </div>
         </>
     );

@@ -6,6 +6,7 @@ export type FilterTab = {
     value: string;
     label: string;
     href: ComponentProps<typeof Link>['href'];
+    count?: number;
 };
 
 /**
@@ -38,6 +39,11 @@ export function FilterTabs({
                     >
                         <Link href={tab.href} preserveScroll prefetch>
                             {tab.label}
+                            {tab.count !== undefined && (
+                                <span className="text-xs tabular-nums opacity-60">
+                                    {tab.count}
+                                </span>
+                            )}
                         </Link>
                     </TabsTrigger>
                 ))}

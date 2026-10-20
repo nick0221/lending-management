@@ -1,9 +1,20 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Eye, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Eye, FileText, Plus, TriangleAlert } from 'lucide-react';
+import { ConfirmDelete } from '@/components/confirm-delete';
+import { DataPagination } from '@/components/data-pagination';
+import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
 import Heading from '@/components/heading';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { Toggle } from '@/components/ui/toggle';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
@@ -19,17 +30,14 @@ export default function LoansIndex({
     statuses,
     currentStatus,
     overdueOnly,
+    counts,
 }: {
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
     currentStatus: string | null;
     overdueOnly: boolean;
+    counts: Record<string, number>;
 }) {
-    const previous = loans.links.find((link) =>
-        link.label.includes('Previous'),
-    );
-    const next = loans.links.find((link) => link.label.includes('Next'));
-
     const withFilters = (overrides: {
         status?: string | null;
         overdue?: boolean;
@@ -69,18 +77,14 @@ export default function LoansIndex({
                             {
                                 value: 'all',
                                 label: 'All',
-                                href: withFilters({
-                                    status: '',
-                                    overdue: false,
-                                }),
+                                count: counts.all,
+                                href: withFilters({ status: '' }),
                             },
                             ...statuses.map((status) => ({
                                 value: status.value,
                                 label: status.label,
-                                href: withFilters({
-                                    status: status.value,
-                                    overdue: false,
-                                }),
+                                count: counts[status.value] ?? 0,
+                                href: withFilters({ status: status.value }),
                             })),
                         ]}
                         value={currentStatus ?? 'all'}
@@ -106,62 +110,62 @@ export default function LoansIndex({
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Borrower
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Product
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Principal
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Terms
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Arrears
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Applied
-                                    </th>
-                                    <th className="px-4 py-3 text-right font-medium">
+                    {loans.data.length === 0 ? (
+                        <EmptyState
+                            icon={FileText}
+                            title="No loans found"
+                            description={
+                                currentStatus || overdueOnly
+                                    ? 'No loans match these filters. Try another status or turn off the overdue filter.'
+                                    : 'Originate the first loan to start building the portfolio.'
+                            }
+                            action={
+                                <Button asChild size="sm">
+                                    <Link href={createLoan()}>
+                                        <Plus /> New loan
+                                    </Link>
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Borrower</TableHead>
+                                    <TableHead>Product</TableHead>
+                                    <TableHead>Principal</TableHead>
+                                    <TableHead>Terms</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Arrears</TableHead>
+                                    <TableHead>Applied</TableHead>
+                                    <TableHead className="text-right">
                                         Actions
-                                    </th>
-                                </tr>
-                            </thead>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
 
-                            <tbody>
+                            <TableBody>
                                 {loans.data.map((loan) => (
-                                    <tr
-                                        key={loan.id}
-                                        className="border-t border-sidebar-border/70 dark:border-sidebar-border"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
+                                    <TableRow key={loan.id}>
+                                        <TableCell className="font-medium">
                                             {loan.borrower_name}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {loan.loan_product_name}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {Number(loan.principal).toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {loan.term_months} mo ·{' '}
                                             {loan.repayment_frequency_label}
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <LoanStatusBadge
                                                 status={loan.status}
                                             />
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             {loan.days_past_due > 0 ? (
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-destructive">
@@ -183,15 +187,15 @@ export default function LoansIndex({
                                                     —
                                                 </span>
                                             )}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {loan.applied_at
                                                 ? new Date(
                                                       loan.applied_at,
                                                   ).toLocaleDateString()
                                                 : '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 {loan.can.view && (
                                                     <Button
@@ -212,81 +216,25 @@ export default function LoansIndex({
                                                 )}
 
                                                 {loan.can.delete && (
-                                                    <Form
-                                                        {...destroyLoan.form(
+                                                    <ConfirmDelete
+                                                        form={destroyLoan.form(
                                                             loan.id,
                                                         )}
-                                                        options={{
-                                                            preserveScroll: true,
-                                                        }}
-                                                    >
-                                                        {({ processing }) => (
-                                                            <Button
-                                                                type="submit"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                data-test="delete-loan-button"
-                                                            >
-                                                                <Trash2 />
-                                                                Delete
-                                                            </Button>
-                                                        )}
-                                                    </Form>
+                                                        title={`Delete loan #${loan.id}?`}
+                                                        description={`This permanently deletes the loan for ${loan.borrower_name}, including its schedule, payments and audit trail. This cannot be undone.`}
+                                                        testId="delete-loan-button"
+                                                    />
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-
-                                {loans.data.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={8}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            No loans found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
 
-                {loans.last_page > 1 && (
-                    <div className="flex items-center justify-between gap-4">
-                        {previous?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={previous.url} preserveScroll>
-                                    Previous
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Previous
-                            </Button>
-                        )}
-
-                        <span className="text-sm text-muted-foreground">
-                            Page {loans.current_page} of {loans.last_page}
-                        </span>
-
-                        {next?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={next.url} preserveScroll>
-                                    Next
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Next
-                            </Button>
-                        )}
-                    </div>
-                )}
+                <DataPagination paginator={loans} />
             </div>
         </>
     );

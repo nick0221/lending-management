@@ -24,9 +24,19 @@ class BorrowerController extends Controller
         Gate::authorize('viewAny', Borrower::class);
 
         $actor = $request->user();
+        $status = KycStatus::tryFrom($request->string('kyc_status')->toString());
+
+        $counts = Borrower::query()
+            ->selectRaw('kyc_status, count(*) as aggregate')
+            ->groupBy('kyc_status')
+            ->get()
+            ->mapWithKeys(fn (Borrower $borrower): array => [
+                $borrower->kyc_status->value => (int) $borrower->aggregate,
+            ]);
 
         $borrowers = Borrower::query()
             ->with('user')
+            ->when($status, fn ($query) => $query->where('kyc_status', $status))
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString()
@@ -40,6 +50,16 @@ class BorrowerController extends Controller
 
         return Inertia::render('admin/borrowers/index', [
             'borrowers' => $borrowers,
+            'kycStatuses' => $this->kycStatusOptions(),
+            'currentKycStatus' => $status?->value,
+            'kycCounts' => [
+                'all' => (int) $counts->sum(),
+                ...collect(KycStatus::cases())
+                    ->mapWithKeys(fn (KycStatus $case): array => [
+                        $case->value => $counts->get($case->value, 0),
+                    ])
+                    ->all(),
+            ],
         ]);
     }
 

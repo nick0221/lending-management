@@ -21,6 +21,26 @@ test('the borrower list exposes the abilities for every row', function () {
         );
 });
 
+test('the borrower list can be filtered by kyc status and exposes counts', function () {
+    $admin = User::factory()->admin()->create();
+    Borrower::factory()->create(['kyc_status' => KycStatus::Pending->value]);
+    Borrower::factory()->count(2)->create(['kyc_status' => KycStatus::Verified->value]);
+    Borrower::factory()->create(['kyc_status' => KycStatus::Rejected->value]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index', ['kyc_status' => KycStatus::Verified->value]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/borrowers/index')
+            ->has('borrowers.data', 2)
+            ->where('currentKycStatus', KycStatus::Verified->value)
+            ->where('kycCounts.all', 4)
+            ->where('kycCounts.pending', 1)
+            ->where('kycCounts.verified', 2)
+            ->where('kycCounts.rejected', 1)
+        );
+});
+
 test('admins can register a borrower', function () {
     $admin = User::factory()->admin()->create();
 

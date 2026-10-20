@@ -42,6 +42,15 @@ class LoanController extends Controller
         $status = LoanStatus::tryFrom($request->string('status')->toString());
         $overdueOnly = $request->boolean('overdue');
 
+        $statusCounts = Loan::query()
+            ->when($overdueOnly, fn (Builder $query) => $query->overdue())
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->get()
+            ->mapWithKeys(fn (Loan $loan): array => [
+                $loan->status->value => (int) $loan->aggregate,
+            ]);
+
         $loans = Loan::query()
             ->with(['borrower', 'loanProduct', 'installments.allocations'])
             ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
@@ -63,6 +72,14 @@ class LoanController extends Controller
             'statuses' => $this->statusOptions(),
             'currentStatus' => $status?->value,
             'overdueOnly' => $overdueOnly,
+            'counts' => [
+                'all' => (int) $statusCounts->sum(),
+                ...collect(LoanStatus::cases())
+                    ->mapWithKeys(fn (LoanStatus $case): array => [
+                        $case->value => $statusCounts->get($case->value, 0),
+                    ])
+                    ->all(),
+            ],
         ]);
     }
 

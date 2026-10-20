@@ -1,8 +1,20 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { Pencil, Plus, Users } from 'lucide-react';
+import { ConfirmDelete } from '@/components/confirm-delete';
+import { DataPagination } from '@/components/data-pagination';
+import { EmptyState } from '@/components/empty-state';
+import { FilterTabs } from '@/components/filter-tabs';
 import Heading from '@/components/heading';
 import { KycBadge } from '@/components/kyc-badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
@@ -10,18 +22,24 @@ import {
     edit as editBorrower,
     index as borrowersIndex,
 } from '@/routes/admin/borrowers';
-import type { BorrowerListItem, Paginated } from '@/types';
+import type {
+    BorrowerListItem,
+    KycStatus,
+    KycStatusOption,
+    Paginated,
+} from '@/types';
 
 export default function BorrowersIndex({
     borrowers,
+    kycStatuses,
+    currentKycStatus,
+    kycCounts,
 }: {
     borrowers: Paginated<BorrowerListItem>;
+    kycStatuses: KycStatusOption[];
+    currentKycStatus: KycStatus | null;
+    kycCounts: Record<string, number>;
 }) {
-    const previous = borrowers.links.find((link) =>
-        link.label.includes('Previous'),
-    );
-    const next = borrowers.links.find((link) => link.label.includes('Next'));
-
     return (
         <>
             <Head title="Borrowers" />
@@ -40,55 +58,83 @@ export default function BorrowersIndex({
                     </Button>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Phone
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        National ID
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        KYC
-                                    </th>
-                                    <th className="px-4 py-3 text-right font-medium">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
+                <FilterTabs
+                    tabs={[
+                        {
+                            value: 'all',
+                            label: 'All',
+                            count: kycCounts.all,
+                            href: borrowersIndex(),
+                        },
+                        ...kycStatuses.map((status) => ({
+                            value: status.value,
+                            label: status.label,
+                            count: kycCounts[status.value] ?? 0,
+                            href: borrowersIndex({
+                                query: { kyc_status: status.value },
+                            }),
+                        })),
+                    ]}
+                    value={currentKycStatus ?? 'all'}
+                    label="Filter borrowers by KYC status"
+                    className="min-w-0"
+                />
 
-                            <tbody>
+                <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                    {borrowers.data.length === 0 ? (
+                        <EmptyState
+                            icon={Users}
+                            title="No borrowers found"
+                            description={
+                                currentKycStatus
+                                    ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
+                                    : 'Register the first borrower to start originating loans.'
+                            }
+                            action={
+                                <Button asChild size="sm">
+                                    <Link href={createBorrower()}>
+                                        <Plus /> Add borrower
+                                    </Link>
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Phone</TableHead>
+                                    <TableHead>National ID</TableHead>
+                                    <TableHead>KYC</TableHead>
+                                    <TableHead className="text-right">
+                                        Actions
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+
+                            <TableBody>
                                 {borrowers.data.map((borrower) => (
-                                    <tr
-                                        key={borrower.id}
-                                        className="border-t border-sidebar-border/70 dark:border-sidebar-border"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
+                                    <TableRow key={borrower.id}>
+                                        <TableCell className="font-medium">
                                             <div>{borrower.name}</div>
                                             {borrower.email && (
                                                 <div className="text-xs text-muted-foreground">
                                                     {borrower.email}
                                                 </div>
                                             )}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {borrower.phone}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {borrower.national_id ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <KycBadge
                                                 status={borrower.kyc_status}
                                             />
-                                        </td>
-                                        <td className="px-4 py-3">
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex items-center justify-end gap-2">
                                                 {borrower.can.update && (
                                                     <Button
@@ -109,82 +155,25 @@ export default function BorrowersIndex({
                                                 )}
 
                                                 {borrower.can.delete && (
-                                                    <Form
-                                                        {...destroyBorrower.form(
+                                                    <ConfirmDelete
+                                                        form={destroyBorrower.form(
                                                             borrower.id,
                                                         )}
-                                                        options={{
-                                                            preserveScroll: true,
-                                                        }}
-                                                    >
-                                                        {({ processing }) => (
-                                                            <Button
-                                                                type="submit"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                data-test="delete-borrower-button"
-                                                            >
-                                                                <Trash2 />
-                                                                Delete
-                                                            </Button>
-                                                        )}
-                                                    </Form>
+                                                        title={`Delete ${borrower.name}?`}
+                                                        description="This permanently deletes the borrower and every loan, payment and schedule attached to them. This cannot be undone."
+                                                        testId="delete-borrower-button"
+                                                    />
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-
-                                {borrowers.data.length === 0 && (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            No borrowers found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
 
-                {borrowers.last_page > 1 && (
-                    <div className="flex items-center justify-between gap-4">
-                        {previous?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={previous.url} preserveScroll>
-                                    Previous
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Previous
-                            </Button>
-                        )}
-
-                        <span className="text-sm text-muted-foreground">
-                            Page {borrowers.current_page} of{' '}
-                            {borrowers.last_page}
-                        </span>
-
-                        {next?.url ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={next.url} preserveScroll>
-                                    Next
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" disabled>
-                                Next
-                            </Button>
-                        )}
-                    </div>
-                )}
+                <DataPagination paginator={borrowers} />
             </div>
         </>
     );

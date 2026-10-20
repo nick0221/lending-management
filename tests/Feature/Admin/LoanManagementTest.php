@@ -38,6 +38,23 @@ test('the loan list can be filtered by status', function () {
         );
 });
 
+test('the loan list exposes per-status counts', function () {
+    $admin = User::factory()->admin()->create();
+    Loan::factory()->pending()->count(2)->create();
+    Loan::factory()->approved()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/index')
+            ->where('counts.all', 3)
+            ->where('counts.pending', 2)
+            ->where('counts.approved', 1)
+            ->where('counts.rejected', 0)
+        );
+});
+
 test('admins can originate a loan and the product terms are snapshotted', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();
