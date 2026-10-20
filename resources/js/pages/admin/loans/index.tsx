@@ -1,8 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Eye, Plus, Trash2 } from 'lucide-react';
+import { Eye, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { FilterTabs } from '@/components/filter-tabs';
 import Heading from '@/components/heading';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createLoan,
@@ -27,11 +29,6 @@ export default function LoansIndex({
         link.label.includes('Previous'),
     );
     const next = loans.links.find((link) => link.label.includes('Next'));
-
-    const filters: { value: string; label: string }[] = [
-        { value: '', label: 'All' },
-        ...statuses,
-    ];
 
     const withFilters = (overrides: {
         status?: string | null;
@@ -66,42 +63,46 @@ export default function LoansIndex({
                     </Button>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                    {filters.map((filter) => (
-                        <Button
-                            key={filter.value || 'all'}
-                            asChild
-                            size="sm"
-                            variant={
-                                (currentStatus ?? '') === filter.value
-                                    ? 'default'
-                                    : 'outline'
-                            }
-                        >
-                            <Link
-                                href={withFilters({
-                                    status: filter.value,
+                <div className="flex flex-wrap items-start gap-3">
+                    <FilterTabs
+                        tabs={[
+                            {
+                                value: 'all',
+                                label: 'All',
+                                href: withFilters({
+                                    status: '',
                                     overdue: false,
-                                })}
-                                preserveScroll
-                            >
-                                {filter.label}
-                            </Link>
-                        </Button>
-                    ))}
+                                }),
+                            },
+                            ...statuses.map((status) => ({
+                                value: status.value,
+                                label: status.label,
+                                href: withFilters({
+                                    status: status.value,
+                                    overdue: false,
+                                }),
+                            })),
+                        ]}
+                        value={currentStatus ?? 'all'}
+                        label="Filter loans by status"
+                        className="min-w-0 flex-1 basis-full sm:basis-auto"
+                    />
 
-                    <Button
+                    <Toggle
                         asChild
-                        size="sm"
-                        variant={overdueOnly ? 'default' : 'outline'}
+                        variant="outline"
+                        pressed={overdueOnly}
+                        className="ml-auto h-9 gap-2 px-3"
                     >
                         <Link
                             href={withFilters({ overdue: !overdueOnly })}
                             preserveScroll
+                            prefetch
                         >
+                            <TriangleAlert />
                             Overdue only
                         </Link>
-                    </Button>
+                    </Toggle>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -153,9 +154,7 @@ export default function LoansIndex({
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
                                             {loan.term_months} mo ·{' '}
-                                            {
-                                                loan.repayment_frequency_label
-                                            }
+                                            {loan.repayment_frequency_label}
                                         </td>
                                         <td className="px-4 py-3">
                                             <LoanStatusBadge

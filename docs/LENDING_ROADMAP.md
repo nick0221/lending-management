@@ -5,6 +5,9 @@ Laravel + Inertia (React) starter. Phases are meant to be delivered in order;
 each later phase depends on the data model established earlier.
 
 > Status legend: ✅ done · 🔨 in progress · ⏳ planned
+>
+> UI, UX and workflow polish is tracked separately in
+> [`ENHANCEMENT_ROADMAP.md`](./ENHANCEMENT_ROADMAP.md).
 
 ---
 
