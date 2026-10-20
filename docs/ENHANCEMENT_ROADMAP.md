@@ -188,7 +188,7 @@ file — not a wall of sections.
 
 | ID   | Item           | Detail                                                                       | Status |
 | ---- | -------------- | ---------------------------------------------------------------------------- | ------ |
-| E8.1 | Delivery log   | Notifications tab on the loan / borrower page backed by `notification_logs`. | ⏳     |
+| E8.1 | Delivery log   | Notifications tab on the loan / borrower page backed by `notification_logs`. | ✅     |
 | E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ⏳     |
 | E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | 🔒     |
 | E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ⏳     |
@@ -260,3 +260,4 @@ file — not a wall of sections.
 | 2026-10-20 | Reports split into URL-backed Portfolio, Aging, Collections and Arrears tabs, with a new arrears view sorted by exposure and consolidated loan tables (E7.1). The three CSV buttons became one Export menu (E7.3). E7.2 stays gated on the date-range dependency. |
 | 2026-10-20 | The payment dialog now opens with the outstanding balance split by penalty, fee, interest and principal, offers next-installment and full-balance chips, and previews the allocation before saving (E5.1, E5.2). The preview walks installments oldest-first to mirror `RepaymentService`. The detail page's tabs also completed the disbursement history move (E4.3) and the existing disbursement dialog satisfied E4.1. |
 | 2026-10-20 | Disbursement warns when the amount or date changes and the schedule will be regenerated (E4.2). The aging report now draws its bucket bars in CSS (E6.1), the loan list already had sortable arrears plus a days-late caption (E6.2), and the loan balance card explains the monthly penalty rate, grace period, and amount accrued so far (E6.4). |
+| 2026-10-20 | Added a Notifications tab to the loan file listing the emails sent to the borrower, with type labels and sent times from `notification_logs` (E8.1). The loan and report tab strips now scroll the active tab into view on narrow screens. |

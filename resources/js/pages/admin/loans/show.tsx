@@ -1,12 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
     Table,
     TableBody,
@@ -34,6 +35,7 @@ import type {
     LoanAbilities,
     LoanEvent,
     LoanInstallment,
+    NotificationLogEntry,
     Payment,
     PaymentMethodOption,
     PaymentTotals,
@@ -44,6 +46,7 @@ const tabs = [
     'schedule',
     'payments',
     'disbursements',
+    'notifications',
     'activity',
 ] as const;
 
@@ -167,6 +170,7 @@ export default function ShowLoan({
     payments,
     totals,
     events,
+    notifications,
     disbursementMethods,
     paymentMethods,
     currentTab,
@@ -178,12 +182,20 @@ export default function ShowLoan({
     payments: Payment[];
     totals: PaymentTotals;
     events: LoanEvent[];
+    notifications: NotificationLogEntry[];
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
     currentTab: LoanTab;
     can: LoanAbilities;
 }) {
     const [tab, setTab] = useState<LoanTab>(currentTab);
+    const tabsListRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        tabsListRef.current
+            ?.querySelector<HTMLElement>('[data-state="active"]')
+            ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }, [tab]);
 
     const changeTab = (value: string) => {
         const next = tabs.includes(value as LoanTab)
@@ -289,7 +301,10 @@ export default function ShowLoan({
                             />
                         </div>
 
-                        <TabsList className="h-auto max-w-full justify-start overflow-x-auto">
+                        <TabsList
+                            ref={tabsListRef}
+                            className="h-auto max-w-full justify-start overflow-x-auto"
+                        >
                             <TabsTrigger value="overview">Overview</TabsTrigger>
                             <TabsTrigger value="schedule">
                                 Schedule
@@ -302,6 +317,10 @@ export default function ShowLoan({
                             <TabsTrigger value="disbursements">
                                 Payouts
                                 <TabCount value={disbursements.length} />
+                            </TabsTrigger>
+                            <TabsTrigger value="notifications">
+                                Notifications
+                                <TabCount value={notifications.length} />
                             </TabsTrigger>
                             <TabsTrigger value="activity">
                                 Activity
@@ -766,6 +785,54 @@ export default function ShowLoan({
                                                 <TableCell className="text-muted-foreground">
                                                     {disbursement.recorded_by ??
                                                         '—'}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </SectionCard>
+                    </TabsContent>
+
+                    <TabsContent value="notifications">
+                        <SectionCard
+                            title="Notifications"
+                            description={`${notifications.length} email${
+                                notifications.length === 1 ? '' : 's'
+                            } sent to ${loan.borrower_name}.`}
+                        >
+                            {notifications.length === 0 ? (
+                                <p className="p-6 text-sm text-muted-foreground">
+                                    Reminders, receipts and statements sent to
+                                    the borrower will appear here.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Channel</TableHead>
+                                            <TableHead>Sent</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {notifications.map((notification) => (
+                                            <TableRow key={notification.id}>
+                                                <TableCell>
+                                                    <Badge variant="outline">
+                                                        {
+                                                            notification.type_label
+                                                        }
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground capitalize">
+                                                    {notification.channel}
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {formatDateTime(
+                                                        notification.sent_at,
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

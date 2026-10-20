@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
 import type { ComponentProps } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -24,9 +25,18 @@ export function FilterTabs({
     label?: string;
     className?: string;
 }) {
+    const listRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        listRef.current
+            ?.querySelector<HTMLElement>('[data-state="active"]')
+            ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }, [value]);
+
     return (
         <Tabs value={value} className={className}>
             <TabsList
+                ref={listRef}
                 aria-label={label}
                 className="h-auto max-w-full flex-nowrap justify-start overflow-x-auto sm:flex-wrap sm:overflow-visible"
             >

@@ -6,6 +6,7 @@ use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\LoanProduct;
+use App\Models\NotificationLog;
 use App\Models\User;
 
 test('the loan list exposes the abilities for every row', function () {
@@ -264,6 +265,45 @@ test('the loan detail exposes the approve and reject abilities', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('currentTab', 'overview')
+        );
+});
+
+test('the loan detail lists the emails sent to the borrower', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5, 'due_date' => '2026-12-01'],
+    ]);
+
+    NotificationLog::create([
+        'key' => "loan:{$loan->id}:statement:test",
+        'type' => NotificationLog::TYPE_STATEMENT,
+        'channel' => 'mail',
+        'borrower_id' => $loan->borrower_id,
+        'loan_id' => $loan->id,
+        'sent_at' => now()->subDay(),
+    ]);
+
+    NotificationLog::create([
+        'key' => "loan:{$loan->id}:overdue:test",
+        'type' => NotificationLog::TYPE_OVERDUE,
+        'channel' => 'mail',
+        'borrower_id' => $loan->borrower_id,
+        'loan_id' => $loan->id,
+        'sent_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', ['loan' => $loan, 'tab' => 'notifications']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentTab', 'notifications')
+            ->has('notifications', 2)
+            ->where('notifications.0.type', 'overdue')
+            ->where('notifications.0.type_label', 'Overdue')
+            ->where('notifications.0.channel', 'mail')
+            ->where('notifications.1.type', 'statement')
+            ->where('notifications.1.type_label', 'Statement')
         );
 });
 

@@ -17,6 +17,7 @@ use App\Models\LoanEvent;
 use App\Models\LoanInstallment;
 use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
+use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Services\LoanService;
 use App\Services\NotificationService;
@@ -158,11 +159,12 @@ class LoanController extends Controller
             'payments.recordedBy',
             'payments.allocations.installment',
             'events.user',
+            'notificationLogs',
         ]);
 
         $actor = $request->user();
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['overview', 'schedule', 'payments', 'disbursements', 'activity'], true)
+        $currentTab = in_array($currentTab, ['overview', 'schedule', 'payments', 'disbursements', 'notifications', 'activity'], true)
             ? $currentTab
             : 'overview';
 
@@ -173,6 +175,7 @@ class LoanController extends Controller
             'payments' => $this->paymentPayload($loan),
             'totals' => $this->paymentTotals($loan),
             'events' => $this->eventPayload($loan),
+            'notifications' => $this->notificationPayload($loan),
             'disbursementMethods' => $this->disbursementMethodOptions(),
             'paymentMethods' => $this->paymentMethodOptions(),
             'currentTab' => $currentTab,
@@ -579,6 +582,27 @@ class LoanController extends Controller
                 'to_status_label' => $event->to_status?->label(),
                 'user' => $event->user?->name,
                 'created_at' => $event->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Transform the loan's email notifications into the payload shared with
+     * the client.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function notificationPayload(Loan $loan): array
+    {
+        return $loan->notificationLogs
+            ->sortByDesc('sent_at')
+            ->map(fn (NotificationLog $log): array => [
+                'id' => $log->id,
+                'type' => $log->type,
+                'type_label' => NotificationLog::label($log->type),
+                'channel' => $log->channel,
+                'sent_at' => $log->sent_at->toIso8601String(),
             ])
             ->values()
             ->all();

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -67,6 +68,20 @@ class NotificationLog extends Model
     public function loan(): BelongsTo
     {
         return $this->belongsTo(Loan::class);
+    }
+
+    /**
+     * Get the human-readable label for a notification type.
+     */
+    public static function label(string $type): string
+    {
+        return match ($type) {
+            self::TYPE_DUE_SOON => __('Due soon'),
+            self::TYPE_OVERDUE => __('Overdue'),
+            self::TYPE_RECEIPT => __('Payment receipt'),
+            self::TYPE_STATEMENT => __('Statement'),
+            default => Str::headline($type),
+        };
     }
 
     /**

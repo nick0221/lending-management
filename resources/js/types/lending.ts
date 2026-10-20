@@ -309,6 +309,14 @@ export type LoanEvent = {
     created_at: string | null;
 };
 
+export type NotificationLogEntry = {
+    id: number;
+    type: string;
+    type_label: string;
+    channel: string;
+    sent_at: string;
+};
+
 export type AgingBuckets = {
     current: number;
     days_1_30: number;

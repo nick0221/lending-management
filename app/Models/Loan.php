@@ -139,6 +139,14 @@ class Loan extends Model
     }
 
     /**
+     * Get the email notifications sent for the loan.
+     */
+    public function notificationLogs(): HasMany
+    {
+        return $this->hasMany(NotificationLog::class);
+    }
+
+    /**
      * Scope the query to loans with a given status.
      */
     public function scopeOfStatus(Builder $query, LoanStatus $status): Builder
