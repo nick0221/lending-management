@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\BorrowerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
@@ -36,6 +37,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::get('reports/download/{report}', [ReportController::class, 'download'])
             ->whereIn('report', ['summary', 'loans', 'collections'])
             ->name('reports.download');
+        Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
     });
 
 require __DIR__.'/settings.php';

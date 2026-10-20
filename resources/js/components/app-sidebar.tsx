@@ -6,6 +6,7 @@ import {
     HandCoins,
     Landmark,
     LayoutGrid,
+    ScrollText,
     ShieldCheck,
     Users,
     Wallet,
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as adminActivity } from '@/routes/admin/activity';
 import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
@@ -91,6 +93,18 @@ export function AppSidebar() {
     const canAccessAdmin =
         auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
 
+    const navigationItems: NavItem[] =
+        auth.user?.role === 'super_admin'
+            ? [
+                  ...adminNavItems,
+                  {
+                      title: 'Activity log',
+                      href: adminActivity(),
+                      icon: ScrollText,
+                  },
+              ]
+            : adminNavItems;
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -109,7 +123,7 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
 
                 {canAccessAdmin && (
-                    <NavMain items={adminNavItems} label="Administration" />
+                    <NavMain items={navigationItems} label="Administration" />
                 )}
             </SidebarContent>
 

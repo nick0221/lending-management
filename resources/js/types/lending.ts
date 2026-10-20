@@ -366,3 +366,30 @@ export type BorrowerSummary = {
     loans: ReportLoanRow[];
     payments: RecentPayment[];
 };
+
+export type ActivityLogChange = {
+    key: string;
+    value: string;
+};
+
+export type ActivityLogRow = {
+    id: number;
+    event: string;
+    event_label: string;
+    description: string;
+    user_name: string | null;
+    user_email: string | null;
+    subject_type: string | null;
+    subject_id: number | null;
+    ip_address: string | null;
+    changes: ActivityLogChange[];
+    created_at: string | null;
+};
+
+export type ActivityLogFilters = {
+    event: string | null;
+    type: string | null;
+    user: number | null;
+    from: string | null;
+    to: string | null;
+};

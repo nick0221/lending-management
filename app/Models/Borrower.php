@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\KycStatus;
+use App\Models\Concerns\AuditsActivity;
 use Database\Factories\BorrowerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -48,7 +49,7 @@ use Illuminate\Support\Carbon;
 class Borrower extends Model
 {
     /** @use HasFactory<BorrowerFactory> */
-    use HasFactory, Notifiable;
+    use AuditsActivity, HasFactory, Notifiable;
 
     /**
      * Get the attributes that should be cast.

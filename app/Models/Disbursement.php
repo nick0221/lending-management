@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DisbursementMethod;
+use App\Models\Concerns\AuditsActivity;
 use Database\Factories\DisbursementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,7 +34,7 @@ use Illuminate\Support\Carbon;
 class Disbursement extends Model
 {
     /** @use HasFactory<DisbursementFactory> */
-    use HasFactory;
+    use AuditsActivity, HasFactory;
 
     /**
      * Get the attributes that should be cast.

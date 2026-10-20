@@ -17,6 +17,18 @@ export function formatDate(value: string | null | undefined): string {
     return new Date(value).toLocaleDateString();
 }
 
+/** Formats a full timestamp (date and time) in the viewer's locale. */
+export function formatDateTime(value: string | null | undefined): string {
+    if (!value) {
+        return '—';
+    }
+
+    return new Date(value).toLocaleString(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    });
+}
+
 /** Formats a `Y-m-d` date without shifting a day across time zones. */
 export function formatDateOnly(value: string | null | undefined): string {
     if (!value) {

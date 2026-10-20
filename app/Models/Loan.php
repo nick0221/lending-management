@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InterestMethod;
 use App\Enums\LoanStatus;
 use App\Enums\RepaymentFrequency;
+use App\Models\Concerns\AuditsActivity;
 use Database\Factories\LoanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,7 +61,7 @@ use Illuminate\Support\Carbon;
 class Loan extends Model
 {
     /** @use HasFactory<LoanFactory> */
-    use HasFactory;
+    use AuditsActivity, HasFactory;
 
     /**
      * Get the attributes that should be cast.
