@@ -39,6 +39,7 @@ return [
     'rate_limits' => [
         'money' => (int) env('LENDING_MONEY_RATE_LIMIT', 30),
         'reports' => (int) env('LENDING_REPORTS_RATE_LIMIT', 10),
+        'reminders' => (int) env('LENDING_REMINDERS_RATE_LIMIT', 10),
     ],
 
 ];

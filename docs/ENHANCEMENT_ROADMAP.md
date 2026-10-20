@@ -167,7 +167,7 @@ file — not a wall of sections.
 | ---- | ----------------- | ----------------------------------------------------------------------------------- | ------ |
 | E6.1 | Aging visual      | CSS bar breakdown for current / 1-30 / 31-60 / 61-90 / 90+.                         | ✅     |
 | E6.2 | Arrears column    | Sortable arrears with a days-past-due badge on the loan list.                       | ✅     |
-| E6.3 | Bulk reminders    | Select overdue loans and queue reminders (uses existing notifications).             | ⏳     |
+| E6.3 | Bulk reminders    | Select overdue loans and queue reminders (uses existing notifications).             | ✅     |
 | E6.4 | Penalty explainer | Card showing the product's monthly rate and grace period next to accrued penalties. | ✅     |
 
 ---
@@ -262,3 +262,4 @@ file — not a wall of sections.
 | 2026-10-20 | Disbursement warns when the amount or date changes and the schedule will be regenerated (E4.2). The aging report now draws its bucket bars in CSS (E6.1), the loan list already had sortable arrears plus a days-late caption (E6.2), and the loan balance card explains the monthly penalty rate, grace period, and amount accrued so far (E6.4). |
 | 2026-10-20 | Added a Notifications tab to the loan file listing the emails sent to the borrower, with type labels and sent times from `notification_logs` (E8.1). The loan and report tab strips now scroll the active tab into view on narrow screens. |
 | 2026-10-20 | Rebuilt the audit log on the shared table, page header, cards and pagination with event badges, actor details and relative times (E9.1). Every row opens a `Sheet` with the actor, record, IP, user agent and a before/after table for each changed field (E9.2); the payload now carries old and new values for every attribute. |
+| 2026-10-20 | Overdue loans can now be selected on the loan list, all at once or one by one, and sent an overdue reminder from a confirmation dialog (E6.3). The endpoint reuses the scheduled notice logic, so preferences and the once-a-day dedupe still apply, and reports how many were queued or skipped through a flash toast. |

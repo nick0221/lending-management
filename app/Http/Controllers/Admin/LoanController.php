@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DisburseLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\RestructureLoanRequest;
+use App\Http\Requests\Admin\SendLoanRemindersRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\Borrower;
 use App\Models\Disbursement;
@@ -309,6 +310,46 @@ class LoanController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan restructured.')]);
 
         return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Email overdue reminders for the selected loans.
+     */
+    public function sendReminders(
+        SendLoanRemindersRequest $request,
+        NotificationService $notificationService,
+    ): RedirectResponse {
+        $loans = Loan::query()
+            ->whereIn('id', $request->validated('loans'))
+            ->get();
+
+        $sent = 0;
+        $skipped = 0;
+
+        foreach ($loans as $loan) {
+            if ($notificationService->sendOverdueNotice($loan)) {
+                $sent++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        $message = trans_choice(
+            '{0} No reminders were sent. Borrowers may have opted out or already received a notice today.|{1} :count overdue reminder queued.|[2,*] :count overdue reminders queued.',
+            $sent,
+            ['count' => $sent],
+        );
+
+        if ($sent > 0 && $skipped > 0) {
+            $message .= ' '.__(':count skipped.', ['count' => $skipped]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => $sent > 0 ? 'success' : 'warning',
+            'message' => $message,
+        ]);
+
+        return back();
     }
 
     /**

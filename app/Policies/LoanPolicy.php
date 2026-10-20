@@ -100,6 +100,14 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the user can email overdue reminders in bulk.
+     */
+    public function sendReminders(User $user): bool
+    {
+        return $user->canAccessAdminPanel();
+    }
+
+    /**
      * Determine whether the user can delete the given loan.
      */
     public function delete(User $user, Loan $loan): bool

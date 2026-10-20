@@ -152,6 +152,102 @@ test('overdue notices respect the borrower preference', function () {
     Notification::assertNothingSent();
 });
 
+test('staff can send overdue reminders for selected loans', function () {
+    Notification::fake();
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    $first = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]), 'first@example.com');
+
+    $second = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-15'],
+    ]), 'second@example.com');
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.remind'), [
+            'loans' => [$first->id, $second->id],
+        ])
+        ->assertRedirect();
+
+    Notification::assertSentTo($first->borrower, LoanOverdue::class);
+    Notification::assertSentTo($second->borrower, LoanOverdue::class);
+
+    expect(NotificationLog::query()->where('type', NotificationLog::TYPE_OVERDUE)->count())->toBe(2);
+});
+
+test('bulk reminders honour preferences, dedupe and overdue state', function () {
+    Notification::fake();
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    $optedOut = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]), 'out@example.com');
+    $optedOut->borrower->update(['notify_overdue' => false]);
+
+    $alreadySent = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]), 'sent@example.com');
+
+    NotificationLog::create([
+        'key' => sprintf('loan:%d:overdue:%s', $alreadySent->id, today()->toDateString()),
+        'type' => NotificationLog::TYPE_OVERDUE,
+        'channel' => 'mail',
+        'borrower_id' => $alreadySent->borrower_id,
+        'loan_id' => $alreadySent->id,
+        'sent_at' => now(),
+    ]);
+
+    $eligible = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]), 'eligible@example.com');
+
+    $notOverdue = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-07-01'],
+    ]), 'future@example.com');
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.remind'), [
+            'loans' => [$optedOut->id, $alreadySent->id, $eligible->id, $notOverdue->id],
+        ])
+        ->assertRedirect();
+
+    Notification::assertNotSentTo($optedOut->borrower, LoanOverdue::class);
+    Notification::assertNotSentTo($alreadySent->borrower, LoanOverdue::class);
+    Notification::assertNotSentTo($notOverdue->borrower, LoanOverdue::class);
+    Notification::assertSentTo($eligible->borrower, LoanOverdue::class);
+    Notification::assertSentTimes(LoanOverdue::class, 1);
+
+    expect(NotificationLog::query()->where('type', NotificationLog::TYPE_OVERDUE)->count())->toBe(2);
+});
+
+test('regular users cannot send bulk reminders', function () {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    $loan = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]));
+
+    $this->actingAs($user)
+        ->post(route('admin.loans.remind'), ['loans' => [$loan->id]])
+        ->assertForbidden();
+
+    Notification::assertNothingSent();
+});
+
+test('bulk reminders require at least one loan', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.remind'), ['loans' => []])
+        ->assertSessionHasErrors('loans');
+});
+
 test('recording a payment emails the borrower a receipt', function () {
     Notification::fake();
 

@@ -84,33 +84,53 @@ class NotificationService
         $sent = 0;
 
         foreach ($loans as $loan) {
-            $borrower = $loan->borrower;
-
-            if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_OVERDUE)) {
-                continue;
+            if ($this->sendOverdueNotice($loan, $asOf)) {
+                $sent++;
             }
-
-            $overdue = $loan->installments
-                ->filter(fn (LoanInstallment $installment): bool => $installment->isOverdue())
-                ->sortBy('sequence')
-                ->values();
-
-            if ($overdue->isEmpty()) {
-                continue;
-            }
-
-            $key = sprintf('loan:%d:overdue:%s', $loan->id, $asOf->toDateString());
-
-            if (! NotificationLog::reserve($key, NotificationLog::TYPE_OVERDUE, $borrower, $loan)) {
-                continue;
-            }
-
-            $borrower->notify(new LoanOverdue($loan, $overdue));
-
-            $sent++;
         }
 
         return $sent;
+    }
+
+    /**
+     * Email one overdue notice for the loan, summarising its unpaid
+     * installments. Returns false when the notice is not applicable or has
+     * already gone out today.
+     */
+    public function sendOverdueNotice(Loan $loan, ?CarbonInterface $asOf = null): bool
+    {
+        $asOf = ($asOf ?? today())->startOfDay();
+
+        if (! in_array($loan->status, self::OPEN_STATUSES, true)) {
+            return false;
+        }
+
+        $loan->loadMissing(['borrower', 'installments.allocations']);
+
+        $borrower = $loan->borrower;
+
+        if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_OVERDUE)) {
+            return false;
+        }
+
+        $overdue = $loan->installments
+            ->filter(fn (LoanInstallment $installment): bool => $installment->isOverdue())
+            ->sortBy('sequence')
+            ->values();
+
+        if ($overdue->isEmpty()) {
+            return false;
+        }
+
+        $key = sprintf('loan:%d:overdue:%s', $loan->id, $asOf->toDateString());
+
+        if (! NotificationLog::reserve($key, NotificationLog::TYPE_OVERDUE, $borrower, $loan)) {
+            return false;
+        }
+
+        $borrower->notify(new LoanOverdue($loan, $overdue));
+
+        return true;
     }
 
     /**

@@ -24,6 +24,9 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::resource('users', UserController::class)->except('show');
         Route::resource('borrowers', BorrowerController::class);
         Route::resource('loan-products', LoanProductController::class)->except('show');
+        Route::post('loans/remind', [LoanController::class, 'sendReminders'])
+            ->middleware('throttle:reminders')
+            ->name('loans.remind');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');

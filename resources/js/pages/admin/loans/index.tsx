@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
-import { FileText, Plus, TriangleAlert } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { FileText, Plus, Send, TriangleAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { LoanRowActions } from '@/components/admin/loan-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -8,7 +9,17 @@ import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
 import { SearchInput } from '@/components/search-input';
 import { SortableHeader } from '@/components/sortable-header';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
     TableBody,
@@ -22,8 +33,19 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createLoan,
     index as loansIndex,
+    remind as remindLoans,
 } from '@/routes/admin/loans';
 import type { LoanListItem, LoanStatusOption, Paginated } from '@/types';
+
+/**
+ * Only open loans with unpaid, past-due installments receive reminders.
+ */
+function isRemindable(loan: LoanListItem): boolean {
+    return (
+        loan.days_past_due > 0 &&
+        (loan.status === 'active' || loan.status === 'defaulted')
+    );
+}
 
 export default function LoansIndex({
     loans,
@@ -44,6 +66,42 @@ export default function LoansIndex({
     currentSort: string | null;
     currentDirection: 'asc' | 'desc';
 }) {
+    const [selected, setSelected] = useState<number[]>([]);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [sending, setSending] = useState(false);
+
+    useEffect(() => {
+        setSelected((current) =>
+            current.filter((id) => loans.data.some((loan) => loan.id === id)),
+        );
+    }, [loans]);
+
+    const remindableIds = loans.data
+        .filter(isRemindable)
+        .map((loan) => loan.id);
+    const allRemindableSelected =
+        remindableIds.length > 0 &&
+        remindableIds.every((id) => selected.includes(id));
+    const someRemindableSelected =
+        selected.length > 0 && !allRemindableSelected;
+    const showSelection = remindableIds.length > 0;
+
+    const submitReminders = () => {
+        router.post(
+            remindLoans().url,
+            { loans: selected },
+            {
+                preserveScroll: true,
+                onStart: () => setSending(true),
+                onFinish: () => setSending(false),
+                onSuccess: () => {
+                    setConfirmOpen(false);
+                    setSelected([]);
+                },
+            },
+        );
+    };
+
     const withFilters = (overrides: {
         status?: string | null;
         overdue?: boolean;
@@ -126,6 +184,32 @@ export default function LoansIndex({
                     className="min-w-0"
                 />
 
+                {selected.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-medium">
+                            {selected.length} overdue loan
+                            {selected.length === 1 ? '' : 's'} selected
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelected([])}
+                            >
+                                Clear
+                            </Button>
+
+                            <Button
+                                size="sm"
+                                onClick={() => setConfirmOpen(true)}
+                            >
+                                <Send /> Send reminders
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {loans.data.length === 0 ? (
                         <EmptyState
@@ -150,6 +234,27 @@ export default function LoansIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    {showSelection && (
+                                        <TableHead className="w-10">
+                                            <Checkbox
+                                                checked={
+                                                    allRemindableSelected
+                                                        ? true
+                                                        : someRemindableSelected
+                                                          ? 'indeterminate'
+                                                          : false
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    setSelected(
+                                                        checked === true
+                                                            ? remindableIds
+                                                            : [],
+                                                    )
+                                                }
+                                                aria-label="Select all overdue loans on this page"
+                                            />
+                                        </TableHead>
+                                    )}
                                     <TableHead>Borrower</TableHead>
                                     <TableHead>Product</TableHead>
                                     <TableHead>
@@ -205,6 +310,38 @@ export default function LoansIndex({
                             <TableBody>
                                 {loans.data.map((loan) => (
                                     <TableRow key={loan.id}>
+                                        {showSelection && (
+                                            <TableCell>
+                                                {isRemindable(loan) ? (
+                                                    <Checkbox
+                                                        checked={selected.includes(
+                                                            loan.id,
+                                                        )}
+                                                        onCheckedChange={(
+                                                            checked,
+                                                        ) =>
+                                                            setSelected(
+                                                                (current) =>
+                                                                    checked ===
+                                                                    true
+                                                                        ? [
+                                                                              ...current,
+                                                                              loan.id,
+                                                                          ]
+                                                                        : current.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  loan.id,
+                                                                          ),
+                                                            )
+                                                        }
+                                                        aria-label={`Select loan ${loan.id} for a reminder`}
+                                                    />
+                                                ) : null}
+                                            </TableCell>
+                                        )}
                                         <TableCell className="font-medium">
                                             {loan.borrower_name}
                                         </TableCell>
@@ -266,6 +403,38 @@ export default function LoansIndex({
                 </div>
 
                 <DataPagination paginator={loans} />
+
+                <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Send overdue reminders?
+                            </AlertDialogTitle>
+
+                            <AlertDialogDescription>
+                                {selected.length} borrower
+                                {selected.length === 1 ? '' : 's'} will be
+                                emailed a summary of their overdue installments.
+                                Borrowers who opted out or already received a
+                                notice today are skipped.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={sending}>
+                                Cancel
+                            </AlertDialogCancel>
+
+                            <Button
+                                onClick={submitReminders}
+                                disabled={sending}
+                            >
+                                <Send />
+                                {sending ? 'Sending…' : 'Send reminders'}
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </>
     );

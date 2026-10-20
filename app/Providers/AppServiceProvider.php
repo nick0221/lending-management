@@ -48,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('reports', fn (Request $request): Limit => Limit::perMinute(
             (int) config('lending.rate_limits.reports', 10),
         )->by($request->user()?->id ?: $request->ip()));
+
+        RateLimiter::for('reminders', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('lending.rate_limits.reminders', 10),
+        )->by($request->user()?->id ?: $request->ip()));
     }
 
     /**
