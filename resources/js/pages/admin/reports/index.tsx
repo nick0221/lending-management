@@ -22,6 +22,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { show as showLoan } from '@/routes/admin/loans';
 import { download, index as reportsIndex } from '@/routes/admin/reports';
@@ -33,12 +34,16 @@ import type {
     ReportLoanRow,
 } from '@/types';
 
-const agingRows: { key: keyof AgingBuckets; label: string }[] = [
-    { key: 'current', label: 'Current' },
-    { key: 'days_1_30', label: '1 – 30 days' },
-    { key: 'days_31_60', label: '31 – 60 days' },
-    { key: 'days_61_90', label: '61 – 90 days' },
-    { key: 'days_over_90', label: 'Over 90 days' },
+const agingRows: {
+    key: keyof AgingBuckets;
+    label: string;
+    barClass: string;
+}[] = [
+    { key: 'current', label: 'Current', barClass: 'bg-emerald-500' },
+    { key: 'days_1_30', label: '1 – 30 days', barClass: 'bg-amber-500' },
+    { key: 'days_31_60', label: '31 – 60 days', barClass: 'bg-orange-500' },
+    { key: 'days_61_90', label: '61 – 90 days', barClass: 'bg-red-500' },
+    { key: 'days_over_90', label: 'Over 90 days', barClass: 'bg-red-700' },
 ];
 
 type ReportsTab = 'portfolio' | 'aging' | 'collections' | 'arrears';
@@ -352,7 +357,7 @@ export default function ReportsIndex({
                 {currentTab === 'aging' && (
                     <SectionCard
                         title="Aging"
-                        description="Outstanding balance by days past due."
+                        description="Outstanding balance by days past due. Bars show each bucket's share of the total."
                     >
                         <Table>
                             <TableHeader>
@@ -376,10 +381,29 @@ export default function ReportsIndex({
                                         <TableCell className="text-right tabular-nums">
                                             {formatMoney(aging[row.key])}
                                         </TableCell>
-                                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                                            {formatPercent(
-                                                share(aging[row.key]),
-                                            )}
+                                        <TableCell>
+                                            <div className="flex items-center justify-end gap-3">
+                                                <div
+                                                    className="h-2 w-full max-w-32 overflow-hidden rounded-full bg-muted"
+                                                    aria-hidden
+                                                >
+                                                    <div
+                                                        className={cn(
+                                                            'h-full rounded-full',
+                                                            row.barClass,
+                                                        )}
+                                                        style={{
+                                                            width: `${share(aging[row.key])}%`,
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <span className="w-16 text-right text-muted-foreground tabular-nums">
+                                                    {formatPercent(
+                                                        share(aging[row.key]),
+                                                    )}
+                                                </span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

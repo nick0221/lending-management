@@ -427,6 +427,35 @@ export default function ShowLoan({
                                         />
                                     </div>
 
+                                    <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+                                        <p className="font-medium">
+                                            Penalty policy
+                                        </p>
+
+                                        <p className="text-muted-foreground">
+                                            {Number(loan.penalty_rate).toFixed(
+                                                2,
+                                            )}
+                                            % per month
+                                            {loan.grace_period_days > 0
+                                                ? ` after a ${loan.grace_period_days}-day grace period`
+                                                : ''}{' '}
+                                            on overdue installments.
+                                            {Number(totals.penalty) > 0 && (
+                                                <>
+                                                    {' '}
+                                                    Accrued so far:{' '}
+                                                    <span className="font-medium text-destructive">
+                                                        {formatMoney(
+                                                            totals.penalty,
+                                                        )}
+                                                    </span>
+                                                    .
+                                                </>
+                                            )}
+                                        </p>
+                                    </div>
+
                                     <div className="border-t pt-4">
                                         <p className="mb-3 text-xs text-muted-foreground uppercase">
                                             Aging of outstanding balance

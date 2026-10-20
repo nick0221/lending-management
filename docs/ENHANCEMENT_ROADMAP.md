@@ -144,7 +144,7 @@ file — not a wall of sections.
 | ID   | Item                 | Detail                                                                                                       | Status |
 | ---- | -------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
 | E4.1 | Disbursement dialog  | Confirm amount, method, reference and date in a `Dialog`; default to approved principal.                     | ✅     |
-| E4.2 | Schedule impact      | Warn when the disbursed amount or date differs from the approved terms and the schedule will be regenerated. | ⏳     |
+| E4.2 | Schedule impact      | Warn when the disbursed amount or date differs from the approved terms and the schedule will be regenerated. | ✅     |
 | E4.3 | Disbursement history | Move into the detail page's Disbursements tab with recorded-by and reference.                                | ✅     |
 
 ---
@@ -165,10 +165,10 @@ file — not a wall of sections.
 
 | ID   | Item              | Detail                                                                              | Status |
 | ---- | ----------------- | ----------------------------------------------------------------------------------- | ------ |
-| E6.1 | Aging visual      | CSS bar breakdown for current / 1–30 / 31–60 / 61–90 / 90+.                         | ⏳     |
-| E6.2 | Arrears column    | Sortable arrears with a days-past-due badge on the loan list.                       | ⏳     |
+| E6.1 | Aging visual      | CSS bar breakdown for current / 1-30 / 31-60 / 61-90 / 90+.                         | ✅     |
+| E6.2 | Arrears column    | Sortable arrears with a days-past-due badge on the loan list.                       | ✅     |
 | E6.3 | Bulk reminders    | Select overdue loans and queue reminders (uses existing notifications).             | ⏳     |
-| E6.4 | Penalty explainer | Card showing the product's monthly rate and grace period next to accrued penalties. | ⏳     |
+| E6.4 | Penalty explainer | Card showing the product's monthly rate and grace period next to accrued penalties. | ✅     |
 
 ---
 
@@ -259,3 +259,4 @@ file — not a wall of sections.
 | 2026-10-20 | Loan file redesigned around URL-backed tabs (Overview, Schedule, Payments, Payouts, Activity) with a sticky summary of status, principal, outstanding, arrears and next due (E2.7, E2.8). Actions are split into primary decisions and a More menu for restructure, statement, default, write-off and delete (E2.9); the lifecycle is now a vertical timeline (E2.10). |
 | 2026-10-20 | Reports split into URL-backed Portfolio, Aging, Collections and Arrears tabs, with a new arrears view sorted by exposure and consolidated loan tables (E7.1). The three CSV buttons became one Export menu (E7.3). E7.2 stays gated on the date-range dependency. |
 | 2026-10-20 | The payment dialog now opens with the outstanding balance split by penalty, fee, interest and principal, offers next-installment and full-balance chips, and previews the allocation before saving (E5.1, E5.2). The preview walks installments oldest-first to mirror `RepaymentService`. The detail page's tabs also completed the disbursement history move (E4.3) and the existing disbursement dialog satisfied E4.1. |
+| 2026-10-20 | Disbursement warns when the amount or date changes and the schedule will be regenerated (E4.2). The aging report now draws its bucket bars in CSS (E6.1), the loan list already had sortable arrears plus a days-late caption (E6.2), and the loan balance card explains the monthly penalty rate, grace period, and amount accrued so far (E6.4). |
