@@ -35,6 +35,10 @@ class StoreBorrowerRequest extends FormRequest
             'kyc_status' => ['required', Rule::enum(KycStatus::class)],
             'notes' => ['nullable', 'string', 'max:1000'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'notify_due_soon' => ['boolean'],
+            'notify_overdue' => ['boolean'],
+            'notify_receipts' => ['boolean'],
+            'notify_statements' => ['boolean'],
         ];
     }
 }

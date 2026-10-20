@@ -29,6 +29,10 @@ export type Borrower = {
     kyc_status: KycStatus;
     kyc_status_label: string;
     notes: string | null;
+    notify_due_soon: boolean;
+    notify_overdue: boolean;
+    notify_receipts: boolean;
+    notify_statements: boolean;
     created_at: string | null;
 };
 
@@ -166,6 +170,7 @@ export type LoanAbilities = {
     default: boolean;
     write_off: boolean;
     restructure: boolean;
+    statement: boolean;
     delete: boolean;
 };
 

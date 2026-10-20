@@ -213,13 +213,31 @@ contents, borrower dashboard) plus the reports route in the
 
 ---
 
-## Phase 8 — Notifications ⏳
+## Phase 8 — Notifications ✅
 
 **Goal:** proactive comms.
 
 - Due-date reminders, overdue notices, payment receipts, statements
 - Email + (optional) SMS channels, queued
 - Templates + per-borrower preferences
+
+**Delivered:** four queued mail notifications — `LoanDueSoon`, `LoanOverdue`,
+`PaymentReceived` and `LoanStatement` — all sent through the borrower record
+(`Notifiable`). Email is the only channel for now; SMS is deferred (Decision
+11). Per-borrower toggles (`notify_due_soon`, `notify_overdue`,
+`notify_receipts`, `notify_statements`) live on the borrower and are editable
+in the borrower form. `loans:send-due-reminders` (08:00) emails installments
+inside `lending.due_reminder_days` (default 3), and
+`loans:send-overdue-notices` (08:15) sends one summary per loan per day, both
+scheduled `withoutOverlapping()` and idempotent through a `notification_logs`
+reservation key, so re-runs and retries never duplicate mail. Receipts are
+dispatched by `RepaymentService` after the allocation commits with the
+remaining balance, and staff can email a statement from the loan page
+(`admin.loans.statement`) when the borrower has an address. The statement is a
+markdown mail with the full schedule and totals; PDF is deferred with the
+Phase 7 export decision. Covered by `NotificationsTest` (windows, opt-outs,
+missing addresses, idempotency, receipt balance, statement mail rendering and
+authorization).
 
 ---
 
@@ -256,3 +274,4 @@ Settled during Phase 1, except where noted.
 | 8 | Penalty model | Per product, a monthly percentage of the overdue amount plus a grace period; accrued by a daily command, one period per whole 30 days past due |
 | 9 | Restructuring | Re-amortises the outstanding principal onto a new term from the loan's own snapshotted terms; payment history is preserved and never rewritten |
 | 10 | Report export format | CSV first (summary, loans, collections); PDF is deferred until a rendering dependency (`barryvdh/laravel-dompdf` or `spatie/laravel-pdf`) is approved, and will reuse the same `ReportingService` figures |
+| 11 | Notification channels & cadence | Email only for now (SMS deferred); due reminders go 3 days before the due date (`LENDING_DUE_REMINDER_DAYS`), overdue notices at most once per loan per day, receipts fire automatically on payment, and statements are emailed on demand from the loan page; preferences are boolean columns on the borrower and every send is recorded in `notification_logs` |

@@ -2,6 +2,7 @@ import { Form } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -27,6 +28,35 @@ type Props = {
     borrower?: Borrower;
 };
 
+type NotificationPreference = {
+    key: 'notify_due_soon' | 'notify_overdue' | 'notify_receipts' | 'notify_statements';
+    label: string;
+    description: string;
+};
+
+const notificationPreferences: NotificationPreference[] = [
+    {
+        key: 'notify_due_soon',
+        label: 'Due-date reminders',
+        description: 'A reminder a few days before an installment is due.',
+    },
+    {
+        key: 'notify_overdue',
+        label: 'Overdue notices',
+        description: 'A notice while installments remain past due.',
+    },
+    {
+        key: 'notify_receipts',
+        label: 'Payment receipts',
+        description: 'A receipt whenever a payment is recorded.',
+    },
+    {
+        key: 'notify_statements',
+        label: 'Statements',
+        description: 'Allow staff to email the loan statement on request.',
+    },
+];
+
 export function BorrowerForm({
     action,
     kycStatuses,
@@ -40,6 +70,12 @@ export function BorrowerForm({
     const [userId, setUserId] = useState<string>(
         borrower?.user_id ? String(borrower.user_id) : NO_USER,
     );
+    const [preferences, setPreferences] = useState({
+        notify_due_soon: borrower?.notify_due_soon ?? true,
+        notify_overdue: borrower?.notify_overdue ?? true,
+        notify_receipts: borrower?.notify_receipts ?? true,
+        notify_statements: borrower?.notify_statements ?? true,
+    });
 
     return (
         <Form {...action} className="space-y-6">
@@ -207,6 +243,63 @@ export function BorrowerForm({
 
                             <InputError message={errors.user_id} />
                         </div>
+                    </div>
+
+                    <div className="space-y-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
+                        <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                                Email notifications
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Sent to the borrower's email address. An
+                                address is required for any of these to be
+                                delivered.
+                            </p>
+                        </div>
+
+                        {notificationPreferences.map((preference) => (
+                            <div
+                                key={preference.key}
+                                className="flex items-start gap-3"
+                            >
+                                <Checkbox
+                                    id={preference.key}
+                                    checked={preferences[preference.key]}
+                                    onCheckedChange={(checked) =>
+                                        setPreferences({
+                                            ...preferences,
+                                            [preference.key]: checked === true,
+                                        })
+                                    }
+                                />
+
+                                <div className="grid gap-1">
+                                    <Label htmlFor={preference.key}>
+                                        {preference.label}
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        {preference.description}
+                                    </p>
+                                </div>
+
+                                <input
+                                    type="hidden"
+                                    name={preference.key}
+                                    value={
+                                        preferences[preference.key] ? '1' : '0'
+                                    }
+                                />
+                            </div>
+                        ))}
+
+                        <InputError
+                            message={
+                                errors.notify_due_soon ??
+                                errors.notify_overdue ??
+                                errors.notify_receipts ??
+                                errors.notify_statements
+                            }
+                        />
                     </div>
 
                     <div className="grid gap-2">

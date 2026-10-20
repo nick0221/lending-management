@@ -19,6 +19,7 @@ use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
 use App\Models\Payment;
 use App\Services\LoanService;
+use App\Services\NotificationService;
 use App\Services\RepaymentService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -134,6 +135,7 @@ class LoanController extends Controller
                 'default' => $actor->can('markDefaulted', $loan),
                 'write_off' => $actor->can('writeOff', $loan),
                 'restructure' => $actor->can('restructure', $loan),
+                'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
                 'delete' => $actor->can('delete', $loan),
             ],
         ]);
@@ -253,6 +255,30 @@ class LoanController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan restructured.')]);
+
+        return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Email the borrower a statement for the given loan.
+     */
+    public function sendStatement(Loan $loan, NotificationService $notificationService): RedirectResponse
+    {
+        Gate::authorize('view', $loan);
+
+        if (! $notificationService->sendStatement($loan)) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => __('The statement was not sent. Add an email address and enable statements for this borrower.'),
+            ]);
+
+            return to_route('admin.loans.show', $loan);
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Statement emailed to :email.', ['email' => $loan->borrower->email]),
+        ]);
 
         return to_route('admin.loans.show', $loan);
     }

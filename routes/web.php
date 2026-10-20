@@ -31,6 +31,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
         Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
         Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');
+        Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/download/{report}', [ReportController::class, 'download'])
             ->whereIn('report', ['summary', 'loans', 'collections'])

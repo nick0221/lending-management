@@ -22,7 +22,10 @@ class RepaymentService
      */
     private const MONEY_EPSILON = 0.005;
 
-    public function __construct(private LoanService $loanService) {}
+    public function __construct(
+        private LoanService $loanService,
+        private NotificationService $notificationService,
+    ) {}
 
     /**
      * Record a payment against a loan, allocating it to the outstanding
@@ -124,6 +127,11 @@ class RepaymentService
         if (round($totalOutstanding - $amount, 2) <= self::MONEY_EPSILON) {
             $this->loanService->transition($loan, LoanStatus::Closed, $actor);
         }
+
+        $this->notificationService->sendReceipt(
+            $payment,
+            max(round($totalOutstanding - $amount, 2), 0.0),
+        );
 
         return $payment;
     }

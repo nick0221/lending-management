@@ -29,6 +29,10 @@ class BorrowerFactory extends Factory
             'address' => fake()->address(),
             'kyc_status' => KycStatus::Pending->value,
             'notes' => null,
+            'notify_due_soon' => true,
+            'notify_overdue' => true,
+            'notify_receipts' => true,
+            'notify_statements' => true,
         ];
     }
 

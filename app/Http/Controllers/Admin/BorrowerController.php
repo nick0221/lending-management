@@ -127,6 +127,10 @@ class BorrowerController extends Controller
             'kyc_status' => $borrower->kyc_status->value,
             'kyc_status_label' => $borrower->kyc_status->label(),
             'notes' => $borrower->notes,
+            'notify_due_soon' => $borrower->notify_due_soon,
+            'notify_overdue' => $borrower->notify_overdue,
+            'notify_receipts' => $borrower->notify_receipts,
+            'notify_statements' => $borrower->notify_statements,
             'created_at' => $borrower->created_at?->toIso8601String(),
         ];
     }

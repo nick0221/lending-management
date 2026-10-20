@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { AlertTriangle, ArrowLeft, Ban, Check, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Ban, Check, Mail, Trash2, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
@@ -15,6 +15,7 @@ import {
     markDefault as markLoanDefault,
     reject as rejectLoan,
     show as showLoan,
+    statement as loanStatement,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
 import type {
@@ -178,6 +179,24 @@ export default function ShowLoan({
                             loan={loan}
                             outstanding={totals.outstanding}
                         />
+                    )}
+
+                    {can.statement && (
+                        <Form
+                            {...loanStatement.form(loan.id)}
+                            options={{ preserveScroll: true }}
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                    data-test="email-statement-button"
+                                >
+                                    <Mail /> Email statement
+                                </Button>
+                            )}
+                        </Form>
                     )}
 
                     {can.default && (
