@@ -31,6 +31,44 @@ export function formatDateTime(value: string | null | undefined): string {
     });
 }
 
+/** Formats a timestamp relative to now, e.g. "2 hours ago". */
+export function formatRelativeTime(value: string | null | undefined): string {
+    if (!value) {
+        return '—';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '—';
+    }
+
+    const difference = date.getTime() - Date.now();
+    const units: [Intl.RelativeTimeFormatUnit, number][] = [
+        ['year', 365 * 24 * 60 * 60 * 1000],
+        ['month', 30 * 24 * 60 * 60 * 1000],
+        ['week', 7 * 24 * 60 * 60 * 1000],
+        ['day', 24 * 60 * 60 * 1000],
+        ['hour', 60 * 60 * 1000],
+        ['minute', 60 * 1000],
+        ['second', 1000],
+    ];
+    const formatter = new Intl.RelativeTimeFormat(undefined, {
+        numeric: 'auto',
+    });
+
+    for (const [unit, milliseconds] of units) {
+        if (Math.abs(difference) >= milliseconds || unit === 'second') {
+            return formatter.format(
+                Math.round(difference / milliseconds),
+                unit,
+            );
+        }
+    }
+
+    return formatter.format(0, 'second');
+}
+
 /** Formats a `Y-m-d` date or ISO timestamp without shifting the day. */
 export function formatDateOnly(value: string | null | undefined): string {
     if (!value) {

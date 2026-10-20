@@ -439,7 +439,8 @@ export type BorrowerSummary = {
 
 export type ActivityLogChange = {
     key: string;
-    value: string;
+    old: string | null;
+    new: string | null;
 };
 
 export type ActivityLogRow = {
@@ -452,6 +453,7 @@ export type ActivityLogRow = {
     subject_type: string | null;
     subject_id: number | null;
     ip_address: string | null;
+    user_agent: string | null;
     changes: ActivityLogChange[];
     created_at: string | null;
 };

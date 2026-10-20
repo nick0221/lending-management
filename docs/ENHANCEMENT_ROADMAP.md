@@ -199,8 +199,8 @@ file — not a wall of sections.
 
 | ID   | Item          | Detail                                                                                             | Status |
 | ---- | ------------- | -------------------------------------------------------------------------------------------------- | ------ |
-| E9.1 | Audit table   | `ui/table` with event badges, actor and relative time.                                             | ⏳     |
-| E9.2 | Diff sheet    | Open an audit row in a `Sheet` showing before/after values.                                        | ⏳     |
+| E9.1 | Audit table   | `ui/table` with event badges, actor and relative time.                                             | ✅     |
+| E9.2 | Diff sheet    | Open an audit row in a `Sheet` showing before/after values.                                        | ✅     |
 | E9.3 | Settings page | Organisation name, currency symbol, default penalty/grace and rate limits — currently `.env` only. | ⏳     |
 | E9.4 | System status | Cards for queue, scheduler, mail and storage health.                                               | ⏳     |
 | E9.5 | Role matrix   | Read-only table of what each role can do, sourced from the policies.                               | ⏳     |
@@ -261,3 +261,4 @@ file — not a wall of sections.
 | 2026-10-20 | The payment dialog now opens with the outstanding balance split by penalty, fee, interest and principal, offers next-installment and full-balance chips, and previews the allocation before saving (E5.1, E5.2). The preview walks installments oldest-first to mirror `RepaymentService`. The detail page's tabs also completed the disbursement history move (E4.3) and the existing disbursement dialog satisfied E4.1. |
 | 2026-10-20 | Disbursement warns when the amount or date changes and the schedule will be regenerated (E4.2). The aging report now draws its bucket bars in CSS (E6.1), the loan list already had sortable arrears plus a days-late caption (E6.2), and the loan balance card explains the monthly penalty rate, grace period, and amount accrued so far (E6.4). |
 | 2026-10-20 | Added a Notifications tab to the loan file listing the emails sent to the borrower, with type labels and sent times from `notification_logs` (E8.1). The loan and report tab strips now scroll the active tab into view on narrow screens. |
+| 2026-10-20 | Rebuilt the audit log on the shared table, page header, cards and pagination with event badges, actor details and relative times (E9.1). Every row opens a `Sheet` with the actor, record, IP, user agent and a before/after table for each changed field (E9.2); the payload now carries old and new values for every attribute. |

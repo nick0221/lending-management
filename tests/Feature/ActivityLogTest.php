@@ -49,6 +49,23 @@ test('updating a model only records the changed attributes', function () {
         ->and($log->new_values)->not->toHaveKey('phone');
 });
 
+test('the audit trail exposes before and after values', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Before']);
+
+    $borrower->update(['name' => 'After']);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.activity.index', ['type' => 'Borrower', 'event' => 'updated']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.changes.0.key', 'Name')
+            ->where('logs.data.0.changes.0.old', 'Before')
+            ->where('logs.data.0.changes.0.new', 'After')
+        );
+});
+
 test('deleting a model records a snapshot of the old values', function () {
     $borrower = Borrower::factory()->create(['name' => 'Removed Borrower']);
 

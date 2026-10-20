@@ -80,6 +80,7 @@ class ActivityController extends Controller
                 'subject_type' => $log->subject_type !== null ? class_basename($log->subject_type) : null,
                 'subject_id' => $log->subject_id,
                 'ip_address' => $log->ip_address,
+                'user_agent' => $log->user_agent,
                 'changes' => $this->changes($log),
                 'created_at' => $log->created_at?->toIso8601String(),
             ]);
@@ -112,24 +113,37 @@ class ActivityController extends Controller
     }
 
     /**
-     * Flatten the new values of a log entry into displayable pairs.
+     * Pair the old and new values of every changed attribute.
      *
-     * @return array<int, array{key: string, value: string}>
+     * @return array<int, array{key: string, old: string|null, new: string|null}>
      */
     private function changes(ActivityLog $log): array
     {
-        return collect($log->new_values ?? [])
-            ->take(6)
-            ->map(fn (mixed $value, string $key): array => [
+        $old = $log->old_values ?? [];
+        $new = $log->new_values ?? [];
+
+        $keys = array_values(array_unique([...array_keys($old), ...array_keys($new)]));
+
+        return collect($keys)
+            ->map(fn (string $key): array => [
                 'key' => Str::headline($key),
-                'value' => match (true) {
-                    is_bool($value) => $value ? 'Yes' : 'No',
-                    $value === null => '—',
-                    is_scalar($value) => (string) $value,
-                    default => json_encode($value) ?: '—',
-                },
+                'old' => array_key_exists($key, $old) ? $this->displayValue($old[$key]) : null,
+                'new' => array_key_exists($key, $new) ? $this->displayValue($new[$key]) : null,
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Render a single stored attribute value for display.
+     */
+    private function displayValue(mixed $value): string
+    {
+        return match (true) {
+            is_bool($value) => $value ? 'Yes' : 'No',
+            $value === null => '—',
+            is_scalar($value) => (string) $value,
+            default => json_encode($value) ?: '—',
+        };
     }
 }
