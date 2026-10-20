@@ -161,6 +161,10 @@ class LoanController extends Controller
         ]);
 
         $actor = $request->user();
+        $currentTab = $request->string('tab')->toString();
+        $currentTab = in_array($currentTab, ['overview', 'schedule', 'payments', 'disbursements', 'activity'], true)
+            ? $currentTab
+            : 'overview';
 
         return Inertia::render('admin/loans/show', [
             'loan' => $this->toPayload($loan),
@@ -171,6 +175,7 @@ class LoanController extends Controller
             'events' => $this->eventPayload($loan),
             'disbursementMethods' => $this->disbursementMethodOptions(),
             'paymentMethods' => $this->paymentMethodOptions(),
+            'currentTab' => $currentTab,
             'can' => [
                 'approve' => $actor->can('approve', $loan),
                 'reject' => $actor->can('reject', $loan),

@@ -5,7 +5,9 @@ export function formatMoney(value: number | string | null | undefined): string {
     });
 }
 
-export function formatPercent(value: number | string | null | undefined): string {
+export function formatPercent(
+    value: number | string | null | undefined,
+): string {
     return `${Number(value ?? 0).toFixed(2)}%`;
 }
 
@@ -29,13 +31,14 @@ export function formatDateTime(value: string | null | undefined): string {
     });
 }
 
-/** Formats a `Y-m-d` date without shifting a day across time zones. */
+/** Formats a `Y-m-d` date or ISO timestamp without shifting the day. */
 export function formatDateOnly(value: string | null | undefined): string {
     if (!value) {
         return '—';
     }
 
-    const [year, month, day] = value.split('-').map(Number);
+    const [date] = value.split('T');
+    const [year, month, day] = date.split('-').map(Number);
 
     if (!year || !month || !day) {
         return value;

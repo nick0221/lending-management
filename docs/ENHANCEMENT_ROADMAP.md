@@ -118,10 +118,10 @@ without leaving the list; products show their status and usage.
 | E2.4  | Sortable columns    | Principal, applied date and arrears via query params and table header buttons.                                        | ✅     |
 | E2.5  | Row actions         | `DropdownMenu`: View, Email statement, Delete — instead of two inline buttons.                                        | ✅     |
 | E2.6  | Delete confirmation | `ConfirmDelete` before deleting a loan.                                                                               | ✅     |
-| E2.7  | Detail tabs         | Loan page split into Overview / Schedule / Payments / Disbursements / Activity.                                       | ⏳     |
-| E2.8  | Sticky summary      | Principal, outstanding, arrears and next due pinned while scrolling.                                                  | ⏳     |
-| E2.9  | Action hierarchy    | Approve / Reject / Disburse as primary actions; default, write-off, restructure and statement under an overflow menu. | ⏳     |
-| E2.10 | Status timeline     | Vertical timeline built from `loan_events`.                                                                           | ⏳     |
+| E2.7  | Detail tabs         | Loan page split into Overview / Schedule / Payments / Disbursements / Activity.                                       | ✅     |
+| E2.8  | Sticky summary      | Principal, outstanding, arrears and next due pinned while scrolling.                                                  | ✅     |
+| E2.9  | Action hierarchy    | Approve / Reject / Disburse as primary actions; default, write-off, restructure and statement under an overflow menu. | ✅     |
+| E2.10 | Status timeline     | Vertical timeline built from `loan_events`.                                                                           | ✅     |
 | E2.11 | Empty states        | Explain what each status filter means and offer "New loan".                                                           | ✅     |
 
 **Done when:** the loan list reads like a queue, and the detail page reads like a
@@ -256,3 +256,4 @@ file — not a wall of sections.
 | 2026-10-20 | Added `PageHeader` and URL-backed `SearchInput`; borrowers search name/email/phone (E1.2) and loans search borrower/loan id (E2.3), both debounced and preserved across tabs. Loan products gained Active/Inactive tabs with counts plus a loans-usage column (E1.7); list pages now share `PageHeader` (E0.5). |
 | 2026-10-20 | Loan queue: sortable Principal/Arrears/Applied headers backed by query params (E2.4), and row actions moved into a `DropdownMenu` with View, Email statement and Delete behind the shared confirm dialog (E2.5). Sorting by arrears uses a correlated subquery that mirrors the list calculation. |
 | 2026-10-20 | Borrower file: `/admin/borrowers/{borrower}` with summary stats, profile, notification preferences, loans, payments and super-admin activity (E1.6). Added `SectionCard` for detail sections (E0.7); the register links names to the file and uses a View/Edit/Delete row menu (E1.4). Row statements stay on the loan file. M2 complete. |
+| 2026-10-20 | Loan file redesigned around URL-backed tabs (Overview, Schedule, Payments, Payouts, Activity) with a sticky summary of status, principal, outstanding, arrears and next due (E2.7, E2.8). Actions are split into primary decisions and a More menu for restructure, statement, default, write-off and delete (E2.9); the lifecycle is now a vertical timeline (E2.10). |

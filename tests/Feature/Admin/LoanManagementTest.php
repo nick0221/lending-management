@@ -247,8 +247,23 @@ test('the loan detail exposes the approve and reject abilities', function () {
         ->assertInertia(fn ($page) => $page
             ->component('admin/loans/show')
             ->where('loan.id', $loan->id)
+            ->where('currentTab', 'overview')
             ->where('can.approve', true)
             ->where('can.reject', true)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', ['loan' => $loan, 'tab' => 'payments']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentTab', 'payments')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', ['loan' => $loan, 'tab' => 'unknown']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentTab', 'overview')
         );
 });
 

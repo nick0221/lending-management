@@ -1,5 +1,4 @@
 import { Form } from '@inertiajs/react';
-import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +9,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,20 +18,16 @@ import type { Loan } from '@/types';
 export function RestructureLoanDialog({
     loan,
     outstanding,
+    open,
+    onOpenChange,
 }: {
     loan: Loan;
     outstanding: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
 }) {
-    const [open, setOpen] = useState(false);
-
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" data-test="restructure-loan-button">
-                    Restructure
-                </Button>
-            </DialogTrigger>
-
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Restructure loan</DialogTitle>
@@ -47,7 +41,7 @@ export function RestructureLoanDialog({
                 <Form
                     {...restructureLoan.form(loan.id)}
                     options={{ preserveScroll: true }}
-                    onSuccess={() => setOpen(false)}
+                    onSuccess={() => onOpenChange(false)}
                     className="space-y-4"
                 >
                     {({ processing, errors }) => (
