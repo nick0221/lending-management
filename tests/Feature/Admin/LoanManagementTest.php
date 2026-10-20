@@ -55,6 +55,32 @@ test('the loan list exposes per-status counts', function () {
         );
 });
 
+test('the loan list can be searched by borrower name or loan id', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Ada Lovelace']);
+    $match = Loan::factory()->create(['borrower_id' => $borrower->id]);
+    $other = Loan::factory()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['search' => 'Ada Lovelace']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/index')
+            ->has('loans.data', 1)
+            ->where('loans.data.0.id', $match->id)
+            ->where('search', 'Ada Lovelace')
+            ->where('counts.all', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['search' => (string) $other->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('loans.data.0.id', $other->id)
+        );
+});
+
 test('admins can originate a loan and the product terms are snapshotted', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();

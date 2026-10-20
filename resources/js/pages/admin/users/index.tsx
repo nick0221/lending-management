@@ -3,7 +3,7 @@ import { Pencil, Plus, Users } from 'lucide-react';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { RoleBadge } from '@/components/role-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,19 +33,18 @@ export default function UsersIndex({
             <Head title="Users" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        title="Users"
-                        description="Manage accounts and their access levels."
-                    />
-
-                    <Button asChild>
-                        <Link href={createUser()} prefetch>
-                            <Plus />
-                            New user
-                        </Link>
-                    </Button>
-                </div>
+                <PageHeader
+                    title="Users"
+                    description="Manage accounts and their access levels."
+                    actions={
+                        <Button asChild>
+                            <Link href={createUser()} prefetch>
+                                <Plus />
+                                New user
+                            </Link>
+                        </Button>
+                    }
+                />
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {users.data.length === 0 ? (

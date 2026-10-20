@@ -41,9 +41,22 @@ class LoanController extends Controller
         $actor = $request->user();
         $status = LoanStatus::tryFrom($request->string('status')->toString());
         $overdueOnly = $request->boolean('overdue');
+        $search = trim($request->string('search')->toString());
+
+        $applySearch = function (Builder $query) use ($search): void {
+            $query->where(function (Builder $query) use ($search): void {
+                $query->whereHas('borrower', fn (Builder $borrower) => $borrower
+                    ->where('name', 'like', "%{$search}%"));
+
+                if (ctype_digit($search)) {
+                    $query->orWhereKey((int) $search);
+                }
+            });
+        };
 
         $statusCounts = Loan::query()
             ->when($overdueOnly, fn (Builder $query) => $query->overdue())
+            ->when($search !== '', fn (Builder $query) => $applySearch($query))
             ->selectRaw('status, count(*) as aggregate')
             ->groupBy('status')
             ->get()
@@ -55,6 +68,7 @@ class LoanController extends Controller
             ->with(['borrower', 'loanProduct', 'installments.allocations'])
             ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
             ->when($overdueOnly, fn (Builder $query) => $query->overdue())
+            ->when($search !== '', fn (Builder $query) => $applySearch($query))
             ->latest()
             ->paginate(15)
             ->withQueryString()
@@ -72,6 +86,7 @@ class LoanController extends Controller
             'statuses' => $this->statusOptions(),
             'currentStatus' => $status?->value,
             'overdueOnly' => $overdueOnly,
+            'search' => $search,
             'counts' => [
                 'all' => (int) $statusCounts->sum(),
                 ...collect(LoanStatus::cases())

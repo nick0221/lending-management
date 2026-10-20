@@ -4,8 +4,9 @@ import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
-import Heading from '@/components/heading';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
+import { PageHeader } from '@/components/page-header';
+import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -31,12 +32,14 @@ export default function LoansIndex({
     currentStatus,
     overdueOnly,
     counts,
+    search,
 }: {
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
     currentStatus: string | null;
     overdueOnly: boolean;
     counts: Record<string, number>;
+    search: string;
 }) {
     const withFilters = (overrides: {
         status?: string | null;
@@ -49,6 +52,7 @@ export default function LoansIndex({
             query: {
                 ...(status ? { status } : {}),
                 ...(overdue ? { overdue: '1' } : {}),
+                ...(search ? { search } : {}),
             },
         });
     };
@@ -58,38 +62,23 @@ export default function LoansIndex({
             <Head title="Loans" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        title="Loans"
-                        description="Originate and review loan applications."
-                    />
+                <PageHeader
+                    title="Loans"
+                    description="Originate and review loan applications."
+                    actions={
+                        <Button asChild>
+                            <Link href={createLoan()}>
+                                <Plus /> New loan
+                            </Link>
+                        </Button>
+                    }
+                />
 
-                    <Button asChild>
-                        <Link href={createLoan()}>
-                            <Plus /> New loan
-                        </Link>
-                    </Button>
-                </div>
-
-                <div className="flex flex-wrap items-start gap-3">
-                    <FilterTabs
-                        tabs={[
-                            {
-                                value: 'all',
-                                label: 'All',
-                                count: counts.all,
-                                href: withFilters({ status: '' }),
-                            },
-                            ...statuses.map((status) => ({
-                                value: status.value,
-                                label: status.label,
-                                count: counts[status.value] ?? 0,
-                                href: withFilters({ status: status.value }),
-                            })),
-                        ]}
-                        value={currentStatus ?? 'all'}
-                        label="Filter loans by status"
-                        className="min-w-0 flex-1 basis-full sm:basis-auto"
+                <div className="flex flex-wrap items-center gap-3">
+                    <SearchInput
+                        value={search}
+                        placeholder="Search borrower or loan #"
+                        label="Search loans"
                     />
 
                     <Toggle
@@ -109,15 +98,37 @@ export default function LoansIndex({
                     </Toggle>
                 </div>
 
+                <FilterTabs
+                    tabs={[
+                        {
+                            value: 'all',
+                            label: 'All',
+                            count: counts.all,
+                            href: withFilters({ status: '' }),
+                        },
+                        ...statuses.map((status) => ({
+                            value: status.value,
+                            label: status.label,
+                            count: counts[status.value] ?? 0,
+                            href: withFilters({ status: status.value }),
+                        })),
+                    ]}
+                    value={currentStatus ?? 'all'}
+                    label="Filter loans by status"
+                    className="min-w-0"
+                />
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {loans.data.length === 0 ? (
                         <EmptyState
                             icon={FileText}
                             title="No loans found"
                             description={
-                                currentStatus || overdueOnly
-                                    ? 'No loans match these filters. Try another status or turn off the overdue filter.'
-                                    : 'Originate the first loan to start building the portfolio.'
+                                search
+                                    ? `No loans match "${search}". Try another term or clear the search.`
+                                    : currentStatus || overdueOnly
+                                      ? 'No loans match these filters. Try another status or turn off the overdue filter.'
+                                      : 'Originate the first loan to start building the portfolio.'
                             }
                             action={
                                 <Button asChild size="sm">

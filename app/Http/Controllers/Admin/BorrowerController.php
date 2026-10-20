@@ -25,8 +25,16 @@ class BorrowerController extends Controller
 
         $actor = $request->user();
         $status = KycStatus::tryFrom($request->string('kyc_status')->toString());
+        $search = trim($request->string('search')->toString());
+
+        $applySearch = fn ($query) => $query->whereAny(
+            ['name', 'email', 'phone'],
+            'like',
+            "%{$search}%",
+        );
 
         $counts = Borrower::query()
+            ->when($search !== '', $applySearch)
             ->selectRaw('kyc_status, count(*) as aggregate')
             ->groupBy('kyc_status')
             ->get()
@@ -37,6 +45,7 @@ class BorrowerController extends Controller
         $borrowers = Borrower::query()
             ->with('user')
             ->when($status, fn ($query) => $query->where('kyc_status', $status))
+            ->when($search !== '', $applySearch)
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString()
@@ -52,6 +61,7 @@ class BorrowerController extends Controller
             'borrowers' => $borrowers,
             'kycStatuses' => $this->kycStatusOptions(),
             'currentKycStatus' => $status?->value,
+            'search' => $search,
             'kycCounts' => [
                 'all' => (int) $counts->sum(),
                 ...collect(KycStatus::cases())

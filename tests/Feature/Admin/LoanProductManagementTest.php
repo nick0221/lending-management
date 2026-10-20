@@ -2,6 +2,7 @@
 
 use App\Enums\InterestMethod;
 use App\Enums\RepaymentFrequency;
+use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\User;
 
@@ -18,6 +19,28 @@ test('the loan product list exposes the abilities for every row', function () {
             ->where('loanProducts.data.0.name', 'Starter Loan')
             ->where('loanProducts.data.0.can.update', true)
             ->where('loanProducts.data.0.can.delete', true)
+        );
+});
+
+test('the loan product list can be filtered by state and exposes usage counts', function () {
+    $admin = User::factory()->admin()->create();
+    $active = LoanProduct::factory()->create(['name' => 'Active Loan']);
+    Loan::factory()->forProduct($active)->count(2)->create();
+    LoanProduct::whereKeyNot($active->id)->delete();
+    LoanProduct::factory()->inactive()->create(['name' => 'Retired Loan']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loan-products.index', ['state' => 'active']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loan-products/index')
+            ->has('loanProducts.data', 1)
+            ->where('loanProducts.data.0.name', 'Active Loan')
+            ->where('loanProducts.data.0.loans_count', 2)
+            ->where('currentState', 'active')
+            ->where('counts.all', 2)
+            ->where('counts.active', 1)
+            ->where('counts.inactive', 1)
         );
 });
 

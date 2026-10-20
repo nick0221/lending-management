@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLoanProductRequest;
 use App\Http\Requests\Admin\UpdateLoanProductRequest;
 use App\Models\LoanProduct;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -24,13 +25,30 @@ class LoanProductController extends Controller
         Gate::authorize('viewAny', LoanProduct::class);
 
         $actor = $request->user();
+        $state = $request->string('state')->toString();
+        $isActive = match ($state) {
+            'active' => true,
+            'inactive' => false,
+            default => null,
+        };
+
+        $counts = LoanProduct::query()
+            ->selectRaw('is_active, count(*) as aggregate')
+            ->groupBy('is_active')
+            ->get()
+            ->mapWithKeys(fn (LoanProduct $loanProduct): array => [
+                ($loanProduct->is_active ? 'active' : 'inactive') => (int) $loanProduct->aggregate,
+            ]);
 
         $loanProducts = LoanProduct::query()
+            ->withCount('loans')
+            ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive))
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString()
             ->through(fn (LoanProduct $loanProduct): array => [
                 ...$this->toPayload($loanProduct),
+                'loans_count' => (int) $loanProduct->loans_count,
                 'can' => [
                     'update' => $actor->can('update', $loanProduct),
                     'delete' => $actor->can('delete', $loanProduct),
@@ -39,6 +57,12 @@ class LoanProductController extends Controller
 
         return Inertia::render('admin/loan-products/index', [
             'loanProducts' => $loanProducts,
+            'currentState' => $isActive === null ? null : ($isActive ? 'active' : 'inactive'),
+            'counts' => [
+                'all' => (int) $counts->sum(),
+                'active' => $counts->get('active', 0),
+                'inactive' => $counts->get('inactive', 0),
+            ],
         ]);
     }
 

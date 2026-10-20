@@ -67,7 +67,7 @@ Do these once, then reuse everywhere.
 | E0.2  | `ui/table`        | Styled Table primitives with consistent header, row and cell spacing. | S      | ✅     |
 | E0.3  | `ui/alert-dialog` | Confirmation dialog for destructive actions.                          | S      | ✅     |
 | E0.4  | `ui/pagination`   | Shared page navigator with first/last and current page.               | S      | ✅     |
-| E0.5  | `PageHeader`      | Title, description, breadcrumbs slot and action slot.                 | S      | ⏳     |
+| E0.5  | `PageHeader`      | Title, description, breadcrumbs slot and action slot.                 | S      | ✅     |
 | E0.6  | `EmptyState`      | Icon, title, description and optional action.                         | S      | ✅     |
 | E0.7  | `SectionCard`     | `Card` wrapper with header, description and actions.                  | S      | ⏳     |
 | E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | ✅     |
@@ -94,12 +94,12 @@ Do these once, then reuse everywhere.
 | ID   | Item                 | Detail                                                                                                                                                              | Status |
 | ---- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | E1.1 | Borrower tabs        | All / Verified / Pending / Rejected with counts, using `FilterTabs`. Requires a `kyc_status` filter on the index query.                                             | ✅     |
-| E1.2 | Borrower search      | Search by name, email or phone; debounced, URL-backed.                                                                                                              | ⏳     |
+| E1.2 | Borrower search      | Search by name, email or phone; debounced, URL-backed.                                                                                                              | ✅     |
 | E1.3 | Borrower table       | `ui/table` + `EmptyState` + shared pagination.                                                                                                                      | ✅     |
 | E1.4 | Row actions          | `DropdownMenu` with View, Edit, Email statement, Delete.                                                                                                            | ⏳     |
 | E1.5 | Delete confirmation  | `ConfirmDelete` on borrowers, users, products and loans.                                                                                                            | ✅     |
 | E1.6 | Borrower detail page | `/admin/borrowers/{borrower}`: profile card, KYC status, notification preferences, active loans, payment history and activity. The biggest missing flow in the app. | ⏳     |
-| E1.7 | Product tabs         | Active / Inactive with usage counts (how many loans reference the product).                                                                                         | ⏳     |
+| E1.7 | Product tabs         | Active / Inactive with usage counts (how many loans reference the product).                                                                                         | ✅     |
 | E1.8 | Product cards        | Terms at a glance: rate, method, frequency, min/max amount and term.                                                                                                | ⏳     |
 | E1.9 | Form layout          | Create/edit forms split into `SectionCard`s with a sticky summary and inline validation.                                                                            | ⏳     |
 
@@ -114,7 +114,7 @@ without leaving the list; products show their status and usage.
 | ----- | ------------------- | --------------------------------------------------------------------------------------------------------------------- | ------ |
 | E2.1  | Status tabs         | Replace 8 filter buttons with `FilterTabs`; keep the overdue toggle.                                                  | ✅     |
 | E2.2  | Tab counts          | Show per-status counts in tab labels (single grouped query).                                                          | ✅     |
-| E2.3  | Loan search         | Search by borrower name or loan id; URL-backed.                                                                       | ⏳     |
+| E2.3  | Loan search         | Search by borrower name or loan id; URL-backed.                                                                       | ✅     |
 | E2.4  | Sortable columns    | Principal, applied date and arrears via query params and table header buttons.                                        | ⏳     |
 | E2.5  | Row actions         | `DropdownMenu`: View, Email statement, Delete — instead of two inline buttons.                                        | ⏳     |
 | E2.6  | Delete confirmation | `ConfirmDelete` before deleting a loan.                                                                               | ✅     |
@@ -253,3 +253,4 @@ file — not a wall of sections.
 | ---------- | ----------------------------------------------------------------------------------------------------------- |
 | 2026-10-20 | Added `ui/tabs`, `FilterTabs`, and moved the Loans status filter from 8 buttons to tabs (E0.1, E0.9, E2.1). |
 | 2026-10-20 | Shared list kit: `ui/table`, `ui/pagination`, `DataPagination`, `EmptyState`, `ui/alert-dialog`, `ConfirmDelete`; applied to borrowers, users, loan products and loans. Borrowers filter by KYC status with counts (E1.1); loans show per-status counts (E2.2) and keep the overdue toggle across tabs (E0.2, E0.3, E0.4, E0.6, E0.8, E1.1, E1.3, E1.5, E2.2, E2.6, E2.11). |
+| 2026-10-20 | Added `PageHeader` and URL-backed `SearchInput`; borrowers search name/email/phone (E1.2) and loans search borrower/loan id (E2.3), both debounced and preserved across tabs. Loan products gained Active/Inactive tabs with counts plus a loans-usage column (E1.7); list pages now share `PageHeader` (E0.5). |

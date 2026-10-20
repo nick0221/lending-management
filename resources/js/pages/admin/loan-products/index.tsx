@@ -3,7 +3,8 @@ import { Landmark, Pencil, Plus } from 'lucide-react';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
-import Heading from '@/components/heading';
+import { FilterTabs } from '@/components/filter-tabs';
+import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,33 +26,72 @@ import type { LoanProductListItem, Paginated } from '@/types';
 
 export default function LoanProductsIndex({
     loanProducts,
+    currentState,
+    counts,
 }: {
     loanProducts: Paginated<LoanProductListItem>;
+    currentState: 'active' | 'inactive' | null;
+    counts: Record<string, number>;
 }) {
     return (
         <>
             <Head title="Loan products" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        title="Loan products"
-                        description="Define the products, rates, and terms you offer."
-                    />
+                <PageHeader
+                    title="Loan products"
+                    description="Define the products, rates, and terms you offer."
+                    actions={
+                        <Button asChild>
+                            <Link href={createLoanProduct()}>
+                                <Plus /> Add product
+                            </Link>
+                        </Button>
+                    }
+                />
 
-                    <Button asChild>
-                        <Link href={createLoanProduct()}>
-                            <Plus /> Add product
-                        </Link>
-                    </Button>
-                </div>
+                <FilterTabs
+                    tabs={[
+                        {
+                            value: 'all',
+                            label: 'All',
+                            count: counts.all,
+                            href: loanProductsIndex(),
+                        },
+                        {
+                            value: 'active',
+                            label: 'Active',
+                            count: counts.active,
+                            href: loanProductsIndex({
+                                query: { state: 'active' },
+                            }),
+                        },
+                        {
+                            value: 'inactive',
+                            label: 'Inactive',
+                            count: counts.inactive,
+                            href: loanProductsIndex({
+                                query: { state: 'inactive' },
+                            }),
+                        },
+                    ]}
+                    value={currentState ?? 'all'}
+                    label="Filter loan products by status"
+                    className="min-w-0"
+                />
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {loanProducts.data.length === 0 ? (
                         <EmptyState
                             icon={Landmark}
                             title="No loan products found"
-                            description="Create a product to define the interest, fees and terms you offer."
+                            description={
+                                currentState === 'active'
+                                    ? 'No active loan products. Activate a product to offer it again.'
+                                    : currentState === 'inactive'
+                                      ? 'No inactive loan products. Every product is currently active.'
+                                      : 'Create a product to define the interest, fees and terms you offer.'
+                            }
                             action={
                                 <Button asChild size="sm">
                                     <Link href={createLoanProduct()}>
@@ -70,6 +110,7 @@ export default function LoanProductsIndex({
                                     <TableHead>Amount</TableHead>
                                     <TableHead>Term</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Loans</TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -114,6 +155,9 @@ export default function LoanProductsIndex({
                                                     ? 'Active'
                                                     : 'Inactive'}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground tabular-nums">
+                                            {loanProduct.loans_count}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">

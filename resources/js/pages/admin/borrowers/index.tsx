@@ -4,8 +4,9 @@ import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
-import Heading from '@/components/heading';
 import { KycBadge } from '@/components/kyc-badge';
+import { PageHeader } from '@/components/page-header';
+import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -34,51 +35,66 @@ export default function BorrowersIndex({
     kycStatuses,
     currentKycStatus,
     kycCounts,
+    search,
 }: {
     borrowers: Paginated<BorrowerListItem>;
     kycStatuses: KycStatusOption[];
     currentKycStatus: KycStatus | null;
     kycCounts: Record<string, number>;
+    search: string;
 }) {
+    const withFilters = (kycStatus?: KycStatus) =>
+        borrowersIndex({
+            query: {
+                ...(kycStatus ? { kyc_status: kycStatus } : {}),
+                ...(search ? { search } : {}),
+            },
+        });
+
     return (
         <>
             <Head title="Borrowers" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        title="Borrowers"
-                        description="Register and manage the people your organisation lends to."
+                <PageHeader
+                    title="Borrowers"
+                    description="Register and manage the people your organisation lends to."
+                    actions={
+                        <Button asChild>
+                            <Link href={createBorrower()}>
+                                <Plus /> Add borrower
+                            </Link>
+                        </Button>
+                    }
+                />
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <SearchInput
+                        value={search}
+                        placeholder="Search name, email or phone"
+                        label="Search borrowers"
                     />
 
-                    <Button asChild>
-                        <Link href={createBorrower()}>
-                            <Plus /> Add borrower
-                        </Link>
-                    </Button>
+                    <FilterTabs
+                        tabs={[
+                            {
+                                value: 'all',
+                                label: 'All',
+                                count: kycCounts.all,
+                                href: withFilters(),
+                            },
+                            ...kycStatuses.map((status) => ({
+                                value: status.value,
+                                label: status.label,
+                                count: kycCounts[status.value] ?? 0,
+                                href: withFilters(status.value),
+                            })),
+                        ]}
+                        value={currentKycStatus ?? 'all'}
+                        label="Filter borrowers by KYC status"
+                        className="min-w-0 flex-1 basis-full lg:basis-auto"
+                    />
                 </div>
-
-                <FilterTabs
-                    tabs={[
-                        {
-                            value: 'all',
-                            label: 'All',
-                            count: kycCounts.all,
-                            href: borrowersIndex(),
-                        },
-                        ...kycStatuses.map((status) => ({
-                            value: status.value,
-                            label: status.label,
-                            count: kycCounts[status.value] ?? 0,
-                            href: borrowersIndex({
-                                query: { kyc_status: status.value },
-                            }),
-                        })),
-                    ]}
-                    value={currentKycStatus ?? 'all'}
-                    label="Filter borrowers by KYC status"
-                    className="min-w-0"
-                />
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {borrowers.data.length === 0 ? (
@@ -86,9 +102,11 @@ export default function BorrowersIndex({
                             icon={Users}
                             title="No borrowers found"
                             description={
-                                currentKycStatus
-                                    ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
-                                    : 'Register the first borrower to start originating loans.'
+                                search
+                                    ? `No borrowers match "${search}". Try another term or clear the search.`
+                                    : currentKycStatus
+                                      ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
+                                      : 'Register the first borrower to start originating loans.'
                             }
                             action={
                                 <Button asChild size="sm">

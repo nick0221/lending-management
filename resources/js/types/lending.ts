@@ -64,6 +64,7 @@ export type LoanProduct = {
 };
 
 export type LoanProductListItem = LoanProduct & {
+    loans_count: number;
     can: {
         update: boolean;
         delete: boolean;
