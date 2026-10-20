@@ -1,7 +1,11 @@
 <?php
 
 use App\Enums\KycStatus;
+use App\Enums\LoanStatus;
+use App\Models\ActivityLog;
 use App\Models\Borrower;
+use App\Models\Loan;
+use App\Models\Payment;
 use App\Models\User;
 
 test('the borrower list exposes the abilities for every row', function () {
@@ -120,6 +124,95 @@ test('registering a borrower validates the required fields and a unique national
             'kyc_status' => 'not-a-status',
         ])
         ->assertSessionHasErrors(['name', 'phone', 'national_id', 'kyc_status']);
+});
+
+test('the borrower detail page shows their loans, payments and abilities', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->verified()->create([
+        'name' => 'Ada Lovelace',
+        'email' => 'ada@example.com',
+    ]);
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'borrower_id' => $borrower->id,
+        'principal' => 5000,
+    ]);
+    $payment = Payment::factory()->create([
+        'loan_id' => $loan->id,
+        'amount' => 500,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/borrowers/show')
+            ->where('borrower.name', 'Ada Lovelace')
+            ->where('borrower.email', 'ada@example.com')
+            ->where('borrower.kyc_status', KycStatus::Verified->value)
+            ->where('borrower.date_of_birth', $borrower->date_of_birth?->toDateString())
+            ->where('summary.loan_count', 1)
+            ->where('summary.open_loan_count', 1)
+            ->where('summary.loans.0.id', $loan->id)
+            ->where('summary.payments.0.id', $payment->id)
+            ->where('can.update', true)
+            ->where('can.delete', true)
+            ->where('can.viewActivity', false)
+        );
+});
+
+test('borrower activity is only exposed to super admins', function () {
+    $admin = User::factory()->admin()->create();
+    $superAdmin = User::factory()->superAdmin()->create();
+    $borrower = Borrower::factory()->create();
+
+    ActivityLog::create([
+        'user_id' => $superAdmin->id,
+        'event' => ActivityLog::EVENT_UPDATED,
+        'description' => 'Borrower contact details updated.',
+        'subject_type' => Borrower::class,
+        'subject_id' => $borrower->id,
+        'new_values' => ['phone' => '+1-555-0100'],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('can.viewActivity', false)
+            ->has('activity', 0)
+        );
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('can.viewActivity', true)
+            ->has('activity')
+            ->where('activity.0.description', 'Borrower contact details updated.')
+        );
+});
+
+test('the borrower detail page includes activity from their loans', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $borrower = Borrower::factory()->create();
+    $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
+
+    ActivityLog::create([
+        'user_id' => $superAdmin->id,
+        'event' => ActivityLog::EVENT_UPDATED,
+        'description' => 'Loan status updated.',
+        'subject_type' => Loan::class,
+        'subject_id' => $loan->id,
+        'new_values' => ['status' => LoanStatus::Approved->value],
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('activity')
+            ->where('activity.0.description', 'Loan status updated.')
+        );
 });
 
 test('admins can update a borrower', function () {

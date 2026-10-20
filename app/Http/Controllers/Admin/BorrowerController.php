@@ -6,11 +6,15 @@ use App\Enums\KycStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreBorrowerRequest;
 use App\Http\Requests\Admin\UpdateBorrowerRequest;
+use App\Models\ActivityLog;
 use App\Models\Borrower;
+use App\Models\Loan;
 use App\Models\User;
+use App\Services\ReportingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -52,6 +56,7 @@ class BorrowerController extends Controller
             ->through(fn (Borrower $borrower): array => [
                 ...$this->toPayload($borrower),
                 'can' => [
+                    'view' => $actor->can('view', $borrower),
                     'update' => $actor->can('update', $borrower),
                     'delete' => $actor->can('delete', $borrower),
                 ],
@@ -69,6 +74,58 @@ class BorrowerController extends Controller
                         $case->value => $counts->get($case->value, 0),
                     ])
                     ->all(),
+            ],
+        ]);
+    }
+
+    /**
+     * Display the given borrower with their loans and recent payments.
+     */
+    public function show(Request $request, Borrower $borrower, ReportingService $reportingService): Response
+    {
+        Gate::authorize('view', $borrower);
+
+        $actor = $request->user();
+        $borrower->load('user');
+
+        $activity = [];
+
+        if ($actor->can('viewAny', ActivityLog::class)) {
+            $loanIds = $borrower->loans()->pluck('id');
+
+            $activity = ActivityLog::query()
+                ->with('user:id,name')
+                ->where(function ($query) use ($borrower, $loanIds): void {
+                    $query
+                        ->where(fn ($query) => $query
+                            ->where('subject_type', Borrower::class)
+                            ->where('subject_id', $borrower->id))
+                        ->orWhere(fn ($query) => $query
+                            ->where('subject_type', Loan::class)
+                            ->whereIn('subject_id', $loanIds));
+                })
+                ->orderByDesc('id')
+                ->limit(10)
+                ->get()
+                ->map(fn (ActivityLog $log): array => [
+                    'id' => $log->id,
+                    'event' => $log->event,
+                    'event_label' => Str::headline($log->event),
+                    'description' => $log->description,
+                    'user_name' => $log->user?->name,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ])
+                ->all();
+        }
+
+        return Inertia::render('admin/borrowers/show', [
+            'borrower' => $this->detailPayload($borrower),
+            'summary' => $reportingService->borrowerSummary($borrower, 10),
+            'activity' => $activity,
+            'can' => [
+                'update' => $actor->can('update', $borrower),
+                'delete' => $actor->can('delete', $borrower),
+                'viewActivity' => $actor->can('viewAny', ActivityLog::class),
             ],
         ]);
     }
@@ -136,6 +193,23 @@ class BorrowerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Borrower deleted.')]);
 
         return to_route('admin.borrowers.index');
+    }
+
+    /**
+     * Add the linked account to the borrower payload.
+     *
+     * @return array<string, mixed>
+     */
+    private function detailPayload(Borrower $borrower): array
+    {
+        return [
+            ...$this->toPayload($borrower),
+            'user' => $borrower->user ? [
+                'id' => $borrower->user->id,
+                'name' => $borrower->user->name,
+                'email' => $borrower->user->email,
+            ] : null,
+        ];
     }
 
     /**

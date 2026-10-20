@@ -254,7 +254,7 @@ class ReportingService
      *
      * @return array<string, mixed>
      */
-    public function borrowerSummary(Borrower $borrower): array
+    public function borrowerSummary(Borrower $borrower, int $paymentLimit = 5): array
     {
         $loans = $borrower->loans()
             ->with(['loanProduct:id,name', 'installments.allocations', 'payments'])
@@ -304,7 +304,7 @@ class ReportingService
             'next_due' => $upcoming[0] ?? null,
             'upcoming' => array_slice($upcoming, 0, 5),
             'loans' => $rows->values()->all(),
-            'payments' => $this->recentPayments(5, $borrower->id)->all(),
+            'payments' => $this->recentPayments($paymentLimit, $borrower->id)->all(),
         ];
     }
 

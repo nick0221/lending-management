@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, Users } from 'lucide-react';
-import { ConfirmDelete } from '@/components/confirm-delete';
+import { Plus, Users } from 'lucide-react';
+import { BorrowerRowActions } from '@/components/admin/borrower-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
@@ -19,9 +19,8 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
-    destroy as destroyBorrower,
-    edit as editBorrower,
     index as borrowersIndex,
+    show as showBorrower,
 } from '@/routes/admin/borrowers';
 import type {
     BorrowerListItem,
@@ -134,7 +133,13 @@ export default function BorrowersIndex({
                                 {borrowers.data.map((borrower) => (
                                     <TableRow key={borrower.id}>
                                         <TableCell className="font-medium">
-                                            <div>{borrower.name}</div>
+                                            <Link
+                                                href={showBorrower(borrower.id)}
+                                                className="hover:underline"
+                                                prefetch
+                                            >
+                                                {borrower.name}
+                                            </Link>
                                             {borrower.email && (
                                                 <div className="text-xs text-muted-foreground">
                                                     {borrower.email}
@@ -153,35 +158,10 @@ export default function BorrowersIndex({
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center justify-end gap-2">
-                                                {borrower.can.update && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={editBorrower(
-                                                                borrower.id,
-                                                            )}
-                                                            prefetch
-                                                        >
-                                                            <Pencil />
-                                                            Edit
-                                                        </Link>
-                                                    </Button>
-                                                )}
-
-                                                {borrower.can.delete && (
-                                                    <ConfirmDelete
-                                                        form={destroyBorrower.form(
-                                                            borrower.id,
-                                                        )}
-                                                        title={`Delete ${borrower.name}?`}
-                                                        description="This permanently deletes the borrower and every loan, payment and schedule attached to them. This cannot be undone."
-                                                        testId="delete-borrower-button"
-                                                    />
-                                                )}
+                                            <div className="flex items-center justify-end">
+                                                <BorrowerRowActions
+                                                    borrower={borrower}
+                                                />
                                             </div>
                                         </TableCell>
                                     </TableRow>

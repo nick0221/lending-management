@@ -22,7 +22,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('users', UserController::class)->except('show');
-        Route::resource('borrowers', BorrowerController::class)->except('show');
+        Route::resource('borrowers', BorrowerController::class);
         Route::resource('loan-products', LoanProductController::class)->except('show');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');

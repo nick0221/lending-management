@@ -69,7 +69,7 @@ Do these once, then reuse everywhere.
 | E0.4  | `ui/pagination`   | Shared page navigator with first/last and current page.               | S      | ✅     |
 | E0.5  | `PageHeader`      | Title, description, breadcrumbs slot and action slot.                 | S      | ✅     |
 | E0.6  | `EmptyState`      | Icon, title, description and optional action.                         | S      | ✅     |
-| E0.7  | `SectionCard`     | `Card` wrapper with header, description and actions.                  | S      | ⏳     |
+| E0.7  | `SectionCard`     | `Card` wrapper with header, description and actions.                  | S      | ✅     |
 | E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | ✅     |
 | E0.9  | `FilterTabs`      | URL-driven tabs used by every list page.                              | S      | ✅     |
 | E0.10 | Status badges     | Keep `LoanStatusBadge`, `KycBadge`, `RoleBadge`; align colour tokens. | S      | ⏳     |
@@ -96,9 +96,9 @@ Do these once, then reuse everywhere.
 | E1.1 | Borrower tabs        | All / Verified / Pending / Rejected with counts, using `FilterTabs`. Requires a `kyc_status` filter on the index query.                                             | ✅     |
 | E1.2 | Borrower search      | Search by name, email or phone; debounced, URL-backed.                                                                                                              | ✅     |
 | E1.3 | Borrower table       | `ui/table` + `EmptyState` + shared pagination.                                                                                                                      | ✅     |
-| E1.4 | Row actions          | `DropdownMenu` with View, Edit, Email statement, Delete.                                                                                                            | ⏳     |
+| E1.4 | Row actions          | `DropdownMenu` with View, Edit, Email statement, Delete.                                                                                                            | ✅     |
 | E1.5 | Delete confirmation  | `ConfirmDelete` on borrowers, users, products and loans.                                                                                                            | ✅     |
-| E1.6 | Borrower detail page | `/admin/borrowers/{borrower}`: profile card, KYC status, notification preferences, active loans, payment history and activity. The biggest missing flow in the app. | ⏳     |
+| E1.6 | Borrower detail page | `/admin/borrowers/{borrower}`: profile card, KYC status, notification preferences, active loans, payment history and activity. The biggest missing flow in the app. | ✅     |
 | E1.7 | Product tabs         | Active / Inactive with usage counts (how many loans reference the product).                                                                                         | ✅     |
 | E1.8 | Product cards        | Terms at a glance: rate, method, frequency, min/max amount and term.                                                                                                | ⏳     |
 | E1.9 | Form layout          | Create/edit forms split into `SectionCard`s with a sticky summary and inline validation.                                                                            | ⏳     |
@@ -228,8 +228,8 @@ file — not a wall of sections.
 | Milestone              | Scope                              | Status  |
 | ---------------------- | ---------------------------------- | ------- |
 | M1 — Foundations       | E0.1, E0.9, E2.1                   | ✅      |
-| M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | 🔨 in progress |
-| M3 — Detail pages      | E1.6, E2.7–E2.10, E7.1–E7.3        | ⏳      |
+| M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | ✅      |
+| M3 — Detail pages      | E1.6, E2.7–E2.10, E7.1–E7.3        | 🔨 in progress |
 | M4 — Find anything     | E1.2, E2.3, F1, F2                 | ⏳      |
 | M5 — Operational depth | E5.5, E6.3, E8.1, E9.1–E9.4, F3–F5 | ⏳      |
 
@@ -255,3 +255,4 @@ file — not a wall of sections.
 | 2026-10-20 | Shared list kit: `ui/table`, `ui/pagination`, `DataPagination`, `EmptyState`, `ui/alert-dialog`, `ConfirmDelete`; applied to borrowers, users, loan products and loans. Borrowers filter by KYC status with counts (E1.1); loans show per-status counts (E2.2) and keep the overdue toggle across tabs (E0.2, E0.3, E0.4, E0.6, E0.8, E1.1, E1.3, E1.5, E2.2, E2.6, E2.11). |
 | 2026-10-20 | Added `PageHeader` and URL-backed `SearchInput`; borrowers search name/email/phone (E1.2) and loans search borrower/loan id (E2.3), both debounced and preserved across tabs. Loan products gained Active/Inactive tabs with counts plus a loans-usage column (E1.7); list pages now share `PageHeader` (E0.5). |
 | 2026-10-20 | Loan queue: sortable Principal/Arrears/Applied headers backed by query params (E2.4), and row actions moved into a `DropdownMenu` with View, Email statement and Delete behind the shared confirm dialog (E2.5). Sorting by arrears uses a correlated subquery that mirrors the list calculation. |
+| 2026-10-20 | Borrower file: `/admin/borrowers/{borrower}` with summary stats, profile, notification preferences, loans, payments and super-admin activity (E1.6). Added `SectionCard` for detail sections (E0.7); the register links names to the file and uses a View/Edit/Delete row menu (E1.4). Row statements stay on the loan file. M2 complete. |

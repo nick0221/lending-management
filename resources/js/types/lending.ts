@@ -38,9 +38,57 @@ export type Borrower = {
 
 export type BorrowerListItem = Borrower & {
     can: {
+        view: boolean;
         update: boolean;
         delete: boolean;
     };
+};
+
+export type BorrowerDetail = Borrower & {
+    user: {
+        id: number;
+        name: string;
+        email: string;
+    } | null;
+};
+
+export type BorrowerLoanSummary = {
+    id: number;
+    product: string | null;
+    principal: number;
+    status: LoanStatus;
+    status_label: string;
+    is_open: boolean;
+    disbursed_at: string | null;
+    paid: number;
+    outstanding: number;
+    outstanding_principal: number;
+    outstanding_interest: number;
+    outstanding_fee: number;
+    outstanding_penalty: number;
+    arrears: number;
+    days_past_due: number;
+};
+
+export type BorrowerPayment = {
+    id: number;
+    loan_id: number;
+    borrower: string | null;
+    amount: number;
+    method: PaymentMethod;
+    method_label: string;
+    reference: string | null;
+    payment_date: string;
+    recorded_by: string | null;
+};
+
+export type BorrowerActivity = {
+    id: number;
+    event: string;
+    event_label: string;
+    description: string;
+    user_name: string | null;
+    created_at: string | null;
 };
 
 export type LoanProduct = {
