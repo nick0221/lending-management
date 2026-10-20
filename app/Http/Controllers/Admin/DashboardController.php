@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ReportingService;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly ReportingService $reporting) {}
+
     /**
      * Show the administration overview.
      */
@@ -20,6 +23,11 @@ class DashboardController extends Controller
 
         return Inertia::render('admin/dashboard', [
             'stats' => $this->roleCounts(),
+            'summary' => $this->reporting->portfolioSummary(),
+            'collections' => $this->reporting->collections(),
+            'aging' => $this->reporting->agingBuckets(),
+            'risk' => $this->reporting->portfolioAtRisk(),
+            'recentPayments' => $this->reporting->recentPayments(5),
         ]);
     }
 

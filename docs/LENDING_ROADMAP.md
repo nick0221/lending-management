@@ -179,7 +179,7 @@ history preservation) plus policy coverage.
 
 ---
 
-## Phase 7 — Reporting & Dashboards ⏳
+## Phase 7 — Reporting & Dashboards ✅
 
 **Goal:** see the portfolio.
 
@@ -189,6 +189,27 @@ history preservation) plus policy coverage.
 - Role-aware dashboards (admin overview vs. borrower summary)
 
 **Acceptance:** numbers reconcile with raw data; exports match on-screen.
+
+**Delivered:** `ReportingService` is the single source for every figure:
+portfolio summary (loans by status, principal disbursed, outstanding
+principal/interest/fees/penalties, arrears, collected totals and interest
+collected), aging buckets (current / 1–30 / 31–60 / 61–90 / 90+), portfolio at
+risk (PAR, PAR30, PAR60, PAR90 as amount and share of outstanding), collections
+(due today, due within 7 days, overdue, with installment lists) and recent
+payments. Only schedules on disbursed/active/defaulted loans count as
+receivables, so a schedule generated for an approved-but-undisbursed loan is a
+plan rather than exposure — the loan report column therefore sums exactly to
+the summary's outstanding total. The admin dashboard now shows portfolio KPIs,
+collections, PAR, aging, recent payments and account counts; the borrower
+dashboard shows the linked borrower's outstanding, arrears, next due date,
+upcoming installments, loans and payments, with an empty state when no borrower
+profile is linked. A new `/admin/reports` page renders the aging table,
+collections and loan report with CSV exports (summary, loans, collections)
+built from the same service methods the page uses. PDF export is deferred
+(Decision 10). Covered by `ReportingTest` (reconciliation with raw records,
+aging, PAR, collection windows, undisbursed schedules, page payloads, CSV
+contents, borrower dashboard) plus the reports route in the
+`AdminAccessTest` role matrix.
 
 ---
 
@@ -234,3 +255,4 @@ Settled during Phase 1, except where noted.
 | 7 | Overpayment handling | Rejected — a payment may not exceed the outstanding balance (incl. accrued penalties); no advance-credit ledger |
 | 8 | Penalty model | Per product, a monthly percentage of the overdue amount plus a grace period; accrued by a daily command, one period per whole 30 days past due |
 | 9 | Restructuring | Re-amortises the outstanding principal onto a new term from the loan's own snapshotted terms; payment history is preserved and never rewritten |
+| 10 | Report export format | CSV first (summary, loans, collections); PDF is deferred until a rendering dependency (`barryvdh/laravel-dompdf` or `spatie/laravel-pdf`) is approved, and will reuse the same `ReportingService` figures |

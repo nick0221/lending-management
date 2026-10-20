@@ -241,3 +241,123 @@ export type LoanEvent = {
     user: string | null;
     created_at: string | null;
 };
+
+export type AgingBuckets = {
+    current: number;
+    days_1_30: number;
+    days_31_60: number;
+    days_61_90: number;
+    days_over_90: number;
+};
+
+export type PortfolioSummary = {
+    borrowers: number;
+    loans: number;
+    open_loans: number;
+    active_loans: number;
+    defaulted_loans: number;
+    closed_loans: number;
+    written_off_loans: number;
+    pipeline_loans: number;
+    disbursed: number;
+    outstanding: number;
+    outstanding_principal: number;
+    outstanding_interest: number;
+    outstanding_fee: number;
+    outstanding_penalty: number;
+    arrears: number;
+    collected: number;
+    collected_principal: number;
+    collected_interest: number;
+    collected_fee: number;
+    collected_penalty: number;
+};
+
+export type RiskBucket = {
+    days: number;
+    amount: number;
+    ratio: number;
+};
+
+export type PortfolioRisk = {
+    outstanding: number;
+    par: RiskBucket;
+    par30: RiskBucket;
+    par60: RiskBucket;
+    par90: RiskBucket;
+};
+
+export type CollectionInstallment = {
+    loan_id: number;
+    borrower: string | null;
+    sequence: number;
+    due_date: string;
+    amount: number;
+    days_past_due: number;
+};
+
+export type Collections = {
+    as_of: string;
+    due_today: number;
+    due_this_week: number;
+    overdue: number;
+    upcoming: CollectionInstallment[];
+    overdue_installments: CollectionInstallment[];
+};
+
+export type ReportLoanRow = {
+    id: number;
+    borrower: string | null;
+    product: string | null;
+    principal: number;
+    status: LoanStatus;
+    status_label: string;
+    is_open: boolean;
+    disbursed_at: string | null;
+    paid: number;
+    outstanding: number;
+    outstanding_principal: number;
+    outstanding_interest: number;
+    outstanding_fee: number;
+    outstanding_penalty: number;
+    arrears: number;
+    days_past_due: number;
+    aging: AgingBuckets;
+};
+
+export type RecentPayment = {
+    id: number;
+    loan_id: number;
+    borrower: string | null;
+    amount: number;
+    method: PaymentMethod;
+    method_label: string;
+    reference: string | null;
+    payment_date: string;
+    recorded_by: string | null;
+};
+
+export type UpcomingInstallment = {
+    loan_id: number;
+    sequence: number;
+    due_date: string;
+    amount: number;
+    days_past_due: number;
+};
+
+export type BorrowerSummary = {
+    borrower: {
+        id: number;
+        name: string;
+        kyc_status: KycStatus;
+        kyc_status_label: string;
+    };
+    loan_count: number;
+    open_loan_count: number;
+    outstanding: number;
+    arrears: number;
+    next_due: UpcomingInstallment | null;
+    upcoming: UpcomingInstallment[];
+    loans: ReportLoanRow[];
+    payments: RecentPayment[];
+};

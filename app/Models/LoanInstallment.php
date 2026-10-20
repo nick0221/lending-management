@@ -95,6 +95,30 @@ class LoanInstallment extends Model
     }
 
     /**
+     * The principal still owed on the installment.
+     */
+    public function outstandingPrincipal(): float
+    {
+        return max(round((float) $this->principal_due - $this->allocatedPrincipal(), 2), 0.0);
+    }
+
+    /**
+     * The interest still owed on the installment.
+     */
+    public function outstandingInterest(): float
+    {
+        return max(round((float) $this->interest_due - $this->allocatedInterest(), 2), 0.0);
+    }
+
+    /**
+     * The fee still owed on the installment.
+     */
+    public function outstandingFee(): float
+    {
+        return max(round((float) $this->fee_due - $this->allocatedFee(), 2), 0.0);
+    }
+
+    /**
      * The accrued penalty still owed on the installment.
      */
     public function outstandingPenalty(): float

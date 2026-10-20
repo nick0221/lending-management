@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
+    FileBarChart,
     FolderGit2,
     HandCoins,
     Landmark,
@@ -27,6 +28,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
+import { index as adminReports } from '@/routes/admin/reports';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
 
@@ -63,6 +65,11 @@ const adminNavItems: NavItem[] = [
         title: 'Loans',
         href: adminLoans(),
         icon: Wallet,
+    },
+    {
+        title: 'Reports',
+        href: adminReports(),
+        icon: FileBarChart,
     },
 ];
 
