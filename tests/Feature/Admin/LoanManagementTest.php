@@ -267,6 +267,29 @@ test('the loan detail exposes the approve and reject abilities', function () {
         );
 });
 
+test('the loan detail exposes the outstanding allocation breakdown', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5, 'due_date' => '2026-12-01'],
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2027-01-01'],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $loan))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('totals.allocation.penalty', '0.00')
+            ->where('totals.allocation.fee', '10.00')
+            ->where('totals.allocation.interest', '30.00')
+            ->where('totals.allocation.principal', '200.00')
+            ->where('installments.0.principal_outstanding', '100.00')
+            ->where('installments.0.interest_outstanding', '20.00')
+            ->where('installments.0.fee_outstanding', '5.00')
+            ->where('installments.0.penalty_outstanding', '0.00')
+        );
+});
+
 test('admins can approve a pending loan', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->pending()->create();

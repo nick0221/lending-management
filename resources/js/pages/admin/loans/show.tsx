@@ -245,6 +245,8 @@ export default function ShowLoan({
                             <LoanActions
                                 loan={loan}
                                 outstanding={totals.outstanding}
+                                breakdown={totals.allocation}
+                                installments={installments}
                                 can={can}
                                 disbursementMethods={disbursementMethods}
                                 paymentMethods={paymentMethods}

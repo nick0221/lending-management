@@ -143,9 +143,9 @@ file — not a wall of sections.
 
 | ID   | Item                 | Detail                                                                                                       | Status |
 | ---- | -------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
-| E4.1 | Disbursement dialog  | Confirm amount, method, reference and date in a `Dialog`; default to approved principal.                     | ⏳     |
+| E4.1 | Disbursement dialog  | Confirm amount, method, reference and date in a `Dialog`; default to approved principal.                     | ✅     |
 | E4.2 | Schedule impact      | Warn when the disbursed amount or date differs from the approved terms and the schedule will be regenerated. | ⏳     |
-| E4.3 | Disbursement history | Move into the detail page's Disbursements tab with recorded-by and reference.                                | ⏳     |
+| E4.3 | Disbursement history | Move into the detail page's Disbursements tab with recorded-by and reference.                                | ✅     |
 
 ---
 
@@ -153,8 +153,8 @@ file — not a wall of sections.
 
 | ID   | Item               | Detail                                                                                      | Status |
 | ---- | ------------------ | ------------------------------------------------------------------------------------------- | ------ |
-| E5.1 | Payment dialog     | Outstanding summary above the form; quick-fill chips for next installment and full balance. | ⏳     |
-| E5.2 | Allocation preview | Show how the amount will be applied (penalty → fee → interest → principal) before saving.   | ⏳     |
+| E5.1 | Payment dialog     | Outstanding summary above the form; quick-fill chips for next installment and full balance. | ✅     |
+| E5.2 | Allocation preview | Show how the amount will be applied (penalty → fee → interest → principal) before saving.   | ✅     |
 | E5.3 | Receipt            | View / print / re-send the receipt for a payment.                                           | ⏳     |
 | E5.4 | Payment filters    | Filter the Payments tab by method and date.                                                 | ⏳     |
 | E5.5 | Reversal           | Reverse a payment with reason, audit event and schedule recalculation. Functional change.   | ⏳     |
@@ -258,3 +258,4 @@ file — not a wall of sections.
 | 2026-10-20 | Borrower file: `/admin/borrowers/{borrower}` with summary stats, profile, notification preferences, loans, payments and super-admin activity (E1.6). Added `SectionCard` for detail sections (E0.7); the register links names to the file and uses a View/Edit/Delete row menu (E1.4). Row statements stay on the loan file. M2 complete. |
 | 2026-10-20 | Loan file redesigned around URL-backed tabs (Overview, Schedule, Payments, Payouts, Activity) with a sticky summary of status, principal, outstanding, arrears and next due (E2.7, E2.8). Actions are split into primary decisions and a More menu for restructure, statement, default, write-off and delete (E2.9); the lifecycle is now a vertical timeline (E2.10). |
 | 2026-10-20 | Reports split into URL-backed Portfolio, Aging, Collections and Arrears tabs, with a new arrears view sorted by exposure and consolidated loan tables (E7.1). The three CSV buttons became one Export menu (E7.3). E7.2 stays gated on the date-range dependency. |
+| 2026-10-20 | The payment dialog now opens with the outstanding balance split by penalty, fee, interest and principal, offers next-installment and full-balance chips, and previews the allocation before saving (E5.1, E5.2). The preview walks installments oldest-first to mirror `RepaymentService`. The detail page's tabs also completed the disbursement history move (E4.3) and the existing disbursement dialog satisfied E4.1. |

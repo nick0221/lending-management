@@ -234,6 +234,10 @@ export type LoanInstallment = {
     penalty_accrued: string;
     paid: string;
     outstanding: string;
+    principal_outstanding: string;
+    interest_outstanding: string;
+    fee_outstanding: string;
+    penalty_outstanding: string;
     overdue: boolean;
     days_past_due: number;
 };
@@ -276,12 +280,20 @@ export type PaymentAging = {
     days_over_90: string;
 };
 
+export type PaymentBreakdown = {
+    penalty: string;
+    fee: string;
+    interest: string;
+    principal: string;
+};
+
 export type PaymentTotals = {
     payable: string;
     paid: string;
     outstanding: string;
     arrears: string;
     penalty: string;
+    allocation: PaymentBreakdown;
     aging: PaymentAging;
 };
 

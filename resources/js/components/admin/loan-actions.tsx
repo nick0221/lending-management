@@ -34,6 +34,8 @@ import type {
     DisbursementMethodOption,
     Loan,
     LoanAbilities,
+    LoanInstallment,
+    PaymentBreakdown,
     PaymentMethodOption,
 } from '@/types';
 
@@ -44,12 +46,16 @@ import type {
 export function LoanActions({
     loan,
     outstanding,
+    breakdown,
+    installments,
     can,
     disbursementMethods,
     paymentMethods,
 }: {
     loan: Loan;
     outstanding: string;
+    breakdown: PaymentBreakdown;
+    installments: LoanInstallment[];
     can: LoanAbilities;
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
@@ -114,6 +120,8 @@ export function LoanActions({
                         loan={loan}
                         methods={paymentMethods}
                         outstanding={outstanding}
+                        breakdown={breakdown}
+                        installments={installments}
                     />
                 )}
 

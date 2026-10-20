@@ -410,6 +410,10 @@ class LoanController extends Controller
                     'penalty_accrued' => $installment->penalty_accrued,
                     'paid' => number_format($paid, 2, '.', ''),
                     'outstanding' => number_format($installment->outstandingTotal(), 2, '.', ''),
+                    'principal_outstanding' => number_format($installment->outstandingPrincipal(), 2, '.', ''),
+                    'interest_outstanding' => number_format($installment->outstandingInterest(), 2, '.', ''),
+                    'fee_outstanding' => number_format($installment->outstandingFee(), 2, '.', ''),
+                    'penalty_outstanding' => number_format($installment->outstandingPenalty(), 2, '.', ''),
                     'overdue' => $installment->isOverdue(),
                     'days_past_due' => $installment->daysPastDue(),
                 ];
@@ -496,6 +500,9 @@ class LoanController extends Controller
         $outstanding = 0.0;
         $arrears = 0.0;
         $penalty = 0.0;
+        $outstandingPrincipal = 0.0;
+        $outstandingInterest = 0.0;
+        $outstandingFee = 0.0;
 
         $aging = [
             'current' => 0.0,
@@ -513,6 +520,9 @@ class LoanController extends Controller
             $payable += $installment->dueAmount();
             $outstanding += $installmentOutstanding;
             $penalty += $outstandingPenalty;
+            $outstandingPrincipal += $installment->outstandingPrincipal();
+            $outstandingInterest += $installment->outstandingInterest();
+            $outstandingFee += $installment->outstandingFee();
 
             if ($installment->isOverdue()) {
                 $arrears += $installmentOutstanding;
@@ -537,6 +547,12 @@ class LoanController extends Controller
             'outstanding' => number_format(round($outstanding, 2), 2, '.', ''),
             'arrears' => number_format(round($arrears, 2), 2, '.', ''),
             'penalty' => number_format(round($penalty, 2), 2, '.', ''),
+            'allocation' => [
+                'penalty' => number_format(round($penalty, 2), 2, '.', ''),
+                'fee' => number_format(round($outstandingFee, 2), 2, '.', ''),
+                'interest' => number_format(round($outstandingInterest, 2), 2, '.', ''),
+                'principal' => number_format(round($outstandingPrincipal, 2), 2, '.', ''),
+            ],
             'aging' => array_map(
                 fn (float $amount): string => number_format(round($amount, 2), 2, '.', ''),
                 $aging,
