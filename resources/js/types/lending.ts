@@ -46,6 +46,19 @@ export type BorrowerListItem = Borrower & {
     };
 };
 
+export type BorrowerImportError = {
+    line: number;
+    message: string;
+};
+
+export type BorrowerImportSummary = {
+    imported: number;
+    skipped: number;
+    total_rows: number;
+    errors: BorrowerImportError[];
+    error_count: number;
+};
+
 export type BorrowerDetail = Borrower & {
     user: {
         id: number;

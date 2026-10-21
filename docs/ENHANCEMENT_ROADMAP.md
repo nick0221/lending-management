@@ -231,7 +231,7 @@ file — not a wall of sections.
 | M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | ✅      |
 | M3 — Detail pages      | E1.6, E2.7–E2.10, E7.1–E7.3        | 🔨 in progress |
 | M4 — Find anything     | E1.2, E2.3, F1, F2                 | ⏳      |
-| M5 — Operational depth | E5.5, E6.3, E8.1, E9.1–E9.4, F3–F5 | ⏳      |
+| M5 — Operational depth | E5.5, E6.3, E8.1, E9.1–E9.4, F3–F5 | ✅      |
 
 ---
 
@@ -275,3 +275,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added payment reversal (E5.5). A payment can be reversed with a required reason; its allocations are released, the outstanding schedule is restored, a closed loan reopens, and a payment_reversed audit event is recorded. Reversed payments stay in the history with a badge and reason, are excluded from paid and collected totals, and their receipts are marked invalid and cannot be emailed. |
 | 2026-10-21 | Added a loan calculator (F3). Admins can choose an active product, enter a principal and term, and see the full indicative schedule and whole-term totals without creating a loan. The quote is URL-backed, validates the product amount and term limits, and is linked from the loan queue. |
 | 2026-10-21 | Added a super-admin settings page backed by a single settings row (E9.3). Organisation name, currency symbol, new-product penalty/grace defaults and the money, report and reminder rate limits are editable without touching .env; values are cached, shared with the UI, and used by receipts, reports, system status and the rate limiters. |
+| 2026-10-21 | Added a borrower CSV importer (F5). Admins can download a template, upload a CSV and review imported, skipped and failed rows with line-level messages. Rows use the same validation as the create form, duplicate national IDs are skipped, valid rows are created in one transaction, and the import is create-only. |

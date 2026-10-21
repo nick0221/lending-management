@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Upload, Users } from 'lucide-react';
 import { BorrowerRowActions } from '@/components/admin/borrower-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -22,6 +22,7 @@ import {
     index as borrowersIndex,
     show as showBorrower,
 } from '@/routes/admin/borrowers';
+import { create as importBorrowers } from '@/routes/admin/borrowers/imports';
 import type {
     BorrowerListItem,
     KycStatus,
@@ -59,11 +60,19 @@ export default function BorrowersIndex({
                     title="Borrowers"
                     description="Register and manage the people your organisation lends to."
                     actions={
-                        <Button asChild>
-                            <Link href={createBorrower()}>
-                                <Plus /> Add borrower
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button variant="outline" asChild>
+                                <Link href={importBorrowers()}>
+                                    <Upload /> Import CSV
+                                </Link>
+                            </Button>
+
+                            <Button asChild>
+                                <Link href={createBorrower()}>
+                                    <Plus /> Add borrower
+                                </Link>
+                            </Button>
+                        </div>
                     }
                 />
 
@@ -105,14 +114,22 @@ export default function BorrowersIndex({
                                     ? `No borrowers match "${search}". Try another term or clear the search.`
                                     : currentKycStatus
                                       ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
-                                      : 'Register the first borrower to start originating loans.'
+                                      : 'Register the first borrower or import your existing book to start originating loans.'
                             }
                             action={
-                                <Button asChild size="sm">
-                                    <Link href={createBorrower()}>
-                                        <Plus /> Add borrower
-                                    </Link>
-                                </Button>
+                                <div className="flex flex-wrap items-center justify-center gap-2">
+                                    <Button asChild size="sm">
+                                        <Link href={createBorrower()}>
+                                            <Plus /> Add borrower
+                                        </Link>
+                                    </Button>
+
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link href={importBorrowers()}>
+                                            <Upload /> Import CSV
+                                        </Link>
+                                    </Button>
+                                </div>
                             }
                         />
                     ) : (

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\BorrowerController;
+use App\Http\Controllers\Admin\BorrowerImportController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('users', UserController::class)->except('show');
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');
+        Route::post('borrowers/import', [BorrowerImportController::class, 'store'])->name('borrowers.imports.store');
+        Route::get('borrowers/import/template', [BorrowerImportController::class, 'template'])->name('borrowers.imports.template');
         Route::resource('borrowers', BorrowerController::class);
         Route::resource('loan-products', LoanProductController::class)->except('show');
         Route::post('loans/remind', [LoanController::class, 'sendReminders'])

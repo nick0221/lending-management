@@ -25,6 +25,16 @@ class StoreBorrowerRequest extends FormRequest
      */
     public function rules(): array
     {
+        return self::baseRules();
+    }
+
+    /**
+     * The rules shared by the create form and the CSV importer.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public static function baseRules(): array
+    {
         return [
             'name' => ['required', 'string', 'max:255'],
             'national_id' => ['nullable', 'string', 'max:64', Rule::unique(Borrower::class)],
