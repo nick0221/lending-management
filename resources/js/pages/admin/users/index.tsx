@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, Users } from 'lucide-react';
+import { Pencil, Plus, ShieldCheck, Users } from 'lucide-react';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -15,6 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as rolesIndex } from '@/routes/admin/roles';
 import {
     create as createUser,
     destroy as destroyUser,
@@ -37,12 +38,21 @@ export default function UsersIndex({
                     title="Users"
                     description="Manage accounts and their access levels."
                     actions={
-                        <Button asChild>
-                            <Link href={createUser()} prefetch>
-                                <Plus />
-                                New user
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" asChild>
+                                <Link href={rolesIndex()} prefetch>
+                                    <ShieldCheck />
+                                    Role matrix
+                                </Link>
+                            </Button>
+
+                            <Button asChild>
+                                <Link href={createUser()} prefetch>
+                                    <Plus />
+                                    New user
+                                </Link>
+                            </Button>
+                        </div>
                     }
                 />
 

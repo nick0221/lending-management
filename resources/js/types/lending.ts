@@ -1,3 +1,5 @@
+import type { Role } from './auth';
+
 export type InterestMethod = 'flat' | 'declining_balance';
 
 export type RepaymentFrequency = 'monthly' | 'weekly' | 'biweekly';
@@ -345,6 +347,17 @@ export type StatementPreview = {
     subject: string | null;
     html: string | null;
     message?: string;
+};
+
+export type RoleMatrixAbility = {
+    label: string;
+    description: string;
+    roles: Record<Role, boolean>;
+};
+
+export type RoleMatrixGroup = {
+    title: string;
+    abilities: RoleMatrixAbility[];
 };
 
 export type LoanEvent = {

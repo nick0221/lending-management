@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController as BorrowerDashboardController;
@@ -23,6 +24,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::resource('users', UserController::class)->except('show');
+        Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
         Route::resource('borrowers', BorrowerController::class);
         Route::resource('loan-products', LoanProductController::class)->except('show');
         Route::post('loans/remind', [LoanController::class, 'sendReminders'])

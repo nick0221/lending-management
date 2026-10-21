@@ -203,7 +203,7 @@ file — not a wall of sections.
 | E9.2 | Diff sheet    | Open an audit row in a `Sheet` showing before/after values.                                        | ✅     |
 | E9.3 | Settings page | Organisation name, currency symbol, default penalty/grace and rate limits — currently `.env` only. | ⏳     |
 | E9.4 | System status | Cards for queue, scheduler, mail and storage health.                                               | ✅     |
-| E9.5 | Role matrix   | Read-only table of what each role can do, sourced from the policies.                               | ⏳     |
+| E9.5 | Role matrix   | Read-only table of what each role can do, sourced from the policies.                               | ✅     |
 
 ---
 
@@ -271,3 +271,4 @@ file — not a wall of sections.
 | 2026-10-21 | Rebuilt the borrower, user and loan product create/edit forms around section cards with a sticky live summary and the primary action (E1.9). Each summary reflects the entered name, contact, role or product terms, and the forms keep inline validation and a cancel route back to the list. The shared `SummaryRow` was extracted from the loan form so every form uses the same label/value rhythm. |
 | 2026-10-21 | Gave the loan, KYC and role badges a shared semantic palette: blue for approved and admin, emerald for active and verified, amber for pending, red for rejected and defaulted, violet for super admin, and muted grey for closed, written off and regular users (E0.10). The badges all use the outline variant with dark-mode-aware tinted backgrounds. |
 | 2026-10-21 | Email statement now opens a preview dialog instead of sending immediately (E8.4). A new JSON endpoint renders the queued markdown mail with the same schedule data as the real send, the dialog shows the recipient, subject and an isolated iframe of the email, and the send action stays disabled when the borrower has no address or has opted out. The preview is available from both the loan file and the loan queue. |
+| 2026-10-21 | Added a read-only role matrix that asks the policies for every cell instead of duplicating a hand-written table (E9.5). The page groups borrower, product, loan, user and audit abilities, compares super admin, admin and user side by side, and is linked from the user register. Unsaved policy targets carry stable keys so the self-account checks stay accurate. |
