@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\LoanInstallment;
+use App\Notifications\Concerns\TracksNotificationLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class LoanDueSoon extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, TracksNotificationLog;
 
     public function __construct(public LoanInstallment $installment) {}
 

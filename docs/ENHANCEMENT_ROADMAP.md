@@ -189,7 +189,7 @@ file — not a wall of sections.
 | ID   | Item           | Detail                                                                       | Status |
 | ---- | -------------- | ---------------------------------------------------------------------------- | ------ |
 | E8.1 | Delivery log   | Notifications tab on the loan / borrower page backed by `notification_logs`. | ✅     |
-| E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ⏳     |
+| E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ✅     |
 | E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | 🔒     |
 | E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ✅     |
 
@@ -277,3 +277,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added a super-admin settings page backed by a single settings row (E9.3). Organisation name, currency symbol, new-product penalty/grace defaults and the money, report and reminder rate limits are editable without touching .env; values are cached, shared with the UI, and used by receipts, reports, system status and the rate limiters. |
 | 2026-10-21 | Added a borrower CSV importer (F5). Admins can download a template, upload a CSV and review imported, skipped and failed rows with line-level messages. Rows use the same validation as the create form, duplicate national IDs are skipped, valid rows are created in one transaction, and the import is create-only. |
 | 2026-10-21 | Added bulk loan actions (F6). Pending loans can be selected in the loan queue and approved together in one transaction, while the same selection surface sends overdue reminders. Each action applies only to the selected loans it supports, and the confirmation dialogs report the affected subset. |
+| 2026-10-21 | Added notification delivery tracking and resend (E8.2). Logs now distinguish queued, sent, failed and skipped mail, queue events record the sent time and failure reason, and staff can re-queue a notification from the loan file's Notifications tab after its source and the borrower's preferences are checked again. |

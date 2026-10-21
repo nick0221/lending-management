@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Payment;
+use App\Notifications\Concerns\TracksNotificationLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class PaymentReceived extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, TracksNotificationLog;
 
     public function __construct(public Payment $payment, public float $remainingOutstanding) {}
 

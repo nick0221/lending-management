@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Loan;
 use App\Models\LoanInstallment;
+use App\Notifications\Concerns\TracksNotificationLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -12,7 +13,7 @@ use Illuminate\Support\Collection;
 
 class LoanOverdue extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, TracksNotificationLog;
 
     /**
      * @param  Collection<int, LoanInstallment>  $installments

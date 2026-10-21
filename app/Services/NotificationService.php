@@ -12,7 +12,9 @@ use App\Notifications\LoanOverdue;
 use App\Notifications\LoanStatement;
 use App\Notifications\PaymentReceived;
 use Carbon\CarbonInterface;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Sends the borrower emails and records each one so scheduled commands stay
@@ -57,13 +59,20 @@ class NotificationService
 
             $key = sprintf('installment:%d:due_soon:%s', $installment->id, $dueOn->toDateString());
 
-            if (! NotificationLog::reserve($key, NotificationLog::TYPE_DUE_SOON, $borrower, $installment->loan)) {
+            $log = NotificationLog::reserve($key, NotificationLog::TYPE_DUE_SOON, $borrower, $installment->loan);
+
+            if ($log === null) {
                 continue;
             }
 
-            $borrower->notify(new LoanDueSoon($installment));
+            try {
+                $borrower->notify((new LoanDueSoon($installment))->forLog($log));
 
-            $sent++;
+                $sent++;
+            } catch (Throwable $exception) {
+                $log->markFailed($exception->getMessage());
+                report($exception);
+            }
         }
 
         return $sent;
@@ -124,13 +133,22 @@ class NotificationService
 
         $key = sprintf('loan:%d:overdue:%s', $loan->id, $asOf->toDateString());
 
-        if (! NotificationLog::reserve($key, NotificationLog::TYPE_OVERDUE, $borrower, $loan)) {
+        $log = NotificationLog::reserve($key, NotificationLog::TYPE_OVERDUE, $borrower, $loan);
+
+        if ($log === null) {
             return false;
         }
 
-        $borrower->notify(new LoanOverdue($loan, $overdue));
+        try {
+            $borrower->notify((new LoanOverdue($loan, $overdue))->forLog($log));
 
-        return true;
+            return true;
+        } catch (Throwable $exception) {
+            $log->markFailed($exception->getMessage());
+            report($exception);
+
+            return false;
+        }
     }
 
     /**
@@ -152,13 +170,22 @@ class NotificationService
             ? sprintf('payment:%d:receipt:%s', $payment->id, Str::uuid())
             : sprintf('payment:%d:receipt', $payment->id);
 
-        if (! NotificationLog::reserve($key, NotificationLog::TYPE_RECEIPT, $borrower, $payment->loan)) {
+        $log = NotificationLog::reserve($key, NotificationLog::TYPE_RECEIPT, $borrower, $payment->loan);
+
+        if ($log === null) {
             return false;
         }
 
-        $borrower->notify(new PaymentReceived($payment, round(max($remainingOutstanding, 0.0), 2)));
+        try {
+            $borrower->notify((new PaymentReceived($payment, round(max($remainingOutstanding, 0.0), 2)))->forLog($log));
 
-        return true;
+            return true;
+        } catch (Throwable $exception) {
+            $log->markFailed($exception->getMessage());
+            report($exception);
+
+            return false;
+        }
     }
 
     /**
@@ -176,11 +203,185 @@ class NotificationService
 
         $key = sprintf('loan:%d:statement:%s', $loan->id, Str::uuid());
 
-        NotificationLog::reserve($key, NotificationLog::TYPE_STATEMENT, $borrower, $loan);
+        $log = NotificationLog::reserve($key, NotificationLog::TYPE_STATEMENT, $borrower, $loan);
 
-        $borrower->notify(new LoanStatement($loan));
+        if ($log === null) {
+            return false;
+        }
 
-        return true;
+        try {
+            $borrower->notify((new LoanStatement($loan))->forLog($log));
+
+            return true;
+        } catch (Throwable $exception) {
+            $log->markFailed($exception->getMessage());
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * Re-queue a notification from the delivery log using its original source.
+     */
+    public function resend(NotificationLog $log): bool
+    {
+        $log->loadMissing(['borrower', 'loan']);
+
+        $borrower = $log->borrower;
+
+        if ($borrower === null || $log->loan === null) {
+            $log->markFailed(__('The notification source is no longer available.'));
+
+            return false;
+        }
+
+        if (! $borrower->wantsEmail($log->type)) {
+            $log->markSkipped(__('The borrower has disabled this email type.'));
+
+            return false;
+        }
+
+        $notification = $this->notificationFor($log);
+
+        if ($notification === null) {
+            if ($log->status !== NotificationLog::STATUS_SKIPPED) {
+                $log->markFailed(__('The notification source is no longer available.'));
+            }
+
+            return false;
+        }
+
+        $log->markQueued();
+
+        try {
+            $borrower->notify($notification->forLog($log));
+
+            return true;
+        } catch (Throwable $exception) {
+            $log->markFailed($exception->getMessage());
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * Rebuild the original notification from the log's type and source key.
+     */
+    private function notificationFor(NotificationLog $log): ?Notification
+    {
+        return match ($log->type) {
+            NotificationLog::TYPE_DUE_SOON => $this->dueSoonNotification($log),
+            NotificationLog::TYPE_OVERDUE => $this->overdueNotification($log),
+            NotificationLog::TYPE_RECEIPT => $this->receiptNotification($log),
+            NotificationLog::TYPE_STATEMENT => $this->statementNotification($log),
+            default => null,
+        };
+    }
+
+    /**
+     * Rebuild a due-soon reminder when the installment is still outstanding.
+     */
+    private function dueSoonNotification(NotificationLog $log): ?Notification
+    {
+        $installment = LoanInstallment::query()
+            ->with(['loan.borrower', 'allocations'])
+            ->find($this->subjectId($log));
+
+        if ($installment?->loan === null) {
+            return null;
+        }
+
+        if ($installment->outstandingTotal() <= 0) {
+            $log->markSkipped(__('The installment has already been paid.'));
+
+            return null;
+        }
+
+        return new LoanDueSoon($installment);
+    }
+
+    /**
+     * Rebuild an overdue notice when the loan still has overdue installments.
+     */
+    private function overdueNotification(NotificationLog $log): ?Notification
+    {
+        $loan = $log->loan;
+
+        if ($loan === null) {
+            return null;
+        }
+
+        $loan->loadMissing(['borrower', 'installments.allocations']);
+
+        $overdue = $loan->installments
+            ->filter(fn (LoanInstallment $installment): bool => $installment->isOverdue())
+            ->sortBy('sequence')
+            ->values();
+
+        if ($overdue->isEmpty()) {
+            $log->markSkipped(__('The loan no longer has overdue installments.'));
+
+            return null;
+        }
+
+        return new LoanOverdue($loan, $overdue);
+    }
+
+    /**
+     * Rebuild a receipt with the loan's current outstanding balance.
+     */
+    private function receiptNotification(NotificationLog $log): ?Notification
+    {
+        $payment = Payment::query()
+            ->with(['loan.borrower', 'loan.installments.allocations'])
+            ->find($this->subjectId($log));
+
+        if ($payment?->loan === null) {
+            return null;
+        }
+
+        if ($payment->reversed_at !== null) {
+            $log->markSkipped(__('The payment was reversed.'));
+
+            return null;
+        }
+
+        $remaining = $payment->loan->installments->sum(
+            fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
+        );
+
+        return new PaymentReceived($payment, round(max($remaining, 0.0), 2));
+    }
+
+    /**
+     * Rebuild a statement for the loan.
+     */
+    private function statementNotification(NotificationLog $log): ?Notification
+    {
+        $loan = $log->loan;
+
+        if ($loan === null) {
+            return null;
+        }
+
+        $loan->loadMissing(['borrower', 'loanProduct', 'installments.allocations']);
+
+        return new LoanStatement($loan);
+    }
+
+    /**
+     * Read the installment or payment id from a key such as
+     * `installment:12:due_soon:2026-10-21` or `payment:8:receipt`.
+     */
+    private function subjectId(NotificationLog $log): ?int
+    {
+        $parts = explode(':', $log->key);
+
+        return isset($parts[1]) && ctype_digit($parts[1])
+            ? (int) $parts[1]
+            : null;
     }
 
     /**

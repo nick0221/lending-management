@@ -394,12 +394,18 @@ export type LoanEvent = {
     created_at: string | null;
 };
 
+export type NotificationStatus = 'queued' | 'sent' | 'failed' | 'skipped';
+
 export type NotificationLogEntry = {
     id: number;
     type: string;
     type_label: string;
     channel: string;
-    sent_at: string;
+    status: NotificationStatus;
+    status_label: string;
+    error: string | null;
+    sent_at: string | null;
+    can_resend: boolean;
 };
 
 export type AgingBuckets = {

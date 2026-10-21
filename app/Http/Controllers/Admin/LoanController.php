@@ -262,7 +262,7 @@ class LoanController extends Controller
             ],
             'totals' => $this->paymentTotals($loan),
             'events' => $this->eventPayload($loan),
-            'notifications' => $this->notificationPayload($loan),
+            'notifications' => $this->notificationPayload($loan, $actor),
             'disbursementMethods' => $this->disbursementMethodOptions(),
             'paymentMethods' => $this->paymentMethodOptions(),
             'currentTab' => $currentTab,
@@ -624,6 +624,30 @@ class LoanController extends Controller
     }
 
     /**
+     * Re-queue an email from the loan's notification log.
+     */
+    public function resendNotification(
+        Loan $loan,
+        NotificationLog $notificationLog,
+        NotificationService $notificationService,
+    ): RedirectResponse {
+        Gate::authorize('view', $loan);
+
+        abort_unless((int) $notificationLog->loan_id === (int) $loan->id, 404);
+
+        $resent = $notificationService->resend($notificationLog);
+
+        Inertia::flash('toast', [
+            'type' => $resent ? 'success' : 'warning',
+            'message' => $resent
+                ? __('Notification queued again.')
+                : __('The notification could not be resent. Check its delivery status for details.'),
+        ]);
+
+        return back();
+    }
+
+    /**
      * Remove the given loan.
      */
     public function destroy(Loan $loan): RedirectResponse
@@ -929,16 +953,20 @@ class LoanController extends Controller
      *
      * @return array<int, array<string, mixed>>
      */
-    private function notificationPayload(Loan $loan): array
+    private function notificationPayload(Loan $loan, User $actor): array
     {
         return $loan->notificationLogs
-            ->sortByDesc('sent_at')
+            ->sortByDesc(fn (NotificationLog $log) => $log->sent_at ?? $log->created_at)
             ->map(fn (NotificationLog $log): array => [
                 'id' => $log->id,
                 'type' => $log->type,
                 'type_label' => NotificationLog::label($log->type),
                 'channel' => $log->channel,
-                'sent_at' => $log->sent_at->toIso8601String(),
+                'status' => $log->status,
+                'status_label' => NotificationLog::statusLabel($log->status),
+                'error' => $log->error,
+                'sent_at' => $log->sent_at?->toIso8601String(),
+                'can_resend' => $actor->can('view', $loan) && filled($loan->borrower->email),
             ])
             ->values()
             ->all();

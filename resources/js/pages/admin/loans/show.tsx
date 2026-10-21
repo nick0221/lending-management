@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, MoreHorizontal, ReceiptText, Undo2, X } from 'lucide-react';
+import {
+    ArrowLeft,
+    MoreHorizontal,
+    ReceiptText,
+    Send,
+    Undo2,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
@@ -46,6 +53,7 @@ import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
+import { resend as resendLoanNotification } from '@/routes/admin/loans/notifications';
 import type {
     Disbursement,
     DisbursementMethodOption,
@@ -54,6 +62,7 @@ import type {
     LoanEvent,
     LoanInstallment,
     NotificationLogEntry,
+    NotificationStatus,
     Payment,
     PaymentFilters,
     PaymentMethodOption,
@@ -70,6 +79,16 @@ const tabs = [
 ] as const;
 
 type LoanTab = (typeof tabs)[number];
+
+function notificationStatusVariant(status: NotificationStatus) {
+    return status === 'sent'
+        ? 'default'
+        : status === 'failed'
+          ? 'destructive'
+          : status === 'skipped'
+            ? 'outline'
+            : 'secondary';
+}
 
 function DetailField({ label, value }: { label: string; value: ReactNode }) {
     return (
@@ -216,6 +235,9 @@ export default function ShowLoan({
     const [tab, setTab] = useState<LoanTab>(currentTab);
     const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
     const [reversePayment, setReversePayment] = useState<Payment | null>(null);
+    const [resendingNotificationId, setResendingNotificationId] = useState<
+        number | null
+    >(null);
     const tabsListRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -240,6 +262,21 @@ export default function ShowLoan({
         }
 
         window.history.replaceState(window.history.state, '', url.toString());
+    };
+
+    const resendNotification = (notification: NotificationLogEntry) => {
+        router.post(
+            resendLoanNotification({
+                loan: loan.id,
+                notificationLog: notification.id,
+            }).url,
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setResendingNotificationId(notification.id),
+                onFinish: () => setResendingNotificationId(null),
+            },
+        );
     };
 
     const hasPaymentFilters = Boolean(
@@ -1076,14 +1113,15 @@ export default function ShowLoan({
                     <TabsContent value="notifications">
                         <SectionCard
                             title="Notifications"
-                            description={`${notifications.length} email${
+                            description={`${notifications.length} notification${
                                 notifications.length === 1 ? '' : 's'
-                            } sent to ${loan.borrower_name}.`}
+                            } recorded for ${loan.borrower_name}.`}
                         >
                             {notifications.length === 0 ? (
                                 <p className="p-6 text-sm text-muted-foreground">
                                     Reminders, receipts and statements sent to
-                                    the borrower will appear here.
+                                    the borrower will appear here, along with
+                                    any delivery failures.
                                 </p>
                             ) : (
                                 <Table>
@@ -1091,7 +1129,11 @@ export default function ShowLoan({
                                         <TableRow>
                                             <TableHead>Type</TableHead>
                                             <TableHead>Channel</TableHead>
+                                            <TableHead>Status</TableHead>
                                             <TableHead>Sent</TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -1108,10 +1150,54 @@ export default function ShowLoan({
                                                 <TableCell className="text-muted-foreground capitalize">
                                                     {notification.channel}
                                                 </TableCell>
+                                                <TableCell>
+                                                    <div className="space-y-1">
+                                                        <Badge
+                                                            variant={notificationStatusVariant(
+                                                                notification.status,
+                                                            )}
+                                                        >
+                                                            {
+                                                                notification.status_label
+                                                            }
+                                                        </Badge>
+                                                        {notification.error && (
+                                                            <p className="max-w-xs text-xs text-muted-foreground">
+                                                                {
+                                                                    notification.error
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="text-muted-foreground">
-                                                    {formatDateTime(
-                                                        notification.sent_at,
-                                                    )}
+                                                    {notification.sent_at
+                                                        ? formatDateTime(
+                                                              notification.sent_at,
+                                                          )
+                                                        : '—'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            resendNotification(
+                                                                notification,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            !notification.can_resend ||
+                                                            resendingNotificationId ===
+                                                                notification.id
+                                                        }
+                                                    >
+                                                        <Send />
+                                                        {resendingNotificationId ===
+                                                        notification.id
+                                                            ? 'Sending…'
+                                                            : 'Resend'}
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
