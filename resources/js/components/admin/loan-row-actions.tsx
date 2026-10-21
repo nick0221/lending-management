@@ -1,6 +1,7 @@
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,11 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    destroy as destroyLoan,
-    show as showLoan,
-    statement as emailStatement,
-} from '@/routes/admin/loans';
+import { destroy as destroyLoan, show as showLoan } from '@/routes/admin/loans';
 import type { LoanListItem } from '@/types';
 
 /**
@@ -22,8 +19,9 @@ import type { LoanListItem } from '@/types';
  */
 export function LoanRowActions({ loan }: { loan: LoanListItem }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [statementOpen, setStatementOpen] = useState(false);
 
-    if (!loan.can.view && !loan.can.delete) {
+    if (!loan.can.view && !loan.can.delete && !loan.can.statement) {
         return null;
     }
 
@@ -52,13 +50,7 @@ export function LoanRowActions({ loan }: { loan: LoanListItem }) {
 
                     {loan.can.statement && (
                         <DropdownMenuItem
-                            onSelect={() =>
-                                router.post(
-                                    emailStatement.url(loan.id),
-                                    {},
-                                    { preserveScroll: true },
-                                )
-                            }
+                            onSelect={() => setStatementOpen(true)}
                         >
                             <Mail />
                             Email statement
@@ -91,6 +83,15 @@ export function LoanRowActions({ loan }: { loan: LoanListItem }) {
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
             />
+
+            {loan.can.statement && (
+                <StatementPreviewDialog
+                    loanId={loan.id}
+                    borrowerName={loan.borrower_name}
+                    open={statementOpen}
+                    onOpenChange={setStatementOpen}
+                />
+            )}
         </>
     );
 }

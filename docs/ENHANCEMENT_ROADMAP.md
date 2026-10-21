@@ -191,7 +191,7 @@ file — not a wall of sections.
 | E8.1 | Delivery log   | Notifications tab on the loan / borrower page backed by `notification_logs`. | ✅     |
 | E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ⏳     |
 | E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | 🔒     |
-| E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ⏳     |
+| E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ✅     |
 
 ---
 
@@ -270,3 +270,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added a printable portfolio summary at `/admin/reports/print`, reachable from a Print summary button on the reports page (E7.5). It lays out the headline figures, outstanding and collected composition, portfolio at risk, aging buckets and collections on one clean sheet, with print-specific colours and no app chrome. |
 | 2026-10-21 | Rebuilt the borrower, user and loan product create/edit forms around section cards with a sticky live summary and the primary action (E1.9). Each summary reflects the entered name, contact, role or product terms, and the forms keep inline validation and a cancel route back to the list. The shared `SummaryRow` was extracted from the loan form so every form uses the same label/value rhythm. |
 | 2026-10-21 | Gave the loan, KYC and role badges a shared semantic palette: blue for approved and admin, emerald for active and verified, amber for pending, red for rejected and defaulted, violet for super admin, and muted grey for closed, written off and regular users (E0.10). The badges all use the outline variant with dark-mode-aware tinted backgrounds. |
+| 2026-10-21 | Email statement now opens a preview dialog instead of sending immediately (E8.4). A new JSON endpoint renders the queued markdown mail with the same schedule data as the real send, the dialog shows the recipient, subject and an isolated iframe of the email, and the send action stays disabled when the borrower has no address or has opted out. The preview is available from both the loan file and the loan queue. |

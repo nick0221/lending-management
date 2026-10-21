@@ -393,3 +393,66 @@ test('the statement mail renders the repayment schedule', function () {
         ->toContain($loan->borrower->name)
         ->toContain('115.00');
 });
+
+test('staff can preview the statement email without sending it', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2026-07-01'],
+    ]));
+
+    $response = $this->actingAs($admin)
+        ->getJson(route('admin.loans.statement.preview', $loan))
+        ->assertOk()
+        ->assertJson([
+            'eligible' => true,
+            'to' => $loan->borrower->email,
+            'subject' => "Statement for loan #{$loan->id}",
+        ]);
+
+    expect($response->json('html'))
+        ->toContain('Loan statement')
+        ->toContain($loan->borrower->name)
+        ->toContain('115.00');
+
+    Notification::assertNothingSent();
+});
+
+test('the statement preview explains when the borrower cannot receive statements', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-07-01'],
+    ]));
+
+    $loan->borrower->update(['notify_statements' => false]);
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.loans.statement.preview', $loan))
+        ->assertOk()
+        ->assertJson([
+            'eligible' => false,
+            'to' => $loan->borrower->email,
+        ]);
+
+    $loan->borrower->update(['email' => null, 'notify_statements' => true]);
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.loans.statement.preview', $loan))
+        ->assertOk()
+        ->assertJson([
+            'eligible' => false,
+            'to' => null,
+        ]);
+});
+
+test('regular users cannot preview statements', function () {
+    $user = User::factory()->create();
+    $loan = withBorrowerEmail(activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-07-01'],
+    ]));
+
+    $this->actingAs($user)
+        ->getJson(route('admin.loans.statement.preview', $loan))
+        ->assertForbidden();
+});

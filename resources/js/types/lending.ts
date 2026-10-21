@@ -339,6 +339,14 @@ export type PaymentReceipt = {
     allocations: PaymentAllocation[];
 };
 
+export type StatementPreview = {
+    eligible: boolean;
+    to: string | null;
+    subject: string | null;
+    html: string | null;
+    message?: string;
+};
+
 export type LoanEvent = {
     id: number;
     action: LoanEventType;

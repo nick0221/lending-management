@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
 import { RestructureLoanDialog } from '@/components/admin/restructure-loan-dialog';
+import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +28,6 @@ import {
     destroy as destroyLoan,
     markDefault as markLoanDefault,
     reject as rejectLoan,
-    statement as loanStatement,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
 import type {
@@ -61,6 +61,7 @@ export function LoanActions({
     paymentMethods: PaymentMethodOption[];
 }) {
     const [restructureOpen, setRestructureOpen] = useState(false);
+    const [statementOpen, setStatementOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
     const hasSecondaryActions =
@@ -148,13 +149,7 @@ export function LoanActions({
 
                             {can.statement && (
                                 <DropdownMenuItem
-                                    onSelect={() =>
-                                        router.post(
-                                            loanStatement.url(loan.id),
-                                            {},
-                                            { preserveScroll: true },
-                                        )
-                                    }
+                                    onSelect={() => setStatementOpen(true)}
                                     data-test="email-statement-button"
                                 >
                                     <Mail /> Email statement
@@ -223,6 +218,15 @@ export function LoanActions({
                     outstanding={outstanding}
                     open={restructureOpen}
                     onOpenChange={setRestructureOpen}
+                />
+            )}
+
+            {can.statement && (
+                <StatementPreviewDialog
+                    loanId={loan.id}
+                    borrowerName={loan.borrower_name}
+                    open={statementOpen}
+                    onOpenChange={setStatementOpen}
                 />
             )}
 

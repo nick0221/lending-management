@@ -21,6 +21,7 @@ use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
 use App\Models\NotificationLog;
 use App\Models\Payment;
+use App\Notifications\LoanStatement;
 use App\Services\LoanService;
 use App\Services\NotificationService;
 use App\Services\RepaymentService;
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
@@ -446,6 +448,39 @@ class LoanController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * Render the statement email without sending it, for the preview dialog.
+     */
+    public function previewStatement(Loan $loan): JsonResponse
+    {
+        Gate::authorize('view', $loan);
+
+        $loan->loadMissing('borrower');
+
+        $borrower = $loan->borrower;
+
+        if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_STATEMENT)) {
+            return response()->json([
+                'eligible' => false,
+                'to' => $borrower?->email,
+                'subject' => null,
+                'html' => null,
+                'message' => __('Add an email address and enable statements for this borrower.'),
+            ]);
+        }
+
+        $message = (new LoanStatement($loan))->toMail($borrower);
+
+        $html = (string) app(Markdown::class)->render($message->markdown, $message->viewData);
+
+        return response()->json([
+            'eligible' => true,
+            'to' => $borrower->email,
+            'subject' => $message->subject,
+            'html' => $html,
+        ]);
     }
 
     /**

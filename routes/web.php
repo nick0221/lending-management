@@ -44,6 +44,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
             Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');
             Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
+            Route::get('loans/{loan}/statement/preview', [LoanController::class, 'previewStatement'])->name('loans.statement.preview');
         });
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
