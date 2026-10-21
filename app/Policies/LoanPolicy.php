@@ -50,6 +50,14 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the user can approve loans in bulk.
+     */
+    public function approveAny(User $user): bool
+    {
+        return $user->canAccessAdminPanel();
+    }
+
+    /**
      * Determine whether the user can reject the given loan.
      */
     public function reject(User $user, Loan $loan): bool

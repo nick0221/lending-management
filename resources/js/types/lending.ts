@@ -244,6 +244,7 @@ export type LoanListItem = Loan & {
     can: {
         view: boolean;
         statement: boolean;
+        approve: boolean;
         delete: boolean;
     };
 };

@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calculator, FileText, Plus, Send, TriangleAlert } from 'lucide-react';
+import {
+    Calculator,
+    CheckCheck,
+    FileText,
+    Plus,
+    Send,
+    TriangleAlert,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LoanRowActions } from '@/components/admin/loan-row-actions';
 import { DataPagination } from '@/components/data-pagination';
@@ -31,6 +38,7 @@ import {
 import { Toggle } from '@/components/ui/toggle';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
+    bulkApprove as bulkApproveLoans,
     calculator as loanCalculator,
     create as createLoan,
     index as loansIndex,
@@ -46,6 +54,20 @@ function isRemindable(loan: LoanListItem): boolean {
         loan.days_past_due > 0 &&
         (loan.status === 'active' || loan.status === 'defaulted')
     );
+}
+
+/**
+ * Only pending loans can be approved.
+ */
+function isApprovable(loan: LoanListItem): boolean {
+    return loan.can.approve && loan.status === 'pending';
+}
+
+/**
+ * A row is selectable when at least one bulk action applies to it.
+ */
+function isActionable(loan: LoanListItem): boolean {
+    return isApprovable(loan) || isRemindable(loan);
 }
 
 export default function LoansIndex({
@@ -68,8 +90,10 @@ export default function LoansIndex({
     currentDirection: 'asc' | 'desc';
 }) {
     const [selected, setSelected] = useState<number[]>([]);
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [sending, setSending] = useState(false);
+    const [approveOpen, setApproveOpen] = useState(false);
+    const [approving, setApproving] = useState(false);
+    const [remindOpen, setRemindOpen] = useState(false);
+    const [reminding, setReminding] = useState(false);
 
     useEffect(() => {
         setSelected((current) =>
@@ -77,27 +101,63 @@ export default function LoansIndex({
         );
     }, [loans]);
 
+    const approvableIds = loans.data
+        .filter(isApprovable)
+        .map((loan) => loan.id);
     const remindableIds = loans.data
         .filter(isRemindable)
         .map((loan) => loan.id);
-    const allRemindableSelected =
-        remindableIds.length > 0 &&
-        remindableIds.every((id) => selected.includes(id));
-    const someRemindableSelected =
-        selected.length > 0 && !allRemindableSelected;
-    const showSelection = remindableIds.length > 0;
+    const actionableIds = [...new Set([...approvableIds, ...remindableIds])];
+    const allActionableSelected =
+        actionableIds.length > 0 &&
+        actionableIds.every((id) => selected.includes(id));
+    const someActionableSelected =
+        selected.length > 0 && !allActionableSelected;
+    const showSelection = actionableIds.length > 0;
+    const selectedApprovableIds = selected.filter((id) =>
+        approvableIds.includes(id),
+    );
+    const selectedRemindableIds = selected.filter((id) =>
+        remindableIds.includes(id),
+    );
+    const hasApprovableSelection = selectedApprovableIds.length > 0;
+    const hasRemindableSelection = selectedRemindableIds.length > 0;
+
+    const submitApprovals = () => {
+        router.post(
+            bulkApproveLoans().url,
+            { loans: selectedApprovableIds },
+            {
+                preserveScroll: true,
+                onStart: () => setApproving(true),
+                onFinish: () => setApproving(false),
+                onSuccess: () => {
+                    setApproveOpen(false);
+                    setSelected((current) =>
+                        current.filter(
+                            (id) => !selectedApprovableIds.includes(id),
+                        ),
+                    );
+                },
+            },
+        );
+    };
 
     const submitReminders = () => {
         router.post(
             remindLoans().url,
-            { loans: selected },
+            { loans: selectedRemindableIds },
             {
                 preserveScroll: true,
-                onStart: () => setSending(true),
-                onFinish: () => setSending(false),
+                onStart: () => setReminding(true),
+                onFinish: () => setReminding(false),
                 onSuccess: () => {
-                    setConfirmOpen(false);
-                    setSelected([]);
+                    setRemindOpen(false);
+                    setSelected((current) =>
+                        current.filter(
+                            (id) => !selectedRemindableIds.includes(id),
+                        ),
+                    );
                 },
             },
         );
@@ -196,11 +256,11 @@ export default function LoansIndex({
                 {selected.length > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
                         <p className="text-sm font-medium">
-                            {selected.length} overdue loan
+                            {selected.length} loan
                             {selected.length === 1 ? '' : 's'} selected
                         </p>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -209,12 +269,29 @@ export default function LoansIndex({
                                 Clear
                             </Button>
 
-                            <Button
-                                size="sm"
-                                onClick={() => setConfirmOpen(true)}
-                            >
-                                <Send /> Send reminders
-                            </Button>
+                            {hasApprovableSelection && (
+                                <Button
+                                    size="sm"
+                                    onClick={() => setApproveOpen(true)}
+                                >
+                                    <CheckCheck /> Approve{' '}
+                                    {selectedApprovableIds.length}
+                                </Button>
+                            )}
+
+                            {hasRemindableSelection && (
+                                <Button
+                                    size="sm"
+                                    variant={
+                                        hasApprovableSelection
+                                            ? 'outline'
+                                            : 'default'
+                                    }
+                                    onClick={() => setRemindOpen(true)}
+                                >
+                                    <Send /> Send reminders
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -247,20 +324,20 @@ export default function LoansIndex({
                                         <TableHead className="w-10">
                                             <Checkbox
                                                 checked={
-                                                    allRemindableSelected
+                                                    allActionableSelected
                                                         ? true
-                                                        : someRemindableSelected
+                                                        : someActionableSelected
                                                           ? 'indeterminate'
                                                           : false
                                                 }
                                                 onCheckedChange={(checked) =>
                                                     setSelected(
                                                         checked === true
-                                                            ? remindableIds
+                                                            ? actionableIds
                                                             : [],
                                                     )
                                                 }
-                                                aria-label="Select all overdue loans on this page"
+                                                aria-label="Select all actionable loans on this page"
                                             />
                                         </TableHead>
                                     )}
@@ -321,7 +398,7 @@ export default function LoansIndex({
                                     <TableRow key={loan.id}>
                                         {showSelection && (
                                             <TableCell>
-                                                {isRemindable(loan) ? (
+                                                {isActionable(loan) ? (
                                                     <Checkbox
                                                         checked={selected.includes(
                                                             loan.id,
@@ -346,7 +423,7 @@ export default function LoansIndex({
                                                                           ),
                                                             )
                                                         }
-                                                        aria-label={`Select loan ${loan.id} for a reminder`}
+                                                        aria-label={`Select loan ${loan.id} for bulk actions`}
                                                     />
                                                 ) : null}
                                             </TableCell>
@@ -413,7 +490,39 @@ export default function LoansIndex({
 
                 <DataPagination paginator={loans} />
 
-                <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialog open={approveOpen} onOpenChange={setApproveOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Approve {selectedApprovableIds.length} loan
+                                {selectedApprovableIds.length === 1 ? '' : 's'}?
+                            </AlertDialogTitle>
+
+                            <AlertDialogDescription>
+                                This builds the repayment schedule for each
+                                selected pending loan. Approved loans can be
+                                disbursed next. Loans that are no longer pending
+                                are skipped.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={approving}>
+                                Cancel
+                            </AlertDialogCancel>
+
+                            <Button
+                                onClick={submitApprovals}
+                                disabled={approving}
+                            >
+                                <CheckCheck />
+                                {approving ? 'Approving…' : 'Approve loans'}
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={remindOpen} onOpenChange={setRemindOpen}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>
@@ -421,25 +530,28 @@ export default function LoansIndex({
                             </AlertDialogTitle>
 
                             <AlertDialogDescription>
-                                {selected.length} borrower
-                                {selected.length === 1 ? '' : 's'} will be
-                                emailed a summary of their overdue installments.
+                                {selectedRemindableIds.length} overdue loan
+                                {selectedRemindableIds.length === 1
+                                    ? ''
+                                    : 's'}{' '}
+                                selected. Each eligible borrower will be emailed
+                                a summary of their overdue installments.
                                 Borrowers who opted out or already received a
                                 notice today are skipped.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
 
                         <AlertDialogFooter>
-                            <AlertDialogCancel disabled={sending}>
+                            <AlertDialogCancel disabled={reminding}>
                                 Cancel
                             </AlertDialogCancel>
 
                             <Button
                                 onClick={submitReminders}
-                                disabled={sending}
+                                disabled={reminding}
                             >
                                 <Send />
-                                {sending ? 'Sending…' : 'Send reminders'}
+                                {reminding ? 'Sending…' : 'Send reminders'}
                             </Button>
                         </AlertDialogFooter>
                     </AlertDialogContent>

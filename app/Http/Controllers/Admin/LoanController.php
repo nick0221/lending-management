@@ -6,6 +6,7 @@ use App\Enums\DisbursementMethod;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ApproveLoansRequest;
 use App\Http\Requests\Admin\DisburseLoanRequest;
 use App\Http\Requests\Admin\LoanCalculatorRequest;
 use App\Http\Requests\Admin\PreviewLoanRequest;
@@ -37,6 +38,7 @@ use Illuminate\Http\Request;
 use Illuminate\Mail\Markdown;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -99,6 +101,7 @@ class LoanController extends Controller
                 'can' => [
                     'view' => $actor->can('view', $loan),
                     'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
+                    'approve' => $actor->can('approve', $loan) && $loan->status === LoanStatus::Pending,
                     'delete' => $actor->can('delete', $loan),
                 ],
             ]);
@@ -289,6 +292,47 @@ class LoanController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan approved.')]);
 
         return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Approve the selected pending loans.
+     */
+    public function approveBulk(ApproveLoansRequest $request, LoanService $loanService): RedirectResponse
+    {
+        $ids = $request->validated('loans');
+        $actor = $request->user();
+
+        $loans = Loan::query()
+            ->whereIn('id', $ids)
+            ->where('status', LoanStatus::Pending)
+            ->get();
+
+        $approved = 0;
+        $skipped = count($ids) - $loans->count();
+
+        DB::transaction(function () use ($loans, $actor, $loanService, &$approved): void {
+            foreach ($loans as $loan) {
+                $loanService->approve($loan, $actor);
+                $approved++;
+            }
+        });
+
+        $message = trans_choice(
+            '{0} No loans were approved.|{1} :count loan approved.|[2,*] :count loans approved.',
+            $approved,
+            ['count' => $approved],
+        );
+
+        if ($skipped > 0) {
+            $message .= ' '.__(':count skipped.', ['count' => $skipped]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => $approved > 0 ? 'success' : 'warning',
+            'message' => $message,
+        ]);
+
+        return back();
     }
 
     /**
