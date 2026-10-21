@@ -12,9 +12,14 @@ import type { InterestMethodOption, RepaymentFrequencyOption } from '@/types';
 export default function CreateLoanProduct({
     interestMethods,
     frequencies,
+    defaults,
 }: {
     interestMethods: InterestMethodOption[];
     frequencies: RepaymentFrequencyOption[];
+    defaults: {
+        penalty_rate: string;
+        grace_period_days: string;
+    };
 }) {
     return (
         <>
@@ -30,6 +35,7 @@ export default function CreateLoanProduct({
                     action={store.form()}
                     interestMethods={interestMethods}
                     frequencies={frequencies}
+                    defaults={defaults}
                     submitLabel="Create product"
                 />
             </div>

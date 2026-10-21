@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Listeners\RecordAuthenticationActivity;
+use App\Services\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -42,15 +43,15 @@ class AppServiceProvider extends ServiceProvider
     protected function configureRateLimiting(): void
     {
         RateLimiter::for('money', fn (Request $request): Limit => Limit::perMinute(
-            (int) config('lending.rate_limits.money', 30),
+            app(Settings::class)->moneyRateLimit(),
         )->by($request->user()?->id ?: $request->ip()));
 
         RateLimiter::for('reports', fn (Request $request): Limit => Limit::perMinute(
-            (int) config('lending.rate_limits.reports', 10),
+            app(Settings::class)->reportsRateLimit(),
         )->by($request->user()?->id ?: $request->ip()));
 
         RateLimiter::for('reminders', fn (Request $request): Limit => Limit::perMinute(
-            (int) config('lending.rate_limits.reminders', 10),
+            app(Settings::class)->remindersRateLimit(),
         )->by($request->user()?->id ?: $request->ip()));
     }
 

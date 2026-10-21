@@ -31,8 +31,9 @@ return [
     | Endpoint rate limits
     |--------------------------------------------------------------------------
     |
-    | Requests per minute, per user, for money-moving endpoints and report
-    | downloads. Raise or lower these through the environment when needed.
+    | Default requests per minute, per user, for money-moving endpoints and
+    | report downloads. These values seed the settings row on first use; the
+    | super-admin settings page takes precedence after that.
     |
     */
 

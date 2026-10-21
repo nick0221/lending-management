@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\Settings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,7 +23,7 @@ class SystemStatusController extends Controller
 
         return Inertia::render('admin/system/index', [
             'app' => [
-                'name' => config('app.name'),
+                'name' => app(Settings::class)->organisationName(),
                 'environment' => config('app.env'),
                 'debug' => (bool) config('app.debug'),
                 'url' => config('app.url'),

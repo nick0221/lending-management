@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController as BorrowerDashboardController;
@@ -60,6 +61,11 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             ->name('reports.download');
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
         Route::get('system', [SystemStatusController::class, 'index'])->name('system.index');
+
+        Route::middleware('role:super_admin')->group(function () {
+            Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
+            Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+        });
     });
 
 require __DIR__.'/settings.php';

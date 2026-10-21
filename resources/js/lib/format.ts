@@ -1,8 +1,23 @@
+let currencySymbol = '$';
+
+/** Set the currency symbol used by `formatMoney` for the current page. */
+export function setCurrencySymbol(symbol: string): void {
+    currencySymbol = symbol;
+}
+
 export function formatMoney(value: number | string | null | undefined): string {
-    return Number(value ?? 0).toLocaleString(undefined, {
+    const formatted = Number(value ?? 0).toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
+
+    if (currencySymbol === '') {
+        return formatted;
+    }
+
+    return formatted.startsWith('-')
+        ? `-${currencySymbol}${formatted.slice(1)}`
+        : `${currencySymbol}${formatted}`;
 }
 
 export function formatPercent(

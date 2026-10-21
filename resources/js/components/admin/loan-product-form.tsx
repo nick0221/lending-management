@@ -36,6 +36,10 @@ type Props = {
     frequencies: RepaymentFrequencyOption[];
     submitLabel: string;
     loanProduct?: LoanProduct;
+    defaults?: {
+        penalty_rate: string;
+        grace_period_days: string;
+    };
 };
 
 export function LoanProductForm({
@@ -44,6 +48,7 @@ export function LoanProductForm({
     frequencies,
     submitLabel,
     loanProduct,
+    defaults,
 }: Props) {
     const [name, setName] = useState(loanProduct?.name ?? '');
     const [interestMethod, setInterestMethod] = useState<InterestMethod>(
@@ -59,10 +64,12 @@ export function LoanProductForm({
         String(loanProduct?.processing_fee_rate ?? 0),
     );
     const [penaltyRate, setPenaltyRate] = useState(
-        String(loanProduct?.penalty_rate ?? 0),
+        String(loanProduct?.penalty_rate ?? defaults?.penalty_rate ?? 0),
     );
     const [gracePeriodDays, setGracePeriodDays] = useState(
-        String(loanProduct?.grace_period_days ?? 0),
+        String(
+            loanProduct?.grace_period_days ?? defaults?.grace_period_days ?? 0,
+        ),
     );
     const [minAmount, setMinAmount] = useState(
         String(loanProduct?.min_amount ?? ''),

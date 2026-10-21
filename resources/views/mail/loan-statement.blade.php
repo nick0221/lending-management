@@ -18,5 +18,5 @@
 If you have any questions about this statement, please contact us.
 
 Thanks,<br>
-{{ config('app.name') }}
+{{ app(\App\Services\Settings::class)->organisationName() }}
 @endcomponent

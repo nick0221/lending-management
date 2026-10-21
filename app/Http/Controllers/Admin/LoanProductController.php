@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLoanProductRequest;
 use App\Http\Requests\Admin\UpdateLoanProductRequest;
 use App\Models\LoanProduct;
+use App\Services\Settings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,9 +74,15 @@ class LoanProductController extends Controller
     {
         Gate::authorize('create', LoanProduct::class);
 
+        $settings = app(Settings::class);
+
         return Inertia::render('admin/loan-products/create', [
             'interestMethods' => $this->interestMethodOptions(),
             'frequencies' => $this->frequencyOptions(),
+            'defaults' => [
+                'penalty_rate' => $settings->defaultPenaltyRate(),
+                'grace_period_days' => (string) $settings->defaultGracePeriodDays(),
+            ],
         ]);
     }
 

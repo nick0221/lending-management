@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2, Mail, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { PaymentReceiptDocument } from '@/components/admin/payment-receipt-document';
 import { Button } from '@/components/ui/button';
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol';
 import { show as showLoan } from '@/routes/admin/loans';
 import { email as emailReceipt } from '@/routes/admin/loans/payments/receipt';
 import type { PaymentReceipt } from '@/types';
@@ -14,6 +15,8 @@ export default function PaymentReceiptPage({
     organisation: string;
     receipt: PaymentReceipt;
 }) {
+    useCurrencySymbol();
+
     const [processing, setProcessing] = useState(false);
 
     const email = (): void => {

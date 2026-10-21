@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ReportingService;
+use App\Services\Settings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -41,7 +42,7 @@ class ReportController extends Controller
     public function printSummary(): Response
     {
         return Inertia::render('admin/reports/print', [
-            'organisation' => config('app.name'),
+            'organisation' => app(Settings::class)->organisationName(),
             'generated_at' => now()->toDateString(),
             'summary' => $this->reporting->portfolioSummary(),
             'aging' => $this->reporting->agingBuckets(),

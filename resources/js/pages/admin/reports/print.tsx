@@ -11,6 +11,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
+import { useCurrencySymbol } from '@/hooks/use-currency-symbol';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import type {
     AgingBuckets,
@@ -60,6 +61,8 @@ export default function PortfolioSummaryPrint({
     risk: PortfolioRisk;
     collections: Collections;
 }) {
+    useCurrencySymbol();
+
     const agingTotal = agingRows.reduce(
         (total, row) => total + aging[row.key],
         0,

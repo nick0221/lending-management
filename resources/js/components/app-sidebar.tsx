@@ -8,6 +8,7 @@ import {
     LayoutGrid,
     ScrollText,
     Server,
+    Settings,
     ShieldCheck,
     Users,
     Wallet,
@@ -32,6 +33,7 @@ import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
 import { index as adminReports } from '@/routes/admin/reports';
+import { edit as adminSettings } from '@/routes/admin/settings';
 import { index as adminSystem } from '@/routes/admin/system';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
@@ -108,6 +110,11 @@ export function AppSidebar() {
                       title: 'System status',
                       href: adminSystem(),
                       icon: Server,
+                  },
+                  {
+                      title: 'Settings',
+                      href: adminSettings(),
+                      icon: Settings,
                   },
               ]
             : adminNavItems;

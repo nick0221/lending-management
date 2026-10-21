@@ -536,3 +536,13 @@ export type ActivityLogFilters = {
     from: string | null;
     to: string | null;
 };
+
+export type AppSettings = {
+    organisation_name: string;
+    currency_symbol: string;
+    default_penalty_rate: string;
+    default_grace_period_days: string;
+    money_rate_limit: string;
+    reports_rate_limit: string;
+    reminders_rate_limit: string;
+};

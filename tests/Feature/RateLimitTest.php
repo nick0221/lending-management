@@ -2,7 +2,18 @@
 
 use App\Models\Loan;
 use App\Models\User;
+use App\Services\Settings;
 use Illuminate\Support\Facades\Notification;
+
+/**
+ * Set one endpoint limit through the persisted settings.
+ */
+function setRateLimit(string $key, int $limit): void
+{
+    $settings = app(Settings::class);
+    $settings->current()->update(["{$key}_rate_limit" => $limit]);
+    $settings->flush();
+}
 
 /**
  * Create an active loan whose borrower can receive statements.
@@ -20,7 +31,7 @@ function throttledLoan(): Loan
 
 test('money endpoints are throttled per user', function () {
     Notification::fake();
-    config(['lending.rate_limits.money' => 2]);
+    setRateLimit('money', 2);
 
     $admin = User::factory()->admin()->create();
     $loan = throttledLoan();
@@ -41,7 +52,7 @@ test('money endpoints are throttled per user', function () {
 
 test('money endpoints share one bucket per user', function () {
     Notification::fake();
-    config(['lending.rate_limits.money' => 1]);
+    setRateLimit('money', 1);
 
     $admin = User::factory()->admin()->create();
     $loan = throttledLoan();
@@ -59,7 +70,7 @@ test('money endpoints share one bucket per user', function () {
 
 test('another user keeps their own money allowance', function () {
     Notification::fake();
-    config(['lending.rate_limits.money' => 1]);
+    setRateLimit('money', 1);
 
     $firstAdmin = User::factory()->admin()->create();
     $secondAdmin = User::factory()->admin()->create();
@@ -79,7 +90,7 @@ test('another user keeps their own money allowance', function () {
 });
 
 test('report downloads are throttled', function () {
-    config(['lending.rate_limits.reports' => 1]);
+    setRateLimit('reports', 1);
 
     $superAdmin = User::factory()->superAdmin()->create();
 

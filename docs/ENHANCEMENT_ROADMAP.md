@@ -201,7 +201,7 @@ file — not a wall of sections.
 | ---- | ------------- | -------------------------------------------------------------------------------------------------- | ------ |
 | E9.1 | Audit table   | `ui/table` with event badges, actor and relative time.                                             | ✅     |
 | E9.2 | Diff sheet    | Open an audit row in a `Sheet` showing before/after values.                                        | ✅     |
-| E9.3 | Settings page | Organisation name, currency symbol, default penalty/grace and rate limits — currently `.env` only. | ⏳     |
+| E9.3 | Settings page | Organisation name, currency symbol, default penalty/grace and rate limits — currently `.env` only. | ✅     |
 | E9.4 | System status | Cards for queue, scheduler, mail and storage health.                                               | ✅     |
 | E9.5 | Role matrix   | Read-only table of what each role can do, sourced from the policies.                               | ✅     |
 
@@ -274,3 +274,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added a read-only role matrix that asks the policies for every cell instead of duplicating a hand-written table (E9.5). The page groups borrower, product, loan, user and audit abilities, compares super admin, admin and user side by side, and is linked from the user register. Unsaved policy targets carry stable keys so the self-account checks stay accurate. |
 | 2026-10-21 | Added payment reversal (E5.5). A payment can be reversed with a required reason; its allocations are released, the outstanding schedule is restored, a closed loan reopens, and a payment_reversed audit event is recorded. Reversed payments stay in the history with a badge and reason, are excluded from paid and collected totals, and their receipts are marked invalid and cannot be emailed. |
 | 2026-10-21 | Added a loan calculator (F3). Admins can choose an active product, enter a principal and term, and see the full indicative schedule and whole-term totals without creating a loan. The quote is URL-backed, validates the product amount and term limits, and is linked from the loan queue. |
+| 2026-10-21 | Added a super-admin settings page backed by a single settings row (E9.3). Organisation name, currency symbol, new-product penalty/grace defaults and the money, report and reminder rate limits are editable without touching .env; values are cached, shared with the UI, and used by receipts, reports, system status and the rate limiters. |

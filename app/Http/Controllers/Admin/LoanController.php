@@ -29,6 +29,7 @@ use App\Services\LoanService;
 use App\Services\NotificationService;
 use App\Services\RepaymentService;
 use App\Services\ScheduleService;
+use App\Services\Settings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -359,7 +360,7 @@ class LoanController extends Controller
         $payment->load(['loan.borrower', 'loan.loanProduct', 'allocations.installment', 'recordedBy', 'reversedBy']);
 
         return Inertia::render('admin/loans/receipt', [
-            'organisation' => config('app.name'),
+            'organisation' => app(Settings::class)->organisationName(),
             'receipt' => $this->receiptPayload($payment),
         ]);
     }
