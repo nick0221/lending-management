@@ -6,7 +6,6 @@ import InputError from '@/components/input-error';
 import { KycBadge } from '@/components/kyc-badge';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import type { Borrower, KycStatus, KycStatusOption, UserOption } from '@/types';
 import type { RouteFormDefinition } from '@/wayfinder';
@@ -321,21 +321,9 @@ export function BorrowerForm({
                             {notificationPreferences.map((preference) => (
                                 <div
                                     key={preference.key}
-                                    className="flex items-start gap-3"
+                                    className="flex items-start justify-between gap-4"
                                 >
-                                    <Checkbox
-                                        id={preference.key}
-                                        checked={preferences[preference.key]}
-                                        onCheckedChange={(checked) =>
-                                            setPreferences({
-                                                ...preferences,
-                                                [preference.key]:
-                                                    checked === true,
-                                            })
-                                        }
-                                    />
-
-                                    <div className="grid gap-1">
+                                    <div className="grid min-w-0 flex-1 gap-1">
                                         <Label htmlFor={preference.key}>
                                             {preference.label}
                                         </Label>
@@ -343,6 +331,17 @@ export function BorrowerForm({
                                             {preference.description}
                                         </p>
                                     </div>
+
+                                    <Switch
+                                        id={preference.key}
+                                        checked={preferences[preference.key]}
+                                        onCheckedChange={(checked) =>
+                                            setPreferences({
+                                                ...preferences,
+                                                [preference.key]: checked,
+                                            })
+                                        }
+                                    />
 
                                     <input
                                         type="hidden"

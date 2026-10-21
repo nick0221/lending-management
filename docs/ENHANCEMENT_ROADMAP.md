@@ -73,7 +73,7 @@ Do these once, then reuse everywhere.
 | E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | ✅     |
 | E0.9  | `FilterTabs`      | URL-driven tabs used by every list page.                              | S      | ✅     |
 | E0.10 | Status badges     | Keep `LoanStatusBadge`, `KycBadge`, `RoleBadge`; align colour tokens. | S      | ✅     |
-| E0.11 | `ui/switch`       | Boolean preferences instead of raw checkboxes.                        | S      | 🔒     |
+| E0.11 | `ui/switch`       | Boolean preferences instead of raw checkboxes.                        | S      | ✅     |
 | E0.12 | Date range picker | `popover` + `calendar` for reports and audit filters.                 | M      | 🔒     |
 
 **Dependency gates**
@@ -82,7 +82,7 @@ Do these once, then reuse everywhere.
 | ------------------------------- | -------------------- | ---------------------- |
 | `@radix-ui/react-tabs`          | E0.1                 | ✅ approved, installed |
 | `@radix-ui/react-alert-dialog`  | E0.3 / E0.8          | ✅ approved, installed |
-| `@radix-ui/react-switch`        | E0.11                | 🔒 awaiting approval   |
+| `@radix-ui/react-switch`        | E0.11                | ✅ approved, installed |
 | `react-day-picker` + `date-fns` | E0.12                | 🔒 awaiting approval   |
 | `cmdk`                          | global search (F2)   | 🔒 awaiting approval   |
 | `recharts`                      | report charts (E7.4) | 🔒 awaiting approval   |
@@ -190,7 +190,7 @@ file — not a wall of sections.
 | ---- | -------------- | ---------------------------------------------------------------------------- | ------ |
 | E8.1 | Delivery log   | Notifications tab on the loan / borrower page backed by `notification_logs`. | ✅     |
 | E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ✅     |
-| E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | 🔒     |
+| E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | ✅     |
 | E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ✅     |
 
 ---
@@ -279,3 +279,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added bulk loan actions (F6). Pending loans can be selected in the loan queue and approved together in one transaction, while the same selection surface sends overdue reminders. Each action applies only to the selected loans it supports, and the confirmation dialogs report the affected subset. |
 | 2026-10-21 | Added notification delivery tracking and resend (E8.2). Logs now distinguish queued, sent, failed and skipped mail, queue events record the sent time and failure reason, and staff can re-queue a notification from the loan file's Notifications tab after its source and the borrower's preferences are checked again. |
 | 2026-10-21 | Added per-loan CSV statement downloads (F1). The statement carries the loan summary, the full schedule and the payment history, is reachable from the borrower file, the loan queue and the loan file, and works even when the borrower has no email address. A shared CSV exporter now backs report exports, the import template and statements. |
+| 2026-10-21 | Added the shadcn `ui/switch` primitive and replaced the four borrower notification checkboxes with labelled switch rows (E0.11, E8.3). The live summary count follows the toggles and the existing hidden inputs keep the form payload unchanged. |
