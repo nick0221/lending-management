@@ -141,7 +141,7 @@ export function LoanProductCard({
                             <dd className="text-right font-semibold">
                                 {formatPercent(loanProduct.interest_rate)}
 
-                                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                <span className="ml-2 text-xs font-normal text-muted-foreground">
                                     {loanProduct.interest_method_label}
                                 </span>
                             </dd>
@@ -169,13 +169,23 @@ export function LoanProductCard({
                         <Term
                             label="Late penalty"
                             value={
-                                Number(loanProduct.penalty_rate) > 0
-                                    ? `${formatPercent(loanProduct.penalty_rate)}${
-                                          loanProduct.grace_period_days > 0
-                                              ? ` after ${loanProduct.grace_period_days} days`
-                                              : ''
-                                      }`
-                                    : 'None'
+                                Number(loanProduct.penalty_rate) > 0 ? (
+                                    <>
+                                        {formatPercent(
+                                            loanProduct.penalty_rate,
+                                        )}
+
+                                        {loanProduct.grace_period_days > 0 && (
+                                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                                after{' '}
+                                                {loanProduct.grace_period_days}{' '}
+                                                days
+                                            </span>
+                                        )}
+                                    </>
+                                ) : (
+                                    'None'
+                                )
                             }
                         />
                     </dl>
