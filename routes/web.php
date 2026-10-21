@@ -28,6 +28,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         Route::post('loans/remind', [LoanController::class, 'sendReminders'])
             ->middleware('throttle:reminders')
             ->name('loans.remind');
+        Route::post('loans/preview', [LoanController::class, 'preview'])->name('loans.preview');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');

@@ -133,9 +133,9 @@ file — not a wall of sections.
 
 | ID   | Item               | Detail                                                                                                                   | Status |
 | ---- | ------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------ |
-| E3.1 | Schedule preview   | On the create form, show the first three installments before submitting (needs a preview endpoint or shared calculator). | ⏳     |
-| E3.2 | Method explainer   | Tooltip / popover explaining flat vs reducing balance with a worked example.                                             | ⏳     |
-| E3.3 | Validation summary | Show product limits as helper text and block out-of-range input client-side.                                             | ⏳     |
+| E3.1 | Schedule preview   | On the create form, show the first three installments before submitting (needs a preview endpoint or shared calculator). | ✅     |
+| E3.2 | Method explainer   | Tooltip / popover explaining flat vs reducing balance with a worked example.                                             | ✅     |
+| E3.3 | Validation summary | Show product limits as helper text and block out-of-range input client-side.                                             | ✅     |
 
 ---
 
@@ -264,3 +264,4 @@ file — not a wall of sections.
 | 2026-10-20 | Rebuilt the audit log on the shared table, page header, cards and pagination with event badges, actor details and relative times (E9.1). Every row opens a `Sheet` with the actor, record, IP, user agent and a before/after table for each changed field (E9.2); the payload now carries old and new values for every attribute. |
 | 2026-10-20 | Overdue loans can now be selected on the loan list, all at once or one by one, and sent an overdue reminder from a confirmation dialog (E6.3). The endpoint reuses the scheduled notice logic, so preferences and the once-a-day dedupe still apply, and reports how many were queued or skipped through a flash toast. |
 | 2026-10-20 | Added a super-admin system status page with application, database, queue, mail, scheduler and storage cards (E9.4). The queue card reports pending, failed and the oldest pending job, the scheduler lists each command with its next run, and storage shows free space and a usage bar. |
+| 2026-10-21 | Rebuilt the loan origination form around two section cards and a sticky summary, with a live preview of the first three installments and full-term totals from a new preview endpoint (E3.1). Product limits now appear as helper text under the amount and term inputs (E3.3), and the interest rate has a tooltip explaining flat versus reducing balance with an example (E3.2). |

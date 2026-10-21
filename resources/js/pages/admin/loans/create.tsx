@@ -1,12 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { LoanForm } from '@/components/admin/loan-form';
-import Heading from '@/components/heading';
-import { dashboard as adminDashboard } from '@/routes/admin';
-import {
-    create as createLoan,
-    index as loansIndex,
-    store,
-} from '@/routes/admin/loans';
+import { PageHeader } from '@/components/page-header';
+import { store } from '@/routes/admin/loans';
 import type { BorrowerOption, LoanProductOption } from '@/types';
 
 export default function CreateLoan({
@@ -20,10 +15,10 @@ export default function CreateLoan({
         <>
             <Head title="New loan" />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="New loan"
-                    description="Originate a loan from one of your active products."
+                    description="Originate a loan from one of your active products. The indicative schedule updates as you enter the terms."
                 />
 
                 <LoanForm
@@ -36,20 +31,3 @@ export default function CreateLoan({
         </>
     );
 }
-
-CreateLoan.layout = {
-    breadcrumbs: [
-        {
-            title: 'Administration',
-            href: adminDashboard(),
-        },
-        {
-            title: 'Loans',
-            href: loansIndex(),
-        },
-        {
-            title: 'New loan',
-            href: createLoan(),
-        },
-    ],
-};

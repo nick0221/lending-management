@@ -7,6 +7,7 @@ use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DisburseLoanRequest;
+use App\Http\Requests\Admin\PreviewLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\RestructureLoanRequest;
 use App\Http\Requests\Admin\SendLoanRemindersRequest;
@@ -23,7 +24,9 @@ use App\Models\Payment;
 use App\Services\LoanService;
 use App\Services\NotificationService;
 use App\Services\RepaymentService;
+use App\Services\ScheduleService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
@@ -123,6 +126,25 @@ class LoanController extends Controller
             'borrowers' => $this->borrowerOptions(),
             'loanProducts' => $this->loanProductOptions(),
         ]);
+    }
+
+    /**
+     * Preview the schedule for terms on the create form without storing a
+     * loan. The response is plain JSON so the form can refresh it live.
+     */
+    public function preview(PreviewLoanRequest $request, ScheduleService $scheduleService): JsonResponse
+    {
+        $product = LoanProduct::findOrFail($request->integer('loan_product_id'));
+
+        return response()->json($scheduleService->preview(
+            principal: (float) $request->input('principal'),
+            annualRatePercent: (float) $product->interest_rate,
+            interestMethod: $product->interest_method,
+            termMonths: (int) $request->input('term_months'),
+            repaymentFrequency: $product->repayment_frequency,
+            processingFeeRatePercent: (float) $product->processing_fee_rate,
+            startsOn: today(),
+        ));
     }
 
     /**
@@ -721,6 +743,7 @@ class LoanController extends Controller
                 'value' => $loanProduct->id,
                 'label' => $loanProduct->name,
                 'interest_rate' => $loanProduct->interest_rate,
+                'interest_method' => $loanProduct->interest_method->value,
                 'interest_method_label' => $loanProduct->interest_method->label(),
                 'repayment_frequency_label' => $loanProduct->repayment_frequency->label(),
                 'min_amount' => $loanProduct->min_amount,

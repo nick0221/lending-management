@@ -167,12 +167,32 @@ export type BorrowerOption = SelectOption<number>;
 
 export type LoanProductOption = SelectOption<number> & {
     interest_rate: string;
+    interest_method: InterestMethod;
     interest_method_label: string;
     repayment_frequency_label: string;
     min_amount: string;
     max_amount: string;
     min_term_months: number;
     max_term_months: number;
+};
+
+export type LoanSchedulePreview = {
+    installments: {
+        sequence: number;
+        due_date: string;
+        principal_due: number;
+        interest_due: number;
+        fee_due: number;
+        balance: number;
+        total: number;
+    }[];
+    totals: {
+        principal: number;
+        interest: number;
+        fee: number;
+        total: number;
+    };
+    periods: number;
 };
 
 export type Loan = {
