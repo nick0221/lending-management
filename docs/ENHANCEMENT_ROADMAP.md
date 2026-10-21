@@ -72,7 +72,7 @@ Do these once, then reuse everywhere.
 | E0.7  | `SectionCard`     | `Card` wrapper with header, description and actions.                  | S      | ✅     |
 | E0.8  | `ConfirmDelete`   | `AlertDialog` + Inertia `Form` composition for row deletes.           | S      | ✅     |
 | E0.9  | `FilterTabs`      | URL-driven tabs used by every list page.                              | S      | ✅     |
-| E0.10 | Status badges     | Keep `LoanStatusBadge`, `KycBadge`, `RoleBadge`; align colour tokens. | S      | ⏳     |
+| E0.10 | Status badges     | Keep `LoanStatusBadge`, `KycBadge`, `RoleBadge`; align colour tokens. | S      | ✅     |
 | E0.11 | `ui/switch`       | Boolean preferences instead of raw checkboxes.                        | S      | 🔒     |
 | E0.12 | Date range picker | `popover` + `calendar` for reports and audit filters.                 | M      | 🔒     |
 
@@ -269,3 +269,4 @@ file — not a wall of sections.
 | 2026-10-21 | Payment rows now open a receipt sheet with the allocation breakdown, a print action and an email re-send that bypasses the once-only receipt key (E5.3). The standalone receipt page prints cleanly and reports the recipient through a toast. The Payments tab gained URL-backed method and date filters, with a total count in the tab badge and a clear action (E5.4). |
 | 2026-10-21 | Added a printable portfolio summary at `/admin/reports/print`, reachable from a Print summary button on the reports page (E7.5). It lays out the headline figures, outstanding and collected composition, portfolio at risk, aging buckets and collections on one clean sheet, with print-specific colours and no app chrome. |
 | 2026-10-21 | Rebuilt the borrower, user and loan product create/edit forms around section cards with a sticky live summary and the primary action (E1.9). Each summary reflects the entered name, contact, role or product terms, and the forms keep inline validation and a cancel route back to the list. The shared `SummaryRow` was extracted from the loan form so every form uses the same label/value rhythm. |
+| 2026-10-21 | Gave the loan, KYC and role badges a shared semantic palette: blue for approved and admin, emerald for active and verified, amber for pending, red for rejected and defaulted, violet for super admin, and muted grey for closed, written off and regular users (E0.10). The badges all use the outline variant with dark-mode-aware tinted backgrounds. |
