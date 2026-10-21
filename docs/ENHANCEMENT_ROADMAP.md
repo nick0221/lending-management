@@ -155,8 +155,8 @@ file — not a wall of sections.
 | ---- | ------------------ | ------------------------------------------------------------------------------------------- | ------ |
 | E5.1 | Payment dialog     | Outstanding summary above the form; quick-fill chips for next installment and full balance. | ✅     |
 | E5.2 | Allocation preview | Show how the amount will be applied (penalty → fee → interest → principal) before saving.   | ✅     |
-| E5.3 | Receipt            | View / print / re-send the receipt for a payment.                                           | ⏳     |
-| E5.4 | Payment filters    | Filter the Payments tab by method and date.                                                 | ⏳     |
+| E5.3 | Receipt            | View / print / re-send the receipt for a payment.                                           | ✅     |
+| E5.4 | Payment filters    | Filter the Payments tab by method and date.                                                 | ✅     |
 | E5.5 | Reversal           | Reverse a payment with reason, audit event and schedule recalculation. Functional change.   | ⏳     |
 
 ---
@@ -266,3 +266,4 @@ file — not a wall of sections.
 | 2026-10-20 | Added a super-admin system status page with application, database, queue, mail, scheduler and storage cards (E9.4). The queue card reports pending, failed and the oldest pending job, the scheduler lists each command with its next run, and storage shows free space and a usage bar. |
 | 2026-10-21 | Rebuilt the loan origination form around two section cards and a sticky summary, with a live preview of the first three installments and full-term totals from a new preview endpoint (E3.1). Product limits now appear as helper text under the amount and term inputs (E3.3), and the interest rate has a tooltip explaining flat versus reducing balance with an example (E3.2). |
 | 2026-10-21 | Replaced the loan product table with a responsive card grid that shows the rate and method, repayment frequency, amount and term limits, processing fee, late penalty and loan usage at a glance (E1.8). Edit and delete moved into the card's overflow menu, with deletion behind the shared confirm dialog. |
+| 2026-10-21 | Payment rows now open a receipt sheet with the allocation breakdown, a print action and an email re-send that bypasses the once-only receipt key (E5.3). The standalone receipt page prints cleanly and reports the recipient through a toast. The Payments tab gained URL-backed method and date filters, with a total count in the tab badge and a clear action (E5.4). |

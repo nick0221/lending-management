@@ -30,12 +30,16 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             ->name('loans.remind');
         Route::post('loans/preview', [LoanController::class, 'preview'])->name('loans.preview');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
+        Route::get('loans/{loan}/payments/{payment}/receipt', [LoanController::class, 'receipt'])
+            ->name('loans.payments.receipt');
         Route::post('loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
         Route::post('loans/{loan}/reject', [LoanController::class, 'reject'])->name('loans.reject');
 
         Route::middleware('throttle:money')->group(function () {
             Route::post('loans/{loan}/disburse', [LoanController::class, 'disburse'])->name('loans.disburse');
             Route::post('loans/{loan}/payments', [LoanController::class, 'recordPayment'])->name('loans.payments.store');
+            Route::post('loans/{loan}/payments/{payment}/receipt/email', [LoanController::class, 'emailReceipt'])
+                ->name('loans.payments.receipt.email');
             Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
             Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
             Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');

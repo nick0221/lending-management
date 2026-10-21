@@ -317,6 +317,28 @@ export type PaymentTotals = {
     aging: PaymentAging;
 };
 
+export type PaymentFilters = {
+    method: PaymentMethod | null;
+    from: string | null;
+    to: string | null;
+};
+
+export type PaymentReceipt = {
+    id: number;
+    number: string;
+    payment_date: string;
+    amount: string;
+    method_label: string;
+    reference: string | null;
+    notes: string | null;
+    recorded_by: string | null;
+    borrower_name: string;
+    borrower_email: string | null;
+    loan_id: number;
+    product_name: string;
+    allocations: PaymentAllocation[];
+};
+
 export type LoanEvent = {
     id: number;
     action: LoanEventType;

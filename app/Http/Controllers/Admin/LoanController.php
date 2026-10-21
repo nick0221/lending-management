@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -191,11 +192,29 @@ class LoanController extends Controller
             ? $currentTab
             : 'overview';
 
+        $paymentMethod = PaymentMethod::tryFrom($request->string('payment_method')->toString());
+        $paymentFrom = $this->dateFilter($request->string('payment_from')->toString());
+        $paymentTo = $this->dateFilter($request->string('payment_to')->toString());
+
+        $payments = $loan->payments
+            ->when($paymentMethod !== null, fn (Collection $payments): Collection => $payments
+                ->filter(fn (Payment $payment): bool => $payment->method === $paymentMethod))
+            ->when($paymentFrom !== null, fn (Collection $payments): Collection => $payments
+                ->filter(fn (Payment $payment): bool => $payment->payment_date->toDateString() >= $paymentFrom))
+            ->when($paymentTo !== null, fn (Collection $payments): Collection => $payments
+                ->filter(fn (Payment $payment): bool => $payment->payment_date->toDateString() <= $paymentTo));
+
         return Inertia::render('admin/loans/show', [
             'loan' => $this->toPayload($loan),
             'installments' => $this->installmentPayload($loan),
             'disbursements' => $this->disbursementPayload($loan),
-            'payments' => $this->paymentPayload($loan),
+            'payments' => $this->paymentPayload($payments),
+            'paymentCount' => $loan->payments->count(),
+            'paymentFilters' => [
+                'method' => $paymentMethod?->value,
+                'from' => $paymentFrom,
+                'to' => $paymentTo,
+            ],
             'totals' => $this->paymentTotals($loan),
             'events' => $this->eventPayload($loan),
             'notifications' => $this->notificationPayload($loan),
@@ -285,6 +304,61 @@ class LoanController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
 
         return to_route('admin.loans.show', $loan);
+    }
+
+    /**
+     * Show a printable receipt for a payment recorded against the loan.
+     */
+    public function receipt(Loan $loan, Payment $payment): Response
+    {
+        Gate::authorize('view', $loan);
+
+        abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
+
+        $payment->load(['loan.borrower', 'loan.loanProduct', 'allocations.installment', 'recordedBy']);
+
+        return Inertia::render('admin/loans/receipt', [
+            'organisation' => config('app.name'),
+            'receipt' => $this->receiptPayload($payment),
+        ]);
+    }
+
+    /**
+     * Email the receipt for a payment again, even when the original receipt
+     * was already sent.
+     */
+    public function emailReceipt(Loan $loan, Payment $payment, NotificationService $notificationService): RedirectResponse
+    {
+        Gate::authorize('view', $loan);
+
+        abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
+
+        $loan->loadMissing(['installments.allocations', 'borrower']);
+        $payment->loadMissing('loan.borrower');
+
+        $borrower = $payment->loan->borrower;
+        $sent = $notificationService->sendReceipt(
+            $payment,
+            (float) $this->paymentTotals($loan)['outstanding'],
+            force: true,
+        );
+
+        Inertia::flash('toast', match (true) {
+            $sent => [
+                'type' => 'success',
+                'message' => __('Receipt emailed to :email.', ['email' => $borrower->email]),
+            ],
+            blank($borrower->email) => [
+                'type' => 'info',
+                'message' => __('The borrower has no email address.'),
+            ],
+            default => [
+                'type' => 'info',
+                'message' => __('The borrower has opted out of receipt emails.'),
+            ],
+        });
+
+        return back();
     }
 
     /**
@@ -525,9 +599,15 @@ class LoanController extends Controller
      *
      * @return array<int, array<string, mixed>>
      */
-    private function paymentPayload(Loan $loan): array
+    /**
+     * Transform the given payments into the payload shared with the client.
+     *
+     * @param  Collection<int, Payment>  $payments
+     * @return array<int, array<string, mixed>>
+     */
+    private function paymentPayload(Collection $payments): array
     {
-        return $loan->payments
+        return $payments
             ->sortByDesc('payment_date')
             ->map(fn (Payment $payment): array => [
                 'id' => $payment->id,
@@ -538,19 +618,54 @@ class LoanController extends Controller
                 'notes' => $payment->notes,
                 'payment_date' => $payment->payment_date->toIso8601String(),
                 'recorded_by' => $payment->recordedBy?->name,
-                'allocations' => $payment->allocations
-                    ->map(fn (LoanPaymentAllocation $allocation): array => [
-                        'installment_sequence' => $allocation->sequence,
-                        'principal_allocated' => $allocation->principal_allocated,
-                        'interest_allocated' => $allocation->interest_allocated,
-                        'fee_allocated' => $allocation->fee_allocated,
-                        'penalty_allocated' => $allocation->penalty_allocated,
-                    ])
-                    ->values()
-                    ->all(),
+                'allocations' => $this->allocationPayload($payment),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Transform a payment's allocations into the payload shared by the loan
+     * file and the receipt.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function allocationPayload(Payment $payment): array
+    {
+        return $payment->allocations
+            ->map(fn (LoanPaymentAllocation $allocation): array => [
+                'installment_sequence' => $allocation->sequence,
+                'principal_allocated' => $allocation->principal_allocated,
+                'interest_allocated' => $allocation->interest_allocated,
+                'fee_allocated' => $allocation->fee_allocated,
+                'penalty_allocated' => $allocation->penalty_allocated,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Transform a payment into the printable receipt payload.
+     *
+     * @return array<string, mixed>
+     */
+    private function receiptPayload(Payment $payment): array
+    {
+        return [
+            'id' => $payment->id,
+            'number' => 'R-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT),
+            'payment_date' => $payment->payment_date->toDateString(),
+            'amount' => $payment->amount,
+            'method_label' => $payment->method->label(),
+            'reference' => $payment->reference,
+            'notes' => $payment->notes,
+            'recorded_by' => $payment->recordedBy?->name,
+            'borrower_name' => $payment->loan->borrower->name,
+            'borrower_email' => $payment->loan->borrower->email,
+            'loan_id' => $payment->loan_id,
+            'product_name' => $payment->loan->loanProduct->name,
+            'allocations' => $this->allocationPayload($payment),
+        ];
     }
 
     /**
@@ -695,6 +810,20 @@ class LoanController extends Controller
             fn (PaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()],
             PaymentMethod::cases(),
         );
+    }
+
+    /**
+     * Accept a `Y-m-d` filter value, ignoring anything else.
+     */
+    private function dateFilter(string $value): ?string
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value ? $value : null;
     }
 
     /**

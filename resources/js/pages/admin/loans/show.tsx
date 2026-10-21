@@ -1,13 +1,23 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ArrowLeft, ReceiptText, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
+import { PaymentReceiptSheet } from '@/components/admin/payment-receipt-sheet';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -37,6 +47,7 @@ import type {
     LoanInstallment,
     NotificationLogEntry,
     Payment,
+    PaymentFilters,
     PaymentMethodOption,
     PaymentTotals,
 } from '@/types';
@@ -164,10 +175,13 @@ function LoanTimeline({ events }: { events: LoanEvent[] }) {
 }
 
 export default function ShowLoan({
+    name,
     loan,
     installments,
     disbursements,
     payments,
+    paymentCount,
+    paymentFilters,
     totals,
     events,
     notifications,
@@ -176,10 +190,13 @@ export default function ShowLoan({
     currentTab,
     can,
 }: {
+    name: string;
     loan: Loan;
     installments: LoanInstallment[];
     disbursements: Disbursement[];
     payments: Payment[];
+    paymentCount: number;
+    paymentFilters: PaymentFilters;
     totals: PaymentTotals;
     events: LoanEvent[];
     notifications: NotificationLogEntry[];
@@ -189,6 +206,7 @@ export default function ShowLoan({
     can: LoanAbilities;
 }) {
     const [tab, setTab] = useState<LoanTab>(currentTab);
+    const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
     const tabsListRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -213,6 +231,33 @@ export default function ShowLoan({
         }
 
         window.history.replaceState(window.history.state, '', url.toString());
+    };
+
+    const hasPaymentFilters = Boolean(
+        paymentFilters.method || paymentFilters.from || paymentFilters.to,
+    );
+
+    const applyPaymentFilters = (overrides: Partial<PaymentFilters>): void => {
+        const next = { ...paymentFilters, ...overrides };
+        const query: Record<string, string> = { tab: 'payments' };
+
+        if (next.method) {
+            query.payment_method = next.method;
+        }
+
+        if (next.from) {
+            query.payment_from = next.from;
+        }
+
+        if (next.to) {
+            query.payment_to = next.to;
+        }
+
+        router.get(showLoan(loan.id).url, query, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     };
 
     const scheduleTotals = installments.reduce(
@@ -312,7 +357,7 @@ export default function ShowLoan({
                             </TabsTrigger>
                             <TabsTrigger value="payments">
                                 Payments
-                                <TabCount value={payments.length} />
+                                <TabCount value={paymentCount} />
                             </TabsTrigger>
                             <TabsTrigger value="disbursements">
                                 Payouts
@@ -665,13 +710,153 @@ export default function ShowLoan({
                     <TabsContent value="payments">
                         <SectionCard
                             title="Repayments"
-                            description={`${payments.length} payment${payments.length === 1 ? '' : 's'} recorded.`}
+                            description={
+                                hasPaymentFilters
+                                    ? `${payments.length} of ${paymentCount} payments match the filters.`
+                                    : `${paymentCount} payment${paymentCount === 1 ? '' : 's'} recorded.`
+                            }
                         >
+                            {paymentCount > 0 && (
+                                <div className="flex flex-wrap items-end gap-3 border-b p-4">
+                                    <div className="grid gap-1.5">
+                                        <Label
+                                            htmlFor="payment-method"
+                                            className="text-xs"
+                                        >
+                                            Method
+                                        </Label>
+
+                                        <Select
+                                            value={
+                                                paymentFilters.method ?? 'all'
+                                            }
+                                            onValueChange={(value) =>
+                                                applyPaymentFilters({
+                                                    method:
+                                                        value === 'all'
+                                                            ? null
+                                                            : (value as PaymentFilters['method']),
+                                                })
+                                            }
+                                        >
+                                            <SelectTrigger
+                                                id="payment-method"
+                                                className="w-44"
+                                            >
+                                                <SelectValue placeholder="All methods" />
+                                            </SelectTrigger>
+
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    All methods
+                                                </SelectItem>
+
+                                                {paymentMethods.map(
+                                                    (method) => (
+                                                        <SelectItem
+                                                            key={method.value}
+                                                            value={method.value}
+                                                        >
+                                                            {method.label}
+                                                        </SelectItem>
+                                                    ),
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid gap-1.5">
+                                        <Label
+                                            htmlFor="payment-from"
+                                            className="text-xs"
+                                        >
+                                            From
+                                        </Label>
+
+                                        <Input
+                                            id="payment-from"
+                                            type="date"
+                                            className="w-40"
+                                            value={paymentFilters.from ?? ''}
+                                            max={paymentFilters.to ?? undefined}
+                                            onChange={(event) =>
+                                                applyPaymentFilters({
+                                                    from:
+                                                        event.target.value ||
+                                                        null,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-1.5">
+                                        <Label
+                                            htmlFor="payment-to"
+                                            className="text-xs"
+                                        >
+                                            To
+                                        </Label>
+
+                                        <Input
+                                            id="payment-to"
+                                            type="date"
+                                            className="w-40"
+                                            value={paymentFilters.to ?? ''}
+                                            min={
+                                                paymentFilters.from ?? undefined
+                                            }
+                                            onChange={(event) =>
+                                                applyPaymentFilters({
+                                                    to:
+                                                        event.target.value ||
+                                                        null,
+                                                })
+                                            }
+                                        />
+                                    </div>
+
+                                    {hasPaymentFilters && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                                applyPaymentFilters({
+                                                    method: null,
+                                                    from: null,
+                                                    to: null,
+                                                })
+                                            }
+                                        >
+                                            <X /> Clear
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
                             {payments.length === 0 ? (
-                                <p className="p-6 text-sm text-muted-foreground">
-                                    Payments recorded against this loan will
-                                    appear here.
-                                </p>
+                                <div className="space-y-3 p-6">
+                                    <p className="text-sm text-muted-foreground">
+                                        {hasPaymentFilters
+                                            ? 'No payments match these filters.'
+                                            : 'Payments recorded against this loan will appear here.'}
+                                    </p>
+
+                                    {hasPaymentFilters && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                applyPaymentFilters({
+                                                    method: null,
+                                                    from: null,
+                                                    to: null,
+                                                })
+                                            }
+                                        >
+                                            <X /> Clear filters
+                                        </Button>
+                                    )}
+                                </div>
                             ) : (
                                 <Table>
                                     <TableHeader>
@@ -684,6 +869,9 @@ export default function ShowLoan({
                                             <TableHead>Reference</TableHead>
                                             <TableHead>Recorded by</TableHead>
                                             <TableHead>Allocated to</TableHead>
+                                            <TableHead className="text-right">
+                                                Receipt
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -729,6 +917,20 @@ export default function ShowLoan({
                                                                       }`,
                                                               )
                                                               .join(', ')}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            setReceiptPayment(
+                                                                payment,
+                                                            )
+                                                        }
+                                                    >
+                                                        <ReceiptText />
+                                                        Receipt
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -852,6 +1054,18 @@ export default function ShowLoan({
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <PaymentReceiptSheet
+                loan={loan}
+                payment={receiptPayment}
+                organisation={name}
+                open={receiptPayment !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setReceiptPayment(null);
+                    }
+                }}
+            />
         </>
     );
 }

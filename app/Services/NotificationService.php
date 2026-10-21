@@ -135,8 +135,10 @@ class NotificationService
 
     /**
      * Email a receipt for the given payment with the balance left afterwards.
+     * Pass `$force` when staff explicitly re-send a receipt so the once-only
+     * key does not suppress the new email.
      */
-    public function sendReceipt(Payment $payment, float $remainingOutstanding): bool
+    public function sendReceipt(Payment $payment, float $remainingOutstanding, bool $force = false): bool
     {
         $payment->loadMissing('loan.borrower');
 
@@ -146,7 +148,9 @@ class NotificationService
             return false;
         }
 
-        $key = sprintf('payment:%d:receipt', $payment->id);
+        $key = $force
+            ? sprintf('payment:%d:receipt:%s', $payment->id, Str::uuid())
+            : sprintf('payment:%d:receipt', $payment->id);
 
         if (! NotificationLog::reserve($key, NotificationLog::TYPE_RECEIPT, $borrower, $payment->loan)) {
             return false;
