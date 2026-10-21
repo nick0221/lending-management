@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Download, Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
@@ -12,6 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { destroy as destroyLoan, show as showLoan } from '@/routes/admin/loans';
+import { download as downloadStatement } from '@/routes/admin/loans/statement';
 import type { LoanListItem } from '@/types';
 
 /**
@@ -21,7 +22,12 @@ export function LoanRowActions({ loan }: { loan: LoanListItem }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [statementOpen, setStatementOpen] = useState(false);
 
-    if (!loan.can.view && !loan.can.delete && !loan.can.statement) {
+    if (
+        !loan.can.view &&
+        !loan.can.delete &&
+        !loan.can.statement &&
+        !loan.can.download_statement
+    ) {
         return null;
     }
 
@@ -54,6 +60,15 @@ export function LoanRowActions({ loan }: { loan: LoanListItem }) {
                         >
                             <Mail />
                             Email statement
+                        </DropdownMenuItem>
+                    )}
+
+                    {loan.can.download_statement && (
+                        <DropdownMenuItem asChild>
+                            <a href={downloadStatement.url(loan.id)}>
+                                <Download />
+                                Download statement
+                            </a>
                         </DropdownMenuItem>
                     )}
 

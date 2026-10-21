@@ -244,6 +244,7 @@ export type LoanListItem = Loan & {
     can: {
         view: boolean;
         statement: boolean;
+        download_statement: boolean;
         approve: boolean;
         delete: boolean;
     };
@@ -258,6 +259,7 @@ export type LoanAbilities = {
     write_off: boolean;
     restructure: boolean;
     statement: boolean;
+    download_statement: boolean;
     delete: boolean;
 };
 

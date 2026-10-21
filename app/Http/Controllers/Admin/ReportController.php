@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\CsvExporter;
 use App\Services\ReportingService;
 use App\Services\Settings;
 use Illuminate\Http\Request;
@@ -14,7 +15,10 @@ class ReportController extends Controller
 {
     private const EXPORTS = ['summary', 'loans', 'collections'];
 
-    public function __construct(private readonly ReportingService $reporting) {}
+    public function __construct(
+        private readonly ReportingService $reporting,
+        private readonly CsvExporter $csvExporter,
+    ) {}
 
     /**
      * Show the portfolio reports.
@@ -195,21 +199,7 @@ class ReportController extends Controller
      */
     private function csv(string $filename, array $headers, iterable $rows): StreamedResponse
     {
-        return response()->streamDownload(function () use ($headers, $rows): void {
-            $handle = fopen('php://output', 'w');
-
-            if ($handle === false) {
-                return;
-            }
-
-            fputcsv($handle, $headers);
-
-            foreach ($rows as $row) {
-                fputcsv($handle, $row);
-            }
-
-            fclose($handle);
-        }, $filename, ['Content-Type' => 'text/csv']);
+        return $this->csvExporter->stream($filename, collect([$headers])->concat($rows));
     }
 
     private function money(float $value): string

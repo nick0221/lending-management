@@ -26,6 +26,7 @@ use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Models\User;
 use App\Notifications\LoanStatement;
+use App\Services\CsvExporter;
 use App\Services\LoanService;
 use App\Services\NotificationService;
 use App\Services\RepaymentService;
@@ -42,6 +43,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LoanController extends Controller
 {
@@ -101,6 +103,7 @@ class LoanController extends Controller
                 'can' => [
                     'view' => $actor->can('view', $loan),
                     'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
+                    'download_statement' => $actor->can('view', $loan),
                     'approve' => $actor->can('approve', $loan) && $loan->status === LoanStatus::Pending,
                     'delete' => $actor->can('delete', $loan),
                 ],
@@ -275,6 +278,7 @@ class LoanController extends Controller
                 'write_off' => $actor->can('writeOff', $loan),
                 'restructure' => $actor->can('restructure', $loan),
                 'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
+                'download_statement' => $actor->can('view', $loan),
                 'delete' => $actor->can('delete', $loan),
             ],
         ]);
@@ -597,6 +601,88 @@ class LoanController extends Controller
             'subject' => $message->subject,
             'html' => $html,
         ]);
+    }
+
+    /**
+     * Download the loan statement as a CSV, including the schedule and
+     * payments, without requiring an email address.
+     */
+    public function downloadStatement(Loan $loan, CsvExporter $csvExporter): StreamedResponse
+    {
+        Gate::authorize('view', $loan);
+
+        $loan->load([
+            'borrower',
+            'loanProduct',
+            'installments.allocations',
+            'payments.recordedBy',
+            'payments.reversedBy',
+        ]);
+
+        $loanData = $this->toPayload($loan);
+        $totals = $this->paymentTotals($loan);
+
+        $rows = [
+            ['Loan statement'],
+            ['Loan', '#'.$loanData['id']],
+            ['Borrower', $loanData['borrower_name']],
+            ['Product', $loanData['loan_product_name']],
+            ['Status', $loanData['status_label']],
+            ['Principal', $loanData['principal']],
+            ['Total payable', $totals['payable']],
+            ['Paid', $totals['paid']],
+            ['Outstanding', $totals['outstanding']],
+            ['Arrears', $totals['arrears']],
+            ['Generated', Date::now()->toDateTimeString()],
+            [],
+            ['Schedule'],
+            [
+                'Installment',
+                'Due date',
+                'Principal due',
+                'Interest due',
+                'Fee due',
+                'Penalty accrued',
+                'Paid',
+                'Outstanding',
+                'Status',
+            ],
+        ];
+
+        foreach ($this->installmentPayload($loan) as $installment) {
+            $status = (float) $installment['outstanding'] <= 0.0
+                ? 'Paid'
+                : ($installment['overdue'] ? 'Overdue' : 'Due');
+
+            $rows[] = [
+                $installment['sequence'],
+                Date::parse($installment['due_date'])->toDateString(),
+                $installment['principal_due'],
+                $installment['interest_due'],
+                $installment['fee_due'],
+                $installment['penalty_accrued'],
+                $installment['paid'],
+                $installment['outstanding'],
+                $status,
+            ];
+        }
+
+        $rows[] = [];
+        $rows[] = ['Payments'];
+        $rows[] = ['Date', 'Amount', 'Method', 'Reference', 'Status', 'Recorded by'];
+
+        foreach ($loan->payments->sortBy('payment_date') as $payment) {
+            $rows[] = [
+                $payment->payment_date->toDateString(),
+                number_format((float) $payment->amount, 2, '.', ''),
+                $payment->method->label(),
+                $payment->reference,
+                $payment->reversed_at !== null ? 'Reversed' : 'Posted',
+                $payment->recordedBy?->name,
+            ];
+        }
+
+        return $csvExporter->stream("loan-{$loan->id}-statement.csv", $rows);
     }
 
     /**

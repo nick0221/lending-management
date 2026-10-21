@@ -3,6 +3,7 @@ import {
     AlertTriangle,
     Ban,
     Check,
+    Download,
     Mail,
     MoreHorizontal,
     Trash2,
@@ -30,6 +31,7 @@ import {
     reject as rejectLoan,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
+import { download as downloadStatement } from '@/routes/admin/loans/statement';
 import type {
     DisbursementMethodOption,
     Loan,
@@ -67,6 +69,7 @@ export function LoanActions({
     const hasSecondaryActions =
         can.restructure ||
         can.statement ||
+        can.download_statement ||
         can.default ||
         can.write_off ||
         can.delete;
@@ -153,6 +156,14 @@ export function LoanActions({
                                     data-test="email-statement-button"
                                 >
                                     <Mail /> Email statement
+                                </DropdownMenuItem>
+                            )}
+
+                            {can.download_statement && (
+                                <DropdownMenuItem asChild>
+                                    <a href={downloadStatement.url(loan.id)}>
+                                        <Download /> Download statement
+                                    </a>
                                 </DropdownMenuItem>
                             )}
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ImportBorrowersRequest;
 use App\Models\Borrower;
 use App\Services\BorrowerImportService;
+use App\Services\CsvExporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -60,18 +61,12 @@ class BorrowerImportController extends Controller
     /**
      * Download the CSV template.
      */
-    public function template(): StreamedResponse
+    public function template(CsvExporter $csvExporter): StreamedResponse
     {
         Gate::authorize('create', Borrower::class);
 
-        return response()->streamDownload(function (): void {
-            $handle = fopen('php://output', 'w');
-
-            if ($handle === false) {
-                return;
-            }
-
-            fputcsv($handle, [
+        return $csvExporter->stream('borrowers-template.csv', [
+            [
                 'name',
                 'phone',
                 'email',
@@ -80,9 +75,8 @@ class BorrowerImportController extends Controller
                 'address',
                 'kyc_status',
                 'notes',
-            ]);
-
-            fputcsv($handle, [
+            ],
+            [
                 'Ada Lovelace',
                 '+1-555-0100',
                 'ada@example.com',
@@ -91,9 +85,7 @@ class BorrowerImportController extends Controller
                 '1 Analytical Engine Way',
                 KycStatus::Verified->value,
                 '',
-            ]);
-
-            fclose($handle);
-        }, 'borrowers-template.csv', ['Content-Type' => 'text/csv']);
+            ],
+        ]);
     }
 }

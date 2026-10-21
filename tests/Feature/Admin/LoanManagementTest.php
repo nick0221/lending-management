@@ -21,6 +21,7 @@ test('the loan list exposes the abilities for every row', function () {
             ->has('loans.data', 1)
             ->where('loans.data.0.can.view', true)
             ->where('loans.data.0.can.statement', true)
+            ->where('loans.data.0.can.download_statement', true)
             ->where('loans.data.0.can.delete', true)
             ->has('statuses')
         );

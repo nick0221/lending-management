@@ -209,17 +209,17 @@ file — not a wall of sections.
 
 ## Functional backlog (non-UI)
 
-| ID  | Item                                 | Why                                                       | Effort |
-| --- | ------------------------------------ | --------------------------------------------------------- | ------ |
-| F1  | Borrower detail + statement download | Support conversations start with "show me this borrower". | M      |
-| F2  | Global search                        | Find a borrower or loan from anywhere (`cmdk` gate).      | M      |
-| F3  | Loan calculator                      | Quote a schedule before creating a loan.                  | S      |
-| F4  | Payment reversal                     | Correct mistakes without editing the database.            | M      |
-| F5  | Borrower CSV import                  | Onboard existing books.                                   | M      |
-| F6  | Bulk loan actions                    | Approve / remind in batches.                              | M      |
-| F7  | PDF statements & exports             | Printable documents (dependency gate).                    | M      |
-| F8  | SMS channel                          | Second notification channel (provider decision).          | L      |
-| F9  | Multi-currency                       | Only if the business needs it.                            | L      |
+| ID  | Item                                 | Why                                                       | Effort | Status |
+| --- | ------------------------------------ | --------------------------------------------------------- | ------ | ------ |
+| F1  | Borrower detail + statement download | Support conversations start with "show me this borrower". | M      | ✅     |
+| F2  | Global search                        | Find a borrower or loan from anywhere (`cmdk` gate).      | M      | 🔒     |
+| F3  | Loan calculator                      | Quote a schedule before creating a loan.                  | S      | ✅     |
+| F4  | Payment reversal                     | Correct mistakes without editing the database.            | M      | ✅     |
+| F5  | Borrower CSV import                  | Onboard existing books.                                   | M      | ✅     |
+| F6  | Bulk loan actions                    | Approve / remind in batches.                              | M      | ✅     |
+| F7  | PDF statements & exports             | Printable documents (dependency gate).                    | M      | 🔒     |
+| F8  | SMS channel                          | Second notification channel (provider decision).          | L      | 🔒     |
+| F9  | Multi-currency                       | Only if the business needs it.                            | L      | 🔒     |
 
 ---
 
@@ -278,3 +278,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added a borrower CSV importer (F5). Admins can download a template, upload a CSV and review imported, skipped and failed rows with line-level messages. Rows use the same validation as the create form, duplicate national IDs are skipped, valid rows are created in one transaction, and the import is create-only. |
 | 2026-10-21 | Added bulk loan actions (F6). Pending loans can be selected in the loan queue and approved together in one transaction, while the same selection surface sends overdue reminders. Each action applies only to the selected loans it supports, and the confirmation dialogs report the affected subset. |
 | 2026-10-21 | Added notification delivery tracking and resend (E8.2). Logs now distinguish queued, sent, failed and skipped mail, queue events record the sent time and failure reason, and staff can re-queue a notification from the loan file's Notifications tab after its source and the borrower's preferences are checked again. |
+| 2026-10-21 | Added per-loan CSV statement downloads (F1). The statement carries the loan summary, the full schedule and the payment history, is reachable from the borrower file, the loan queue and the loan file, and works even when the borrower has no email address. A shared CSV exporter now backs report exports, the import template and statements. |

@@ -3,6 +3,7 @@ import {
     ArrowLeft,
     CalendarClock,
     Check,
+    Download,
     Pencil,
     Plus,
     Receipt,
@@ -40,6 +41,7 @@ import {
     show as showBorrower,
 } from '@/routes/admin/borrowers';
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
+import { download as downloadStatement } from '@/routes/admin/loans/statement';
 import type {
     BorrowerActivity,
     BorrowerDetail,
@@ -206,6 +208,9 @@ export default function ShowBorrower({
                                             <TableHead className="text-right">
                                                 Arrears
                                             </TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -256,6 +261,23 @@ export default function ShowBorrower({
                                                             —
                                                         </span>
                                                     )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        asChild
+                                                    >
+                                                        <a
+                                                            href={downloadStatement.url(
+                                                                loan.id,
+                                                            )}
+                                                            aria-label={`Download statement for loan #${loan.id}`}
+                                                            title="Download statement"
+                                                        >
+                                                            <Download />
+                                                        </a>
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

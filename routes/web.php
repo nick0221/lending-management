@@ -60,6 +60,10 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             Route::get('loans/{loan}/statement/preview', [LoanController::class, 'previewStatement'])->name('loans.statement.preview');
         });
 
+        Route::get('loans/{loan}/statement/download', [LoanController::class, 'downloadStatement'])
+            ->middleware('throttle:reports')
+            ->name('loans.statement.download');
+
         Route::post('loans/{loan}/notifications/{notificationLog}/resend', [LoanController::class, 'resendNotification'])
             ->middleware('throttle:reminders')
             ->name('loans.notifications.resend');
