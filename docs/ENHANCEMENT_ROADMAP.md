@@ -101,7 +101,7 @@ Do these once, then reuse everywhere.
 | E1.6 | Borrower detail page | `/admin/borrowers/{borrower}`: profile card, KYC status, notification preferences, active loans, payment history and activity. The biggest missing flow in the app. | ✅     |
 | E1.7 | Product tabs         | Active / Inactive with usage counts (how many loans reference the product).                                                                                         | ✅     |
 | E1.8 | Product cards        | Terms at a glance: rate, method, frequency, min/max amount and term.                                                                                                | ✅     |
-| E1.9 | Form layout          | Create/edit forms split into `SectionCard`s with a sticky summary and inline validation.                                                                            | ⏳     |
+| E1.9 | Form layout          | Create/edit forms split into `SectionCard`s with a sticky summary and inline validation.                                                                            | ✅     |
 
 **Done when:** borrowers can be found, opened, reviewed and removed safely
 without leaving the list; products show their status and usage.
@@ -268,3 +268,4 @@ file — not a wall of sections.
 | 2026-10-21 | Replaced the loan product table with a responsive card grid that shows the rate and method, repayment frequency, amount and term limits, processing fee, late penalty and loan usage at a glance (E1.8). Edit and delete moved into the card's overflow menu, with deletion behind the shared confirm dialog. |
 | 2026-10-21 | Payment rows now open a receipt sheet with the allocation breakdown, a print action and an email re-send that bypasses the once-only receipt key (E5.3). The standalone receipt page prints cleanly and reports the recipient through a toast. The Payments tab gained URL-backed method and date filters, with a total count in the tab badge and a clear action (E5.4). |
 | 2026-10-21 | Added a printable portfolio summary at `/admin/reports/print`, reachable from a Print summary button on the reports page (E7.5). It lays out the headline figures, outstanding and collected composition, portfolio at risk, aging buckets and collections on one clean sheet, with print-specific colours and no app chrome. |
+| 2026-10-21 | Rebuilt the borrower, user and loan product create/edit forms around section cards with a sticky live summary and the primary action (E1.9). Each summary reflects the entered name, contact, role or product terms, and the forms keep inline validation and a cancel route back to the list. The shared `SummaryRow` was extracted from the loan form so every form uses the same label/value rhythm. |

@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { BorrowerForm } from '@/components/admin/borrower-form';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     edit as editBorrower,
@@ -22,8 +22,8 @@ export default function EditBorrower({
         <>
             <Head title={`Edit ${borrower.name}`} />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="Edit borrower"
                     description={`Update ${borrower.name}'s details and KYC status.`}
                 />

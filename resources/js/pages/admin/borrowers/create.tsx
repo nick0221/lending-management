@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { BorrowerForm } from '@/components/admin/borrower-form';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
@@ -20,8 +20,8 @@ export default function CreateBorrower({
         <>
             <Head title="Register borrower" />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="Register borrower"
                     description="Capture the borrower's details and KYC status."
                 />

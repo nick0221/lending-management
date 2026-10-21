@@ -1,6 +1,10 @@
-import { Form } from '@inertiajs/react';
+import { Form, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { FormSummary } from '@/components/admin/form-summary';
+import { SummaryRow } from '@/components/admin/summary-row';
 import InputError from '@/components/input-error';
+import { KycBadge } from '@/components/kyc-badge';
+import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -12,6 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import type { Borrower, KycStatus, KycStatusOption, UserOption } from '@/types';
 import type { RouteFormDefinition } from '@/wayfinder';
 
@@ -29,7 +34,11 @@ type Props = {
 };
 
 type NotificationPreference = {
-    key: 'notify_due_soon' | 'notify_overdue' | 'notify_receipts' | 'notify_statements';
+    key:
+        | 'notify_due_soon'
+        | 'notify_overdue'
+        | 'notify_receipts'
+        | 'notify_statements';
     label: string;
     description: string;
 };
@@ -64,6 +73,9 @@ export function BorrowerForm({
     submitLabel,
     borrower,
 }: Props) {
+    const [name, setName] = useState(borrower?.name ?? '');
+    const [phone, setPhone] = useState(borrower?.phone ?? '');
+    const [email, setEmail] = useState(borrower?.email ?? '');
     const [kycStatus, setKycStatus] = useState<KycStatus>(
         borrower?.kyc_status ?? kycStatuses[0]?.value ?? 'pending',
     );
@@ -77,254 +89,351 @@ export function BorrowerForm({
         notify_statements: borrower?.notify_statements ?? true,
     });
 
+    const selectedUser = users.find(
+        (option) => String(option.value) === userId,
+    );
+    const enabledNotifications = notificationPreferences.filter(
+        (preference) => preferences[preference.key],
+    ).length;
+
     return (
-        <Form {...action} className="space-y-6">
+        <Form
+            {...action}
+            className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
+        >
             {({ processing, errors }) => (
                 <>
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Full name</Label>
+                    <div className="space-y-6">
+                        <SectionCard
+                            title="Identity"
+                            description="The borrower's legal name and identifying details."
+                            contentClassName="space-y-4 p-4"
+                        >
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Full name</Label>
 
-                        <Input
-                            id="name"
-                            name="name"
-                            defaultValue={borrower?.name}
-                            required
-                            autoComplete="name"
-                            placeholder="Full name"
-                        />
-
-                        <InputError message={errors.name} />
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="national_id">National ID</Label>
-
-                            <Input
-                                id="national_id"
-                                name="national_id"
-                                defaultValue={borrower?.national_id ?? ''}
-                                placeholder="Government issued ID"
-                            />
-
-                            <InputError message={errors.national_id} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="date_of_birth">Date of birth</Label>
-
-                            <Input
-                                id="date_of_birth"
-                                name="date_of_birth"
-                                type="date"
-                                defaultValue={borrower?.date_of_birth ?? ''}
-                            />
-
-                            <InputError message={errors.date_of_birth} />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="phone">Phone</Label>
-
-                            <Input
-                                id="phone"
-                                name="phone"
-                                type="tel"
-                                defaultValue={borrower?.phone}
-                                required
-                                autoComplete="tel"
-                                placeholder="Phone number"
-                            />
-
-                            <InputError message={errors.phone} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
-
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                defaultValue={borrower?.email ?? ''}
-                                autoComplete="email"
-                                placeholder="Email address"
-                            />
-
-                            <InputError message={errors.email} />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="address">Address</Label>
-
-                        <textarea
-                            id="address"
-                            name="address"
-                            defaultValue={borrower?.address ?? ''}
-                            className={textareaClassName}
-                            placeholder="Residential address"
-                        />
-
-                        <InputError message={errors.address} />
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="kyc_status">KYC status</Label>
-
-                            <Select
-                                value={kycStatus}
-                                onValueChange={(value) =>
-                                    setKycStatus(value as KycStatus)
-                                }
-                            >
-                                <SelectTrigger
-                                    id="kyc_status"
-                                    className="w-full"
-                                >
-                                    <SelectValue placeholder="Select a status" />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                    {kycStatuses.map((option) => (
-                                        <SelectItem
-                                            key={option.value}
-                                            value={option.value}
-                                        >
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <input
-                                type="hidden"
-                                name="kyc_status"
-                                value={kycStatus}
-                            />
-
-                            <InputError message={errors.kyc_status} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="user_id">
-                                Linked user account
-                            </Label>
-
-                            <Select value={userId} onValueChange={setUserId}>
-                                <SelectTrigger id="user_id" className="w-full">
-                                    <SelectValue placeholder="No linked account" />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                    <SelectItem value={NO_USER}>
-                                        No linked account
-                                    </SelectItem>
-
-                                    {users.map((option) => (
-                                        <SelectItem
-                                            key={option.value}
-                                            value={String(option.value)}
-                                        >
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <input
-                                type="hidden"
-                                name="user_id"
-                                value={userId === NO_USER ? '' : userId}
-                            />
-
-                            <InputError message={errors.user_id} />
-                        </div>
-                    </div>
-
-                    <div className="space-y-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
-                        <div className="space-y-1">
-                            <p className="text-sm font-medium">
-                                Email notifications
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Sent to the borrower's email address. An
-                                address is required for any of these to be
-                                delivered.
-                            </p>
-                        </div>
-
-                        {notificationPreferences.map((preference) => (
-                            <div
-                                key={preference.key}
-                                className="flex items-start gap-3"
-                            >
-                                <Checkbox
-                                    id={preference.key}
-                                    checked={preferences[preference.key]}
-                                    onCheckedChange={(checked) =>
-                                        setPreferences({
-                                            ...preferences,
-                                            [preference.key]: checked === true,
-                                        })
+                                <Input
+                                    id="name"
+                                    name="name"
+                                    value={name}
+                                    onChange={(event) =>
+                                        setName(event.target.value)
                                     }
+                                    required
+                                    autoComplete="name"
+                                    placeholder="Full name"
                                 />
 
-                                <div className="grid gap-1">
-                                    <Label htmlFor={preference.key}>
-                                        {preference.label}
+                                <InputError message={errors.name} />
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="national_id">
+                                        National ID
                                     </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        {preference.description}
-                                    </p>
+
+                                    <Input
+                                        id="national_id"
+                                        name="national_id"
+                                        defaultValue={
+                                            borrower?.national_id ?? ''
+                                        }
+                                        placeholder="Government issued ID"
+                                    />
+
+                                    <InputError message={errors.national_id} />
                                 </div>
 
-                                <input
-                                    type="hidden"
-                                    name={preference.key}
-                                    value={
-                                        preferences[preference.key] ? '1' : '0'
-                                    }
-                                />
-                            </div>
-                        ))}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="date_of_birth">
+                                        Date of birth
+                                    </Label>
 
-                        <InputError
-                            message={
-                                errors.notify_due_soon ??
-                                errors.notify_overdue ??
-                                errors.notify_receipts ??
-                                errors.notify_statements
+                                    <Input
+                                        id="date_of_birth"
+                                        name="date_of_birth"
+                                        type="date"
+                                        defaultValue={
+                                            borrower?.date_of_birth ?? ''
+                                        }
+                                    />
+
+                                    <InputError
+                                        message={errors.date_of_birth}
+                                    />
+                                </div>
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Contact"
+                            description="How to reach the borrower."
+                            contentClassName="space-y-4 p-4"
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="phone">Phone</Label>
+
+                                    <Input
+                                        id="phone"
+                                        name="phone"
+                                        type="tel"
+                                        value={phone}
+                                        onChange={(event) =>
+                                            setPhone(event.target.value)
+                                        }
+                                        required
+                                        autoComplete="tel"
+                                        placeholder="Phone number"
+                                    />
+
+                                    <InputError message={errors.phone} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="email">Email</Label>
+
+                                    <Input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        value={email}
+                                        onChange={(event) =>
+                                            setEmail(event.target.value)
+                                        }
+                                        autoComplete="email"
+                                        placeholder="Email address"
+                                    />
+
+                                    <InputError message={errors.email} />
+                                </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="address">Address</Label>
+
+                                <textarea
+                                    id="address"
+                                    name="address"
+                                    defaultValue={borrower?.address ?? ''}
+                                    className={textareaClassName}
+                                    placeholder="Residential address"
+                                />
+
+                                <InputError message={errors.address} />
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard
+                            title="KYC and account"
+                            description="Verification state and optional portal access."
+                            contentClassName="space-y-4 p-4"
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="kyc_status">
+                                        KYC status
+                                    </Label>
+
+                                    <Select
+                                        value={kycStatus}
+                                        onValueChange={(value) =>
+                                            setKycStatus(value as KycStatus)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="kyc_status"
+                                            className="w-full"
+                                        >
+                                            <SelectValue placeholder="Select a status" />
+                                        </SelectTrigger>
+
+                                        <SelectContent>
+                                            {kycStatuses.map((option) => (
+                                                <SelectItem
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <input
+                                        type="hidden"
+                                        name="kyc_status"
+                                        value={kycStatus}
+                                    />
+
+                                    <InputError message={errors.kyc_status} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="user_id">
+                                        Linked user account
+                                    </Label>
+
+                                    <Select
+                                        value={userId}
+                                        onValueChange={setUserId}
+                                    >
+                                        <SelectTrigger
+                                            id="user_id"
+                                            className="w-full"
+                                        >
+                                            <SelectValue placeholder="No linked account" />
+                                        </SelectTrigger>
+
+                                        <SelectContent>
+                                            <SelectItem value={NO_USER}>
+                                                No linked account
+                                            </SelectItem>
+
+                                            {users.map((option) => (
+                                                <SelectItem
+                                                    key={option.value}
+                                                    value={String(option.value)}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <input
+                                        type="hidden"
+                                        name="user_id"
+                                        value={userId === NO_USER ? '' : userId}
+                                    />
+
+                                    <InputError message={errors.user_id} />
+                                </div>
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Email notifications"
+                            description="Sent to the borrower's email address. An address is required for any of these to be delivered."
+                            contentClassName="space-y-4 p-4"
+                        >
+                            {notificationPreferences.map((preference) => (
+                                <div
+                                    key={preference.key}
+                                    className="flex items-start gap-3"
+                                >
+                                    <Checkbox
+                                        id={preference.key}
+                                        checked={preferences[preference.key]}
+                                        onCheckedChange={(checked) =>
+                                            setPreferences({
+                                                ...preferences,
+                                                [preference.key]:
+                                                    checked === true,
+                                            })
+                                        }
+                                    />
+
+                                    <div className="grid gap-1">
+                                        <Label htmlFor={preference.key}>
+                                            {preference.label}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            {preference.description}
+                                        </p>
+                                    </div>
+
+                                    <input
+                                        type="hidden"
+                                        name={preference.key}
+                                        value={
+                                            preferences[preference.key]
+                                                ? '1'
+                                                : '0'
+                                        }
+                                    />
+                                </div>
+                            ))}
+
+                            <InputError
+                                message={
+                                    errors.notify_due_soon ??
+                                    errors.notify_overdue ??
+                                    errors.notify_receipts ??
+                                    errors.notify_statements
+                                }
+                            />
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Notes"
+                            description="Internal notes, not shown to the borrower."
+                            contentClassName="space-y-4 p-4"
+                        >
+                            <div className="grid gap-2">
+                                <Label htmlFor="notes">Notes</Label>
+
+                                <textarea
+                                    id="notes"
+                                    name="notes"
+                                    defaultValue={borrower?.notes ?? ''}
+                                    className={textareaClassName}
+                                    placeholder="Internal notes about this borrower"
+                                />
+
+                                <InputError message={errors.notes} />
+                            </div>
+                        </SectionCard>
+                    </div>
+
+                    <FormSummary
+                        title="Borrower summary"
+                        description="The essentials of this record."
+                        footer={
+                            <>
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-full"
+                                    data-test="borrower-submit-button"
+                                >
+                                    {submitLabel}
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    asChild
+                                >
+                                    <Link href={borrowersIndex()}>Cancel</Link>
+                                </Button>
+                            </>
+                        }
+                    >
+                        <SummaryRow
+                            label="Name"
+                            value={name.trim() || 'New borrower'}
+                        />
+                        <SummaryRow label="Phone" value={phone.trim() || '—'} />
+                        <SummaryRow label="Email" value={email.trim() || '—'} />
+                        <SummaryRow
+                            label="KYC"
+                            value={<KycBadge status={kycStatus} />}
+                        />
+                        <SummaryRow
+                            label="Linked account"
+                            value={selectedUser?.label ?? 'None'}
+                        />
+                        <SummaryRow
+                            label="Notifications"
+                            value={
+                                enabledNotifications === 0
+                                    ? 'All off'
+                                    : `${enabledNotifications} of ${notificationPreferences.length} on`
                             }
                         />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="notes">Notes</Label>
-
-                        <textarea
-                            id="notes"
-                            name="notes"
-                            defaultValue={borrower?.notes ?? ''}
-                            className={textareaClassName}
-                            placeholder="Internal notes about this borrower"
-                        />
-
-                        <InputError message={errors.notes} />
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <Button
-                            type="submit"
-                            disabled={processing}
-                            data-test="borrower-submit-button"
-                        >
-                            {submitLabel}
-                        </Button>
-                    </div>
+                    </FormSummary>
                 </>
             )}
         </Form>

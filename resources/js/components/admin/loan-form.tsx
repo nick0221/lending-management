@@ -1,7 +1,7 @@
 import { Form, Link, useHttp } from '@inertiajs/react';
 import { CircleHelp, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import { SummaryRow } from '@/components/admin/summary-row';
 import InputError from '@/components/input-error';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
-import { cn } from '@/lib/utils';
 import {
     index as loansIndex,
     preview as previewLoan,
@@ -623,29 +622,5 @@ function ProductTerms({ product }: { product: LoanProductOption }) {
                 </dd>
             </div>
         </dl>
-    );
-}
-
-function SummaryRow({
-    label,
-    value,
-    strong,
-}: {
-    label: string;
-    value: ReactNode;
-    strong?: boolean;
-}) {
-    return (
-        <div className="flex items-start justify-between gap-3">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd
-                className={cn(
-                    'text-right font-medium break-words',
-                    strong && 'text-base font-semibold',
-                )}
-            >
-                {value}
-            </dd>
-        </div>
     );
 }

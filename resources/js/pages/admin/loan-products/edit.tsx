@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { LoanProductForm } from '@/components/admin/loan-product-form';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     edit as editLoanProduct,
@@ -26,8 +26,8 @@ export default function EditLoanProduct({
         <>
             <Head title={`Edit ${loanProduct.name}`} />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="Edit loan product"
                     description={`Update the terms for ${loanProduct.name}.`}
                 />

@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { UserForm } from '@/components/admin/user-form';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createUser,
@@ -14,8 +14,8 @@ export default function CreateUser({ roles }: { roles: RoleOption[] }) {
         <>
             <Head title="Create user" />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="Create user"
                     description="Add a new account and assign its access level."
                 />

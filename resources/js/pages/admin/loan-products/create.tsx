@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { LoanProductForm } from '@/components/admin/loan-product-form';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createLoanProduct,
@@ -20,8 +20,8 @@ export default function CreateLoanProduct({
         <>
             <Head title="Create loan product" />
 
-            <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-                <Heading
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4">
+                <PageHeader
                     title="Create loan product"
                     description="Define the interest, amounts, and terms for this product."
                 />
