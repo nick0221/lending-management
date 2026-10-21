@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, Plus, Send, TriangleAlert } from 'lucide-react';
+import { Calculator, FileText, Plus, Send, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LoanRowActions } from '@/components/admin/loan-row-actions';
 import { DataPagination } from '@/components/data-pagination';
@@ -31,6 +31,7 @@ import {
 import { Toggle } from '@/components/ui/toggle';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
+    calculator as loanCalculator,
     create as createLoan,
     index as loansIndex,
     remind as remindLoans,
@@ -132,11 +133,19 @@ export default function LoansIndex({
                     title="Loans"
                     description="Originate and review loan applications."
                     actions={
-                        <Button asChild>
-                            <Link href={createLoan()}>
-                                <Plus /> New loan
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button variant="outline" asChild>
+                                <Link href={loanCalculator()}>
+                                    <Calculator /> Calculator
+                                </Link>
+                            </Button>
+
+                            <Button asChild>
+                                <Link href={createLoan()}>
+                                    <Plus /> New loan
+                                </Link>
+                            </Button>
+                        </div>
                     }
                 />
 

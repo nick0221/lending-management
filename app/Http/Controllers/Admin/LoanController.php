@@ -7,6 +7,7 @@ use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DisburseLoanRequest;
+use App\Http\Requests\Admin\LoanCalculatorRequest;
 use App\Http\Requests\Admin\PreviewLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\RestructureLoanRequest;
@@ -130,6 +131,41 @@ class LoanController extends Controller
         return Inertia::render('admin/loans/create', [
             'borrowers' => $this->borrowerOptions(),
             'loanProducts' => $this->loanProductOptions(),
+        ]);
+    }
+
+    /**
+     * Quote a full schedule for a product and terms without creating a loan.
+     */
+    public function calculator(LoanCalculatorRequest $request, ScheduleService $scheduleService): Response
+    {
+        $filters = [
+            'loan_product_id' => $request->filled('loan_product_id') ? (string) $request->integer('loan_product_id') : '',
+            'principal' => $request->filled('principal') ? (string) $request->input('principal') : '',
+            'term_months' => $request->filled('term_months') ? (string) $request->integer('term_months') : '',
+        ];
+
+        $preview = null;
+
+        if ($request->filled(['loan_product_id', 'principal', 'term_months'])) {
+            $product = LoanProduct::findOrFail($request->integer('loan_product_id'));
+
+            $preview = $scheduleService->preview(
+                principal: (float) $request->input('principal'),
+                annualRatePercent: (float) $product->interest_rate,
+                interestMethod: $product->interest_method,
+                termMonths: (int) $request->input('term_months'),
+                repaymentFrequency: $product->repayment_frequency,
+                processingFeeRatePercent: (float) $product->processing_fee_rate,
+                startsOn: today(),
+                limit: (int) $request->input('term_months'),
+            );
+        }
+
+        return Inertia::render('admin/loans/calculator', [
+            'loanProducts' => $this->loanProductOptions(),
+            'filters' => $filters,
+            'preview' => $preview,
         ]);
     }
 

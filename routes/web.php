@@ -31,6 +31,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             ->middleware('throttle:reminders')
             ->name('loans.remind');
         Route::post('loans/preview', [LoanController::class, 'preview'])->name('loans.preview');
+        Route::get('loans/calculator', [LoanController::class, 'calculator'])->name('loans.calculator');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::get('loans/{loan}/payments/{payment}/receipt', [LoanController::class, 'receipt'])
             ->name('loans.payments.receipt');
