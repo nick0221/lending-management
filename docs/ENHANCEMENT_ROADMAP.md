@@ -157,7 +157,7 @@ file — not a wall of sections.
 | E5.2 | Allocation preview | Show how the amount will be applied (penalty → fee → interest → principal) before saving.   | ✅     |
 | E5.3 | Receipt            | View / print / re-send the receipt for a payment.                                           | ✅     |
 | E5.4 | Payment filters    | Filter the Payments tab by method and date.                                                 | ✅     |
-| E5.5 | Reversal           | Reverse a payment with reason, audit event and schedule recalculation. Functional change.   | ⏳     |
+| E5.5 | Reversal           | Reverse a payment with reason, audit event and schedule recalculation. Functional change.   | ✅     |
 
 ---
 
@@ -272,3 +272,4 @@ file — not a wall of sections.
 | 2026-10-21 | Gave the loan, KYC and role badges a shared semantic palette: blue for approved and admin, emerald for active and verified, amber for pending, red for rejected and defaulted, violet for super admin, and muted grey for closed, written off and regular users (E0.10). The badges all use the outline variant with dark-mode-aware tinted backgrounds. |
 | 2026-10-21 | Email statement now opens a preview dialog instead of sending immediately (E8.4). A new JSON endpoint renders the queued markdown mail with the same schedule data as the real send, the dialog shows the recipient, subject and an isolated iframe of the email, and the send action stays disabled when the borrower has no address or has opted out. The preview is available from both the loan file and the loan queue. |
 | 2026-10-21 | Added a read-only role matrix that asks the policies for every cell instead of duplicating a hand-written table (E9.5). The page groups borrower, product, loan, user and audit abilities, compares super admin, admin and user side by side, and is linked from the user register. Unsaved policy targets carry stable keys so the self-account checks stay accurate. |
+| 2026-10-21 | Added payment reversal (E5.5). A payment can be reversed with a required reason; its allocations are released, the outstanding schedule is restored, a closed loan reopens, and a payment_reversed audit event is recorded. Reversed payments stay in the history with a badge and reason, are excluded from paid and collected totals, and their receipts are marked invalid and cannot be emailed. |

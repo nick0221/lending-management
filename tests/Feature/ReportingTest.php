@@ -352,3 +352,25 @@ test('users without a borrower profile get an empty dashboard', function () {
             ->where('summary', null)
         );
 });
+
+test('a reversed payment is excluded from collected totals and the payment feed', function () {
+    $this->travelTo('2026-06-01');
+
+    [$settled] = reportingFixture();
+
+    $payment = $settled->payments()->firstOrFail();
+    $payment->allocations()->delete();
+    $payment->forceFill([
+        'reversed_at' => now(),
+        'reversal_reason' => 'Recorded twice.',
+    ])->save();
+
+    $summary = app(ReportingService::class)->portfolioSummary();
+
+    expect($summary['collected'])->toBe(0.0)
+        ->and($summary['collected_principal'])->toBe(0.0)
+        ->and($summary['collected_interest'])->toBe(0.0)
+        ->and($summary['collected_fee'])->toBe(0.0)
+        ->and($summary['outstanding'])->toBe(310.0)
+        ->and(app(ReportingService::class)->recentPayments())->toBeEmpty();
+});

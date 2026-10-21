@@ -43,6 +43,9 @@ export function PaymentReceiptSheet({
               reference: payment.reference,
               notes: payment.notes,
               recorded_by: payment.recorded_by,
+              reversed_at: payment.reversed_at,
+              reversal_reason: payment.reversal_reason,
+              reversed_by: payment.reversed_by,
               borrower_name: loan.borrower_name,
               borrower_email: null,
               loan_id: loan.id,
@@ -112,18 +115,20 @@ export function PaymentReceiptSheet({
                                 </a>
                             </Button>
 
-                            <Button
-                                className="flex-1"
-                                onClick={email}
-                                disabled={processing}
-                            >
-                                {processing ? (
-                                    <Loader2 className="animate-spin" />
-                                ) : (
-                                    <Mail />
-                                )}
-                                Email receipt
-                            </Button>
+                            {!payment.reversed_at && (
+                                <Button
+                                    className="flex-1"
+                                    onClick={email}
+                                    disabled={processing}
+                                >
+                                    {processing ? (
+                                        <Loader2 className="animate-spin" />
+                                    ) : (
+                                        <Mail />
+                                    )}
+                                    Email receipt
+                                </Button>
+                            )}
                         </>
                     )}
                 </SheetFooter>

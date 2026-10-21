@@ -8,6 +8,7 @@ use App\Models\ActivityLog;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanProduct;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
@@ -101,6 +102,7 @@ class RoleMatrix
                     $this->ability('Reject pending loans', 'Decline a pending application.', 'reject', [new Loan(['status' => LoanStatus::Pending])]),
                     $this->ability('Disburse loans', 'Release funds against an approved loan.', 'disburse', [new Loan(['status' => LoanStatus::Approved])]),
                     $this->ability('Record payments', 'Apply money to the oldest installments first.', 'recordPayment', [new Loan(['status' => LoanStatus::Active])]),
+                    $this->ability('Reverse payments', 'Release a payment and restore the outstanding balance.', 'reversePayment', [$this->loan(LoanStatus::Active, 1), $this->payment(1, 20)]),
                     $this->ability('Mark defaulted', 'Flag an active loan as defaulted.', 'markDefaulted', [new Loan(['status' => LoanStatus::Active])]),
                     $this->ability('Restructure loans', 'Re-amortise the outstanding principal.', 'restructure', [new Loan(['status' => LoanStatus::Active])]),
                     $this->ability('Write off loans', 'Close an active or defaulted loan as uncollectable.', 'writeOff', [new Loan(['status' => LoanStatus::Active])]),
@@ -130,6 +132,29 @@ class RoleMatrix
                 ],
             ],
         ];
+    }
+
+    /**
+     * Build an unsaved loan with a stable key for model-aware policies.
+     */
+    private function loan(LoanStatus $status, int $id): Loan
+    {
+        $loan = new Loan(['status' => $status]);
+        $loan->setAttribute('id', $id);
+
+        return $loan;
+    }
+
+    /**
+     * Build an unsaved payment attached to the given loan id.
+     */
+    private function payment(int $loanId, int $id): Payment
+    {
+        $payment = new Payment;
+        $payment->setAttribute('id', $id);
+        $payment->loan_id = $loanId;
+
+        return $payment;
     }
 
     /**

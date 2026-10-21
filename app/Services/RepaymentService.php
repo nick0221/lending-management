@@ -137,6 +137,69 @@ class RepaymentService
     }
 
     /**
+     * Reverse a payment, release its allocations and reopen a loan that was
+     * closed by the payment. The payment row remains as an audit record.
+     */
+    public function reversePayment(Loan $loan, Payment $payment, User $actor, string $reason): Payment
+    {
+        DB::transaction(function () use ($loan, $payment, $actor, $reason): void {
+            $lockedLoan = Loan::query()
+                ->whereKey($loan->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedPayment->loan_id !== (int) $lockedLoan->id) {
+                throw ValidationException::withMessages([
+                    'payment' => __('This payment does not belong to the loan.'),
+                ]);
+            }
+
+            if ($lockedPayment->reversed_at !== null) {
+                throw ValidationException::withMessages([
+                    'payment' => __('This payment has already been reversed.'),
+                ]);
+            }
+
+            if (! in_array($lockedLoan->status, [LoanStatus::Active, LoanStatus::Closed], true)) {
+                throw ValidationException::withMessages([
+                    'loan' => __('Payments can only be reversed on active or closed loans.'),
+                ]);
+            }
+
+            $fromStatus = $lockedLoan->status;
+
+            $lockedPayment->allocations()->delete();
+
+            $lockedPayment->forceFill([
+                'reversed_at' => now(),
+                'reversed_by' => $actor->id,
+                'reversal_reason' => $reason,
+            ])->save();
+
+            if ($fromStatus === LoanStatus::Closed) {
+                $lockedLoan->status = LoanStatus::Active;
+                $lockedLoan->closed_at = null;
+                $lockedLoan->save();
+            }
+
+            LoanEvent::create([
+                'loan_id' => $lockedLoan->id,
+                'user_id' => $actor->id,
+                'action' => LoanEventType::PaymentReversed,
+                'from_status' => $fromStatus,
+                'to_status' => $lockedLoan->status,
+            ]);
+        });
+
+        return $payment->refresh();
+    }
+
+    /**
      * Determine what is still owed on each installment, oldest sequence first.
      *
      * @return array<int, array{installment: LoanInstallment, penalty: float, fee: float, interest: float, principal: float}>

@@ -22,6 +22,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property Carbon $payment_date
  * @property int|null $recorded_by
+ * @property Carbon|null $reversed_at
+ * @property int|null $reversed_by
+ * @property string|null $reversal_reason
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -34,6 +37,9 @@ use Illuminate\Support\Carbon;
     'notes',
     'payment_date',
     'recorded_by',
+    'reversed_at',
+    'reversed_by',
+    'reversal_reason',
 ])]
 class Payment extends Model
 {
@@ -51,6 +57,7 @@ class Payment extends Model
             'amount' => 'decimal:2',
             'method' => PaymentMethod::class,
             'payment_date' => 'datetime',
+            'reversed_at' => 'datetime',
         ];
     }
 
@@ -72,5 +79,10 @@ class Payment extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function reversedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reversed_by');
     }
 }

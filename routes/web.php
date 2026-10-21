@@ -42,6 +42,8 @@ Route::middleware(['auth', 'role:super_admin,admin'])
             Route::post('loans/{loan}/payments', [LoanController::class, 'recordPayment'])->name('loans.payments.store');
             Route::post('loans/{loan}/payments/{payment}/receipt/email', [LoanController::class, 'emailReceipt'])
                 ->name('loans.payments.receipt.email');
+            Route::post('loans/{loan}/payments/{payment}/reverse', [LoanController::class, 'reversePayment'])
+                ->name('loans.payments.reverse');
             Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
             Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
             Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');

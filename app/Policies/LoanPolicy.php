@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\LoanStatus;
 use App\Models\Loan;
+use App\Models\Payment;
 use App\Models\User;
 
 class LoanPolicy
@@ -71,6 +72,16 @@ class LoanPolicy
     public function recordPayment(User $user, Loan $loan): bool
     {
         return $user->canAccessAdminPanel() && $loan->status === LoanStatus::Active;
+    }
+
+    /**
+     * Determine whether the user can reverse a payment on the loan.
+     */
+    public function reversePayment(User $user, Loan $loan, Payment $payment): bool
+    {
+        return $user->canAccessAdminPanel()
+            && $payment->reversed_at === null
+            && in_array($loan->status, [LoanStatus::Active, LoanStatus::Closed], true);
     }
 
     /**

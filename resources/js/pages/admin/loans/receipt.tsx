@@ -52,14 +52,16 @@ export default function PaymentReceiptPage({
                                 <Printer /> Print
                             </Button>
 
-                            <Button onClick={email} disabled={processing}>
-                                {processing ? (
-                                    <Loader2 className="animate-spin" />
-                                ) : (
-                                    <Mail />
-                                )}
-                                Email receipt
-                            </Button>
+                            {!receipt.reversed_at && (
+                                <Button onClick={email} disabled={processing}>
+                                    {processing ? (
+                                        <Loader2 className="animate-spin" />
+                                    ) : (
+                                        <Mail />
+                                    )}
+                                    Email receipt
+                                </Button>
+                            )}
                         </div>
                     </div>
 

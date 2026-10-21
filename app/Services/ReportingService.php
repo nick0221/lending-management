@@ -102,7 +102,7 @@ class ReportingService
             'outstanding_fee' => round($open->sum('outstanding_fee'), 2),
             'outstanding_penalty' => round($open->sum('outstanding_penalty'), 2),
             'arrears' => round($open->sum('arrears'), 2),
-            'collected' => round((float) Payment::query()->sum('amount'), 2),
+            'collected' => round((float) Payment::query()->whereNull('reversed_at')->sum('amount'), 2),
             'collected_principal' => round((float) $collected->principal, 2),
             'collected_interest' => round((float) $collected->interest, 2),
             'collected_fee' => round((float) $collected->fee, 2),
@@ -228,6 +228,7 @@ class ReportingService
     {
         return Payment::query()
             ->with(['loan.borrower:id,name', 'recordedBy:id,name'])
+            ->whereNull('reversed_at')
             ->when(
                 $borrowerId !== null,
                 fn ($query) => $query->whereHas('loan', fn ($loan) => $loan->where('borrower_id', $borrowerId)),
@@ -361,7 +362,7 @@ class ReportingService
             'status_label' => $loan->status->label(),
             'is_open' => in_array($loan->status, self::OPEN_STATUSES, true),
             'disbursed_at' => $loan->disbursed_at?->toDateString(),
-            'paid' => round((float) $loan->payments->sum('amount'), 2),
+            'paid' => round((float) $loan->payments->whereNull('reversed_at')->sum('amount'), 2),
             'outstanding' => $outstanding,
             'outstanding_principal' => $principal,
             'outstanding_interest' => $interest,

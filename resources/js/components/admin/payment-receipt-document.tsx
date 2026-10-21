@@ -60,6 +60,24 @@ export function PaymentReceiptDocument({
                 </div>
             </div>
 
+            {receipt.reversed_at && (
+                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                    <p className="font-medium text-destructive">
+                        Payment reversed
+                    </p>
+                    {receipt.reversal_reason && (
+                        <p className="text-destructive/90">
+                            {receipt.reversal_reason}
+                        </p>
+                    )}
+                    {receipt.reversed_by && (
+                        <p className="text-xs text-muted-foreground">
+                            Reversed by {receipt.reversed_by}
+                        </p>
+                    )}
+                </div>
+            )}
+
             <dl className="mt-6 grid gap-4 border-t pt-4 sm:grid-cols-2">
                 <ReceiptField
                     label="Received from"
@@ -90,7 +108,9 @@ export function PaymentReceiptDocument({
 
                 {receipt.allocations.length === 0 ? (
                     <p className="text-muted-foreground">
-                        This payment has not been allocated to an installment.
+                        {receipt.reversed_at
+                            ? 'The allocations were released when this payment was reversed.'
+                            : 'This payment has not been allocated to an installment.'}
                     </p>
                 ) : (
                     <div className="overflow-hidden rounded-lg border">
@@ -196,8 +216,9 @@ export function PaymentReceiptDocument({
             )}
 
             <p className="mt-6 border-t pt-3 text-xs text-muted-foreground">
-                This receipt confirms the payment recorded against the loan
-                above. Keep it for your records.
+                {receipt.reversed_at
+                    ? 'This payment was reversed. This receipt is no longer valid.'
+                    : 'This receipt confirms the payment recorded against the loan above. Keep it for your records.'}
             </p>
         </div>
     );

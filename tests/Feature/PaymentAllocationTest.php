@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\LoanEventType;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Loan;
@@ -112,4 +113,154 @@ test('paying the full outstanding balance closes the loan', function () {
 
     expect($loan->status)->toBe(LoanStatus::Closed)
         ->and($loan->closed_at)->not->toBeNull();
+});
+
+test('reversing a payment restores the installment balance and keeps the record', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 40, PaymentMethod::Cash);
+
+    $reversed = app(RepaymentService::class)->reversePayment(
+        $loan,
+        $payment,
+        $admin,
+        'Recorded against the wrong loan.',
+    );
+
+    expect($reversed->reversed_at)->not->toBeNull()
+        ->and($reversed->reversal_reason)->toBe('Recorded against the wrong loan.')
+        ->and($reversed->reversed_by)->toBe($admin->id)
+        ->and($reversed->allocations()->count())->toBe(0)
+        ->and($loan->fresh()->status)->toBe(LoanStatus::Active)
+        ->and($loan->installments()->first()->fresh()->outstandingTotal())->toBe(125.0);
+});
+
+test('reversing the payment that closed a loan reopens it', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 125, PaymentMethod::Cash);
+    $loan->refresh();
+
+    expect($loan->status)->toBe(LoanStatus::Closed);
+
+    app(RepaymentService::class)->reversePayment($loan, $payment, $admin, 'The payment was duplicated.');
+
+    $loan->refresh();
+    $event = $loan->events()
+        ->where('action', LoanEventType::PaymentReversed->value)
+        ->first();
+
+    expect($loan->status)->toBe(LoanStatus::Active)
+        ->and($loan->closed_at)->toBeNull()
+        ->and($event)->not->toBeNull()
+        ->and($event->from_status)->toBe(LoanStatus::Closed)
+        ->and($event->to_status)->toBe(LoanStatus::Active);
+});
+
+test('a payment cannot be reversed twice', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 40, PaymentMethod::Cash);
+    $service = app(RepaymentService::class);
+
+    $service->reversePayment($loan, $payment, $admin, 'First reversal.');
+
+    expect(fn () => $service->reversePayment($loan, $payment->fresh(), $admin, 'Second reversal.'))
+        ->toThrow(ValidationException::class);
+
+    expect($payment->fresh()->reversal_reason)->toBe('First reversal.');
+});
+
+test('the reversal endpoint requires a reason and redirects to the payments tab', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 40, PaymentMethod::Cash);
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.reverse', [$loan, $payment]), [])
+        ->assertSessionHasErrors('reason');
+
+    expect($payment->fresh()->reversed_at)->toBeNull();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.reverse', [$loan, $payment]), [
+            'reason' => 'Wrong amount.',
+        ])
+        ->assertRedirect(route('admin.loans.show', ['loan' => $loan, 'tab' => 'payments']));
+
+    expect($payment->fresh()->reversed_at)->not->toBeNull();
+});
+
+test('regular users cannot reverse payments', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 10, PaymentMethod::Cash);
+
+    $this->actingAs($user)
+        ->post(route('admin.loans.payments.reverse', [$loan, $payment]), [
+            'reason' => 'Not allowed.',
+        ])
+        ->assertForbidden();
+});
+
+test('a payment cannot be reversed through another loan', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+    $other = activeLoanWithSchedule([
+        ['principal' => 50, 'interest' => 0, 'fee' => 0],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 10, PaymentMethod::Cash);
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.reverse', [$other, $payment]), [
+            'reason' => 'Wrong loan.',
+        ])
+        ->assertNotFound();
+});
+
+test('reversed payments are marked and excluded from the paid total', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = activeLoanWithSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5],
+    ]);
+
+    $payment = app(RepaymentService::class)->recordPayment($loan, $admin, 40, PaymentMethod::Cash);
+
+    app(RepaymentService::class)->reversePayment($loan, $payment, $admin, 'Wrong amount.');
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $loan))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('totals.paid', '0.00')
+            ->where('payments.0.can_reverse', false)
+            ->where('payments.0.reversal_reason', 'Wrong amount.')
+            ->where('payments.0.allocations', [])
+        );
 });

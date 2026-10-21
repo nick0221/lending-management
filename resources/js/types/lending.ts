@@ -162,6 +162,7 @@ export type LoanEventType =
     | 'defaulted'
     | 'written_off'
     | 'payment_recorded'
+    | 'payment_reversed'
     | 'penalty_accrued'
     | 'restructured';
 
@@ -291,6 +292,10 @@ export type Payment = {
     notes: string | null;
     payment_date: string;
     recorded_by: string | null;
+    reversed_at: string | null;
+    reversal_reason: string | null;
+    reversed_by: string | null;
+    can_reverse: boolean;
     allocations: PaymentAllocation[];
 };
 
@@ -334,6 +339,9 @@ export type PaymentReceipt = {
     reference: string | null;
     notes: string | null;
     recorded_by: string | null;
+    reversed_at: string | null;
+    reversal_reason: string | null;
+    reversed_by: string | null;
     borrower_name: string;
     borrower_email: string | null;
     loan_id: number;

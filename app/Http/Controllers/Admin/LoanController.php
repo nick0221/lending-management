@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\DisburseLoanRequest;
 use App\Http\Requests\Admin\PreviewLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Http\Requests\Admin\RestructureLoanRequest;
+use App\Http\Requests\Admin\ReversePaymentRequest;
 use App\Http\Requests\Admin\SendLoanRemindersRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\Borrower;
@@ -21,6 +22,7 @@ use App\Models\LoanPaymentAllocation;
 use App\Models\LoanProduct;
 use App\Models\NotificationLog;
 use App\Models\Payment;
+use App\Models\User;
 use App\Notifications\LoanStatement;
 use App\Services\LoanService;
 use App\Services\NotificationService;
@@ -183,6 +185,7 @@ class LoanController extends Controller
             'installments.allocations',
             'disbursements.recordedBy',
             'payments.recordedBy',
+            'payments.reversedBy',
             'payments.allocations.installment',
             'events.user',
             'notificationLogs',
@@ -210,7 +213,7 @@ class LoanController extends Controller
             'loan' => $this->toPayload($loan),
             'installments' => $this->installmentPayload($loan),
             'disbursements' => $this->disbursementPayload($loan),
-            'payments' => $this->paymentPayload($payments),
+            'payments' => $this->paymentPayload($payments, $actor, $loan),
             'paymentCount' => $loan->payments->count(),
             'paymentFilters' => [
                 'method' => $paymentMethod?->value,
@@ -317,7 +320,7 @@ class LoanController extends Controller
 
         abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
 
-        $payment->load(['loan.borrower', 'loan.loanProduct', 'allocations.installment', 'recordedBy']);
+        $payment->load(['loan.borrower', 'loan.loanProduct', 'allocations.installment', 'recordedBy', 'reversedBy']);
 
         return Inertia::render('admin/loans/receipt', [
             'organisation' => config('app.name'),
@@ -334,6 +337,15 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
+
+        if ($payment->reversed_at !== null) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => __('This payment was reversed. Its receipt cannot be emailed.'),
+            ]);
+
+            return back();
+        }
 
         $loan->loadMissing(['installments.allocations', 'borrower']);
         $payment->loadMissing('loan.borrower');
@@ -361,6 +373,29 @@ class LoanController extends Controller
         });
 
         return back();
+    }
+
+    /**
+     * Reverse a recorded payment and restore the outstanding schedule.
+     */
+    public function reversePayment(
+        ReversePaymentRequest $request,
+        Loan $loan,
+        Payment $payment,
+        RepaymentService $repaymentService,
+    ): RedirectResponse {
+        abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
+
+        $repaymentService->reversePayment(
+            $loan,
+            $payment,
+            $request->user(),
+            $request->validated('reason'),
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment reversed.')]);
+
+        return to_route('admin.loans.show', ['loan' => $loan, 'tab' => 'payments']);
     }
 
     /**
@@ -640,7 +675,7 @@ class LoanController extends Controller
      * @param  Collection<int, Payment>  $payments
      * @return array<int, array<string, mixed>>
      */
-    private function paymentPayload(Collection $payments): array
+    private function paymentPayload(Collection $payments, User $actor, Loan $loan): array
     {
         return $payments
             ->sortByDesc('payment_date')
@@ -653,6 +688,10 @@ class LoanController extends Controller
                 'notes' => $payment->notes,
                 'payment_date' => $payment->payment_date->toIso8601String(),
                 'recorded_by' => $payment->recordedBy?->name,
+                'reversed_at' => $payment->reversed_at?->toIso8601String(),
+                'reversal_reason' => $payment->reversal_reason,
+                'reversed_by' => $payment->reversedBy?->name,
+                'can_reverse' => $actor->can('reversePayment', [$loan, $payment]),
                 'allocations' => $this->allocationPayload($payment),
             ])
             ->values()
@@ -695,6 +734,9 @@ class LoanController extends Controller
             'reference' => $payment->reference,
             'notes' => $payment->notes,
             'recorded_by' => $payment->recordedBy?->name,
+            'reversed_at' => $payment->reversed_at?->toIso8601String(),
+            'reversal_reason' => $payment->reversal_reason,
+            'reversed_by' => $payment->reversedBy?->name,
             'borrower_name' => $payment->loan->borrower->name,
             'borrower_email' => $payment->loan->borrower->email,
             'loan_id' => $payment->loan_id,
@@ -712,7 +754,7 @@ class LoanController extends Controller
     private function paymentTotals(Loan $loan): array
     {
         $payable = 0.0;
-        $paid = round((float) $loan->payments->sum('amount'), 2);
+        $paid = round((float) $loan->payments->whereNull('reversed_at')->sum('amount'), 2);
         $outstanding = 0.0;
         $arrears = 0.0;
         $penalty = 0.0;

@@ -1,14 +1,22 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ReceiptText, X } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, ReceiptText, Undo2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
 import { PaymentReceiptSheet } from '@/components/admin/payment-receipt-sheet';
+import { ReversePaymentDialog } from '@/components/admin/reverse-payment-dialog';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -207,6 +215,7 @@ export default function ShowLoan({
 }) {
     const [tab, setTab] = useState<LoanTab>(currentTab);
     const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
+    const [reversePayment, setReversePayment] = useState<Payment | null>(null);
     const tabsListRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -870,23 +879,49 @@ export default function ShowLoan({
                                             <TableHead>Recorded by</TableHead>
                                             <TableHead>Allocated to</TableHead>
                                             <TableHead className="text-right">
-                                                Receipt
+                                                Actions
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
                                     <TableBody>
                                         {payments.map((payment) => (
-                                            <TableRow key={payment.id}>
+                                            <TableRow
+                                                key={payment.id}
+                                                className={
+                                                    payment.reversed_at
+                                                        ? 'bg-destructive/5'
+                                                        : undefined
+                                                }
+                                            >
                                                 <TableCell className="text-muted-foreground">
                                                     {formatDate(
                                                         payment.payment_date,
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium tabular-nums">
-                                                    {formatMoney(
-                                                        payment.amount,
-                                                    )}
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span
+                                                            className={cn(
+                                                                'font-medium tabular-nums',
+                                                                payment.reversed_at &&
+                                                                    'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            {formatMoney(
+                                                                payment.amount,
+                                                            )}
+                                                        </span>
+
+                                                        {payment.reversed_at && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+                                                            >
+                                                                Reversed
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {payment.method_label}
@@ -898,39 +933,81 @@ export default function ShowLoan({
                                                             {payment.notes}
                                                         </div>
                                                     )}
+                                                    {payment.reversal_reason && (
+                                                        <div className="text-xs text-red-700 dark:text-red-300">
+                                                            Reversed:{' '}
+                                                            {
+                                                                payment.reversal_reason
+                                                            }
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {payment.recorded_by ?? '—'}
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
-                                                    {payment.allocations
-                                                        .length === 0
-                                                        ? 'Unallocated'
+                                                    {payment.reversed_at
+                                                        ? 'Released'
                                                         : payment.allocations
-                                                              .map(
-                                                                  (
-                                                                      allocation,
-                                                                  ) =>
-                                                                      `#${
-                                                                          allocation.installment_sequence ??
-                                                                          '—'
-                                                                      }`,
-                                                              )
-                                                              .join(', ')}
+                                                                .length === 0
+                                                          ? 'Unallocated'
+                                                          : payment.allocations
+                                                                .map(
+                                                                    (
+                                                                        allocation,
+                                                                    ) =>
+                                                                        `#${
+                                                                            allocation.installment_sequence ??
+                                                                            '—'
+                                                                        }`,
+                                                                )
+                                                                .join(', ')}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setReceiptPayment(
-                                                                payment,
-                                                            )
-                                                        }
-                                                    >
-                                                        <ReceiptText />
-                                                        Receipt
-                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                aria-label={`Payment ${payment.id} actions`}
+                                                            >
+                                                                <MoreHorizontal />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onSelect={() =>
+                                                                    setReceiptPayment(
+                                                                        payment,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <ReceiptText />{' '}
+                                                                View receipt
+                                                            </DropdownMenuItem>
+
+                                                            {payment.can_reverse && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        variant="destructive"
+                                                                        onSelect={() =>
+                                                                            setReversePayment(
+                                                                                payment,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Undo2 />{' '}
+                                                                        Reverse
+                                                                        payment
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -1063,6 +1140,17 @@ export default function ShowLoan({
                 onOpenChange={(open) => {
                     if (!open) {
                         setReceiptPayment(null);
+                    }
+                }}
+            />
+
+            <ReversePaymentDialog
+                loan={loan}
+                payment={reversePayment}
+                open={reversePayment !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setReversePayment(null);
                     }
                 }}
             />
