@@ -66,7 +66,7 @@ export default function PaymentReceiptPage({
                     <PaymentReceiptDocument
                         organisation={organisation}
                         receipt={receipt}
-                        className="print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none"
+                        className="print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none print:[&_*]:bg-transparent print:[&_*]:text-black"
                     />
                 </div>
             </div>

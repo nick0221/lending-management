@@ -36,6 +36,21 @@ class ReportController extends Controller
     }
 
     /**
+     * Show the printable portfolio summary.
+     */
+    public function printSummary(): Response
+    {
+        return Inertia::render('admin/reports/print', [
+            'organisation' => config('app.name'),
+            'generated_at' => now()->toDateString(),
+            'summary' => $this->reporting->portfolioSummary(),
+            'aging' => $this->reporting->agingBuckets(),
+            'risk' => $this->reporting->portfolioAtRisk(),
+            'collections' => $this->reporting->collections(),
+        ]);
+    }
+
+    /**
      * Download one of the portfolio reports as CSV.
      */
     public function download(string $report): StreamedResponse

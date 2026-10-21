@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Download } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 import { FilterTabs } from '@/components/filter-tabs';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
@@ -25,7 +25,11 @@ import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { show as showLoan } from '@/routes/admin/loans';
-import { download, index as reportsIndex } from '@/routes/admin/reports';
+import {
+    download,
+    index as reportsIndex,
+    print as printReport,
+} from '@/routes/admin/reports';
 import type {
     AgingBuckets,
     Collections,
@@ -237,6 +241,22 @@ export default function ReportsIndex({
         </DropdownMenu>
     );
 
+    const actions = (
+        <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+                <a
+                    href={printReport().url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Printer /> Print summary
+                </a>
+            </Button>
+
+            {exportMenu}
+        </div>
+    );
+
     return (
         <>
             <Head title="Reports" />
@@ -245,7 +265,7 @@ export default function ReportsIndex({
                 <PageHeader
                     title="Reports"
                     description="Portfolio performance, collections and arrears."
-                    actions={exportMenu}
+                    actions={actions}
                 />
 
                 <FilterTabs

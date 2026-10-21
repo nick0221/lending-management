@@ -47,6 +47,7 @@ Route::middleware(['auth', 'role:super_admin,admin'])
         });
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/print', [ReportController::class, 'printSummary'])->name('reports.print');
         Route::get('reports/download/{report}', [ReportController::class, 'download'])
             ->whereIn('report', ['summary', 'loans', 'collections'])
             ->middleware('throttle:reports')
