@@ -53,6 +53,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('reminders', fn (Request $request): Limit => Limit::perMinute(
             app(Settings::class)->remindersRateLimit(),
         )->by($request->user()?->id ?: $request->ip()));
+
+        RateLimiter::for('search', fn (Request $request): Limit => Limit::perMinute(60)
+            ->by($request->user()?->id ?: $request->ip()));
     }
 
     /**

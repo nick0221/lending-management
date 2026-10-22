@@ -565,6 +565,29 @@ export type ReportFilters = {
     to: string | null;
 };
 
+export type BorrowerSearchResult = {
+    id: number;
+    name: string;
+    phone: string | null;
+    kyc_status: string;
+    url: string;
+};
+
+export type LoanSearchResult = {
+    id: number;
+    borrower: string | null;
+    status: string;
+    status_label: string;
+    principal: number;
+    url: string;
+};
+
+export type GlobalSearchResults = {
+    query: string;
+    borrowers: BorrowerSearchResult[];
+    loans: LoanSearchResult[];
+};
+
 export type AppSettings = {
     organisation_name: string;
     currency_symbol: string;

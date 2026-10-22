@@ -36,7 +36,7 @@ calendar, card, checkbox, collapsible, dialog, dropdown-menu, input, input-otp,
 label, navigation-menu, pagination, popover, select, separator, sheet, sidebar,
 skeleton, sonner, spinner, switch, table, tabs, toggle, toggle-group, tooltip.
 
-**Missing / not yet added:** command palette, progress, scroll-area, chart.
+**Missing / not yet added:** progress, scroll-area, chart.
 
 **Findings**
 
@@ -84,7 +84,7 @@ Do these once, then reuse everywhere.
 | `@radix-ui/react-switch`        | E0.11                | ✅ approved, installed |
 | `react-day-picker` + `date-fns` | E0.12                | ✅ approved, installed |
 | `@radix-ui/react-popover`       | E0.12                | ✅ approved, installed |
-| `cmdk`                          | global search (F2)   | 🔒 awaiting approval   |
+| `cmdk`                          | global search (F2)   | ✅ approved, installed |
 | `recharts`                      | report charts (E7.4) | 🔒 awaiting approval   |
 
 ---
@@ -212,7 +212,7 @@ file — not a wall of sections.
 | ID  | Item                                 | Why                                                       | Effort | Status |
 | --- | ------------------------------------ | --------------------------------------------------------- | ------ | ------ |
 | F1  | Borrower detail + statement download | Support conversations start with "show me this borrower". | M      | ✅     |
-| F2  | Global search                        | Find a borrower or loan from anywhere (`cmdk` gate).      | M      | 🔒     |
+| F2  | Global search                        | Find a borrower or loan from anywhere (`cmdk` gate).      | M      | ✅     |
 | F3  | Loan calculator                      | Quote a schedule before creating a loan.                  | S      | ✅     |
 | F4  | Payment reversal                     | Correct mistakes without editing the database.            | M      | ✅     |
 | F5  | Borrower CSV import                  | Onboard existing books.                                   | M      | ✅     |
@@ -230,7 +230,7 @@ file — not a wall of sections.
 | M1 — Foundations       | E0.1, E0.9, E2.1                   | ✅      |
 | M2 — List consistency  | E0.2–E0.8, E1.1–E1.5, E2.2–E2.6    | ✅      |
 | M3 — Detail pages      | E1.6, E2.7–E2.10, E7.1–E7.3        | ✅      |
-| M4 — Find anything     | E1.2, E2.3, F1, F2                 | ⏳      |
+| M4 — Find anything     | E1.2, E2.3, F1, F2                 | ✅      |
 | M5 — Operational depth | E5.5, E6.3, E8.1, E9.1–E9.4, F3–F5 | ✅      |
 
 ---
@@ -281,3 +281,4 @@ file — not a wall of sections.
 | 2026-10-21 | Added per-loan CSV statement downloads (F1). The statement carries the loan summary, the full schedule and the payment history, is reachable from the borrower file, the loan queue and the loan file, and works even when the borrower has no email address. A shared CSV exporter now backs report exports, the import template and statements. |
 | 2026-10-21 | Added the shadcn `ui/switch` primitive and replaced the four borrower notification checkboxes with labelled switch rows (E0.11, E8.3). The live summary count follows the toggles and the existing hidden inputs keep the form payload unchanged. |
 | 2026-10-22 | Added the shared popover and calendar primitives plus a date-range picker (E0.12, E7.2). Reports now narrow the loan cohort by application date, the audit log uses the same picker, and print and CSV exports carry the selected period. |
+| 2026-10-22 | Added global search (F2). Staff can open a cmdk command palette with Ctrl/⌘ K or the header button, search borrowers by name, phone, email or national ID and loans by number or borrower, and jump straight to the record. The endpoint is limited to five matches per group and is staff-only. |

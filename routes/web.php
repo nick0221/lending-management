@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
@@ -25,6 +26,9 @@ Route::middleware(['auth', 'role:super_admin,admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('search', SearchController::class)
+            ->middleware('throttle:search')
+            ->name('search');
         Route::resource('users', UserController::class)->except('show');
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');
