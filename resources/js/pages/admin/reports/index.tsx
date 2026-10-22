@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { FilterTabs } from '@/components/filter-tabs';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
 import { PageHeader } from '@/components/page-header';
@@ -35,6 +36,7 @@ import type {
     Collections,
     PortfolioRisk,
     PortfolioSummary,
+    ReportFilters,
     ReportLoanRow,
 } from '@/types';
 
@@ -180,6 +182,7 @@ export default function ReportsIndex({
     collections,
     loans,
     currentTab,
+    filters,
 }: {
     summary: PortfolioSummary;
     aging: AgingBuckets;
@@ -187,6 +190,7 @@ export default function ReportsIndex({
     collections: Collections;
     loans: ReportLoanRow[];
     currentTab: ReportsTab;
+    filters: ReportFilters;
 }) {
     const agingTotal = agingRows.reduce(
         (total, row) => total + aging[row.key],
@@ -195,6 +199,20 @@ export default function ReportsIndex({
 
     const share = (amount: number) =>
         agingTotal > 0 ? (amount / agingTotal) * 100 : 0;
+
+    const periodQuery = {
+        ...(filters.from ? { from: filters.from } : {}),
+        ...(filters.to ? { to: filters.to } : {}),
+    };
+
+    const periodLabel =
+        filters.from && filters.to
+            ? `${formatDateOnly(filters.from)} – ${formatDateOnly(filters.to)}`
+            : filters.from
+              ? `from ${formatDateOnly(filters.from)}`
+              : filters.to
+                ? `until ${formatDateOnly(filters.to)}`
+                : null;
 
     const collectionRows = [
         ...collections.overdue_installments,
@@ -225,15 +243,38 @@ export default function ReportsIndex({
 
             <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                    <a href={download({ report: 'summary' }).url}>
+                    <a
+                        href={
+                            download(
+                                { report: 'summary' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
                         Portfolio summary
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    <a href={download({ report: 'loans' }).url}>Loan report</a>
+                    <a
+                        href={
+                            download(
+                                { report: 'loans' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Loan report
+                    </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    <a href={download({ report: 'collections' }).url}>
+                    <a
+                        href={
+                            download(
+                                { report: 'collections' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
                         Collections
                     </a>
                 </DropdownMenuItem>
@@ -243,9 +284,28 @@ export default function ReportsIndex({
 
     const actions = (
         <div className="flex flex-wrap gap-2">
+            <DateRangePicker
+                from={filters.from}
+                to={filters.to}
+                align="start"
+                onChange={(from, to) =>
+                    router.get(
+                        reportsIndex().url,
+                        {
+                            ...(currentTab !== 'portfolio'
+                                ? { tab: currentTab }
+                                : {}),
+                            ...(from ? { from } : {}),
+                            ...(to ? { to } : {}),
+                        },
+                        { preserveScroll: true, preserveState: true },
+                    )
+                }
+            />
+
             <Button variant="outline" size="sm" asChild>
                 <a
-                    href={printReport().url}
+                    href={printReport({ query: periodQuery }).url}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
@@ -264,7 +324,7 @@ export default function ReportsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Reports"
-                    description="Portfolio performance, collections and arrears."
+                    description="Portfolio performance, collections and arrears. The date filter narrows the loan cohort by application date."
                     actions={actions}
                 />
 
@@ -274,31 +334,44 @@ export default function ReportsIndex({
                             value: 'portfolio',
                             label: 'Portfolio',
                             count: loans.length,
-                            href: reportsIndex(),
+                            href: reportsIndex({ query: periodQuery }),
                         },
                         {
                             value: 'aging',
                             label: 'Aging',
-                            href: reportsIndex({ query: { tab: 'aging' } }),
+                            href: reportsIndex({
+                                query: { tab: 'aging', ...periodQuery },
+                            }),
                         },
                         {
                             value: 'collections',
                             label: 'Collections',
                             count: collectionRows.length,
                             href: reportsIndex({
-                                query: { tab: 'collections' },
+                                query: {
+                                    tab: 'collections',
+                                    ...periodQuery,
+                                },
                             }),
                         },
                         {
                             value: 'arrears',
                             label: 'Arrears',
                             count: arrearsLoans.length,
-                            href: reportsIndex({ query: { tab: 'arrears' } }),
+                            href: reportsIndex({
+                                query: { tab: 'arrears', ...periodQuery },
+                            }),
                         },
                     ]}
                     value={currentTab}
                     label="Report sections"
                 />
+
+                <p className="-mt-2 text-sm text-muted-foreground">
+                    {periodLabel
+                        ? `Loans applied ${periodLabel}.`
+                        : 'Showing all loans and borrowers.'}
+                </p>
 
                 {currentTab === 'portfolio' && (
                     <>
@@ -364,7 +437,7 @@ export default function ReportsIndex({
                             title="Loan report"
                             description={`${loans.length} loan${
                                 loans.length === 1 ? '' : 's'
-                            } on file.`}
+                            } ${periodLabel ? 'applied in this period' : 'on file'}.`}
                         >
                             <LoanReportTable
                                 loans={loans}
@@ -544,7 +617,9 @@ export default function ReportsIndex({
                             <StatCard
                                 title="Loans in arrears"
                                 value={String(arrearsLoans.length)}
-                                hint={`of ${loans.length} loans on file`}
+                                hint={`of ${loans.length} ${
+                                    periodLabel ? 'cohort' : 'loans on file'
+                                }`}
                             />
                             <StatCard
                                 title="Worst DPD"

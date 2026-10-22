@@ -18,6 +18,7 @@ import type {
     Collections,
     PortfolioRisk,
     PortfolioSummary,
+    ReportFilters,
 } from '@/types';
 
 const agingRows: { key: keyof AgingBuckets; label: string }[] = [
@@ -53,6 +54,7 @@ export default function PortfolioSummaryPrint({
     aging,
     risk,
     collections,
+    filters,
 }: {
     organisation: string;
     generated_at: string;
@@ -60,8 +62,23 @@ export default function PortfolioSummaryPrint({
     aging: AgingBuckets;
     risk: PortfolioRisk;
     collections: Collections;
+    filters: ReportFilters;
 }) {
     useCurrencySymbol();
+
+    const periodQuery = {
+        ...(filters.from ? { from: filters.from } : {}),
+        ...(filters.to ? { to: filters.to } : {}),
+    };
+
+    const periodLabel =
+        filters.from && filters.to
+            ? `${formatDateOnly(filters.from)} – ${formatDateOnly(filters.to)}`
+            : filters.from
+              ? `from ${formatDateOnly(filters.from)}`
+              : filters.to
+                ? `until ${formatDateOnly(filters.to)}`
+                : null;
 
     const agingTotal = agingRows.reduce(
         (total, row) => total + aging[row.key],
@@ -102,7 +119,7 @@ export default function PortfolioSummaryPrint({
                 <div className="mx-auto max-w-4xl space-y-4 print:max-w-none">
                     <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
                         <Button variant="ghost" asChild>
-                            <Link href={reportsIndex()}>
+                            <Link href={reportsIndex({ query: periodQuery })}>
                                 <ArrowLeft /> Back to reports
                             </Link>
                         </Button>
@@ -126,6 +143,11 @@ export default function PortfolioSummaryPrint({
                                 </h1>
                                 <p className="text-muted-foreground">
                                     Generated {formatDateOnly(generated_at)}
+                                </p>
+                                <p className="text-muted-foreground">
+                                    {periodLabel
+                                        ? `Loans applied ${periodLabel}`
+                                        : 'All loans'}
                                 </p>
                             </div>
 

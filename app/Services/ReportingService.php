@@ -43,6 +43,22 @@ class ReportingService
      */
     private ?Collection $loanRows = null;
 
+    private ?CarbonInterface $from = null;
+
+    private ?CarbonInterface $to = null;
+
+    /**
+     * Limit every report to loans applied inside the given period.
+     */
+    public function forPeriod(?CarbonInterface $from, ?CarbonInterface $to): static
+    {
+        $this->from = $from?->startOfDay();
+        $this->to = $to?->endOfDay();
+        $this->loanRows = null;
+
+        return $this;
+    }
+
     /**
      * Per-loan report rows, built once per request.
      *
@@ -52,6 +68,14 @@ class ReportingService
     {
         return $this->loanRows ??= Loan::query()
             ->with(['borrower:id,name', 'loanProduct:id,name', 'installments.allocations', 'payments'])
+            ->when(
+                $this->from !== null,
+                fn ($query) => $query->whereDate('applied_at', '>=', $this->from->toDateString()),
+            )
+            ->when(
+                $this->to !== null,
+                fn ($query) => $query->whereDate('applied_at', '<=', $this->to->toDateString()),
+            )
             ->orderBy('id')
             ->get()
             ->map(fn (Loan $loan): array => $this->loanRow($loan));
@@ -66,14 +90,13 @@ class ReportingService
     {
         $rows = $this->loanRows();
         $open = $rows->where('is_open', true);
-
-        $statusCounts = Loan::query()
-            ->toBase()
-            ->selectRaw('status, count(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
+        $statusCounts = $rows->countBy('status');
+        $loanIds = $rows->pluck('id')->all();
 
         $collected = DB::table('loan_payment_allocations')
+            ->join('payments', 'payments.id', '=', 'loan_payment_allocations.payment_id')
+            ->whereIn('payments.loan_id', $loanIds)
+            ->whereNull('payments.reversed_at')
             ->selectRaw('coalesce(sum(principal_allocated), 0) as principal')
             ->selectRaw('coalesce(sum(interest_allocated), 0) as interest')
             ->selectRaw('coalesce(sum(fee_allocated), 0) as fee')
@@ -81,7 +104,9 @@ class ReportingService
             ->first();
 
         return [
-            'borrowers' => Borrower::query()->count(),
+            'borrowers' => $this->from === null && $this->to === null
+                ? Borrower::query()->count()
+                : $rows->pluck('borrower_id')->unique()->count(),
             'loans' => $rows->count(),
             'open_loans' => $open->count(),
             'active_loans' => (int) ($statusCounts[LoanStatus::Active->value] ?? 0),
@@ -95,18 +120,18 @@ class ReportingService
                 + ($statusCounts[LoanStatus::Disbursed->value] ?? 0)
                 + ($statusCounts[LoanStatus::Rejected->value] ?? 0)
             ),
-            'disbursed' => round((float) Disbursement::query()->sum('amount'), 2),
+            'disbursed' => round((float) Disbursement::query()->whereIn('loan_id', $loanIds)->sum('amount'), 2),
             'outstanding' => round($open->sum('outstanding'), 2),
             'outstanding_principal' => round($open->sum('outstanding_principal'), 2),
             'outstanding_interest' => round($open->sum('outstanding_interest'), 2),
             'outstanding_fee' => round($open->sum('outstanding_fee'), 2),
             'outstanding_penalty' => round($open->sum('outstanding_penalty'), 2),
             'arrears' => round($open->sum('arrears'), 2),
-            'collected' => round((float) Payment::query()->whereNull('reversed_at')->sum('amount'), 2),
-            'collected_principal' => round((float) $collected->principal, 2),
-            'collected_interest' => round((float) $collected->interest, 2),
-            'collected_fee' => round((float) $collected->fee, 2),
-            'collected_penalty' => round((float) $collected->penalty, 2),
+            'collected' => round((float) $rows->sum('paid'), 2),
+            'collected_principal' => round((float) ($collected->principal ?? 0), 2),
+            'collected_interest' => round((float) ($collected->interest ?? 0), 2),
+            'collected_fee' => round((float) ($collected->fee ?? 0), 2),
+            'collected_penalty' => round((float) ($collected->penalty ?? 0), 2),
         ];
     }
 
@@ -164,7 +189,16 @@ class ReportingService
 
         $installments = LoanInstallment::query()
             ->with(['loan.borrower:id,name'])
-            ->whereHas('loan', fn ($query) => $query->whereIn('status', $this->openStatusValues()))
+            ->whereHas('loan', fn ($query) => $query
+                ->whereIn('status', $this->openStatusValues())
+                ->when(
+                    $this->from !== null,
+                    fn ($loanQuery) => $loanQuery->whereDate('applied_at', '>=', $this->from->toDateString()),
+                )
+                ->when(
+                    $this->to !== null,
+                    fn ($loanQuery) => $loanQuery->whereDate('applied_at', '<=', $this->to->toDateString()),
+                ))
             ->whereDate('due_date', '<=', $weekEnd->toDateString())
             ->orderBy('due_date')
             ->orderBy('loan_id')
@@ -355,6 +389,7 @@ class ReportingService
 
         return [
             'id' => $loan->id,
+            'borrower_id' => $loan->borrower_id,
             'borrower' => $loan->borrower?->name,
             'product' => $loan->loanProduct?->name,
             'principal' => round((float) $loan->principal, 2),

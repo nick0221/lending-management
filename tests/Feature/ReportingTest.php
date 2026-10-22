@@ -7,6 +7,7 @@ use App\Models\Loan;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\ReportingService;
+use Carbon\CarbonImmutable;
 
 /**
  * Two active loans: one installment settled in full and one installment due
@@ -216,6 +217,58 @@ test('the reports page exposes the portfolio figures', function () {
             ->where('loans.0.outstanding', 125)
             ->where('loans.1.outstanding', 60)
         );
+});
+
+test('the report period narrows every report to loans applied inside it', function () {
+    $this->travelTo('2026-06-01');
+
+    [$settled, $upcoming] = reportingFixture();
+
+    $settled->forceFill(['applied_at' => '2026-05-01'])->save();
+    $upcoming->forceFill(['applied_at' => '2026-06-01'])->save();
+
+    $reporting = app(ReportingService::class)->forPeriod(
+        CarbonImmutable::parse('2026-06-01'),
+        CarbonImmutable::parse('2026-06-01'),
+    );
+
+    $summary = $reporting->portfolioSummary();
+
+    expect($reporting->loanRows())->toHaveCount(1)
+        ->and($reporting->loanRows()->first()['id'])->toBe($upcoming->id)
+        ->and($summary['borrowers'])->toBe(1)
+        ->and($summary['loans'])->toBe(1)
+        ->and($summary['outstanding'])->toBe(60.0)
+        ->and($summary['collected'])->toBe(0.0)
+        ->and($summary['disbursed'])->toBe(0.0)
+        ->and($reporting->collections()['due_today'])->toBe(0.0)
+        ->and($reporting->collections()['upcoming'])->toHaveCount(0);
+});
+
+test('the reports page passes the selected period to the page', function () {
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    reportingFixture();
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['from' => '2026-06-01', 'to' => '2026-06-01']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/reports/index')
+            ->where('filters.from', '2026-06-01')
+            ->where('filters.to', '2026-06-01')
+            ->has('loans', 2)
+        );
+});
+
+test('the reports page rejects a to date before the from date', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['from' => '2026-06-10', 'to' => '2026-06-01']))
+        ->assertSessionHasErrors('to');
 });
 
 test('the admin dashboard exposes the portfolio overview', function () {

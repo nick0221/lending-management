@@ -47,6 +47,7 @@ test('the portfolio print view renders the summary', function () {
             ->component('admin/reports/print')
             ->where('organisation', config('app.name'))
             ->has('generated_at')
+            ->has('filters')
             ->has('summary')
             ->has('aging')
             ->has('risk')

@@ -3,11 +3,11 @@ import { Eye, Filter, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { DataPagination } from '@/components/data-pagination';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -72,8 +72,13 @@ export default function ActivityIndex({
     const [event, setEvent] = useState(filters.event ?? ALL);
     const [type, setType] = useState(filters.type ?? ALL);
     const [user, setUser] = useState(filters.user ? String(filters.user) : ALL);
-    const [from, setFrom] = useState(filters.from ?? '');
-    const [to, setTo] = useState(filters.to ?? '');
+    const [range, setRange] = useState<{
+        from: string | null;
+        to: string | null;
+    }>({
+        from: filters.from ?? null,
+        to: filters.to ?? null,
+    });
     const [selected, setSelected] = useState<ActivityLogRow | null>(null);
 
     const applyFilters = (formEvent: FormEvent<HTMLFormElement>) => {
@@ -85,8 +90,8 @@ export default function ActivityIndex({
                 ...(event !== ALL ? { event } : {}),
                 ...(type !== ALL ? { type } : {}),
                 ...(user !== ALL ? { user } : {}),
-                ...(from ? { from } : {}),
-                ...(to ? { to } : {}),
+                ...(range.from ? { from: range.from } : {}),
+                ...(range.to ? { to: range.to } : {}),
             },
             { preserveScroll: true, preserveState: true },
         );
@@ -109,7 +114,7 @@ export default function ActivityIndex({
                 >
                     <form
                         onSubmit={applyFilters}
-                        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
+                        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
                     >
                         <div className="grid gap-2">
                             <Label htmlFor="event">Event</Label>
@@ -181,30 +186,16 @@ export default function ActivityIndex({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="from">From</Label>
-                            <Input
-                                id="from"
-                                type="date"
-                                value={from}
-                                onChange={(changeEvent) =>
-                                    setFrom(changeEvent.target.value)
-                                }
+                            <Label>Date range</Label>
+                            <DateRangePicker
+                                from={range.from}
+                                to={range.to}
+                                onChange={(from, to) => setRange({ from, to })}
+                                className="w-full"
                             />
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="to">To</Label>
-                            <Input
-                                id="to"
-                                type="date"
-                                value={to}
-                                onChange={(changeEvent) =>
-                                    setTo(changeEvent.target.value)
-                                }
-                            />
-                        </div>
-
-                        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-5">
+                        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
                             <Button type="submit">
                                 <Filter /> Apply filters
                             </Button>

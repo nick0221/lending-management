@@ -7,6 +7,7 @@ use App\Services\CsvExporter;
 use App\Services\ReportingService;
 use App\Services\Settings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -30,6 +31,8 @@ class ReportController extends Controller
             ? $currentTab
             : 'portfolio';
 
+        $filters = $this->applyPeriod($request);
+
         return Inertia::render('admin/reports/index', [
             'summary' => $this->reporting->portfolioSummary(),
             'aging' => $this->reporting->agingBuckets(),
@@ -37,17 +40,21 @@ class ReportController extends Controller
             'collections' => $this->reporting->collections(),
             'loans' => $this->reporting->loanRows()->values()->all(),
             'currentTab' => $currentTab,
+            'filters' => $filters,
         ]);
     }
 
     /**
      * Show the printable portfolio summary.
      */
-    public function printSummary(): Response
+    public function printSummary(Request $request): Response
     {
+        $filters = $this->applyPeriod($request);
+
         return Inertia::render('admin/reports/print', [
             'organisation' => app(Settings::class)->organisationName(),
             'generated_at' => now()->toDateString(),
+            'filters' => $filters,
             'summary' => $this->reporting->portfolioSummary(),
             'aging' => $this->reporting->agingBuckets(),
             'risk' => $this->reporting->portfolioAtRisk(),
@@ -58,15 +65,40 @@ class ReportController extends Controller
     /**
      * Download one of the portfolio reports as CSV.
      */
-    public function download(string $report): StreamedResponse
+    public function download(Request $request, string $report): StreamedResponse
     {
         abort_unless(in_array($report, self::EXPORTS, true), 404);
+
+        $this->applyPeriod($request);
 
         return match ($report) {
             'summary' => $this->exportSummary(),
             'loans' => $this->exportLoans(),
             'collections' => $this->exportCollections(),
         };
+    }
+
+    /**
+     * Apply the optional reporting period to the shared reporting service.
+     *
+     * @return array{from: string|null, to: string|null}
+     */
+    private function applyPeriod(Request $request): array
+    {
+        $filters = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $from = $filters['from'] ?? null;
+        $to = $filters['to'] ?? null;
+
+        $this->reporting->forPeriod(
+            $from !== null ? Date::parse($from) : null,
+            $to !== null ? Date::parse($to) : null,
+        );
+
+        return ['from' => $from, 'to' => $to];
     }
 
     private function exportSummary(): StreamedResponse

@@ -475,6 +475,7 @@ export type Collections = {
 
 export type ReportLoanRow = {
     id: number;
+    borrower_id: number;
     borrower: string | null;
     product: string | null;
     principal: number;
@@ -555,6 +556,11 @@ export type ActivityLogFilters = {
     event: string | null;
     type: string | null;
     user: number | null;
+    from: string | null;
+    to: string | null;
+};
+
+export type ReportFilters = {
     from: string | null;
     to: string | null;
 };
