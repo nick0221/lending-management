@@ -85,7 +85,7 @@ Do these once, then reuse everywhere.
 | `react-day-picker` + `date-fns` | E0.12                | ✅ approved, installed |
 | `@radix-ui/react-popover`       | E0.12                | ✅ approved, installed |
 | `cmdk`                          | global search (F2)   | ✅ approved, installed |
-| `recharts`                      | report charts (E7.4) | 🔒 awaiting approval   |
+| `recharts`                      | report charts (E7.4) | ✅ approved, installed |
 
 ---
 
@@ -179,7 +179,7 @@ file — not a wall of sections.
 | E7.1 | Report tabs | Portfolio / Aging / Collections / Arrears as tabs instead of one long page.  | ✅     |
 | E7.2 | Date range  | Shared date-range control (E0.12) applied to every report.                   | ✅     |
 | E7.3 | Export menu | One `DropdownMenu` with a CSV action per report instead of separate buttons. | ✅     |
-| E7.4 | Charts      | Simple bars first (CSS); upgrade to `recharts` only if approved.             | 🔒     |
+| E7.4 | Charts      | `recharts` bars for portfolio risk, aging and collections.                    | ✅     |
 | E7.5 | Print view  | Print stylesheet for the portfolio summary.                                  | ✅     |
 
 ---
@@ -284,3 +284,4 @@ file — not a wall of sections.
 | 2026-10-22 | Added global search (F2). Staff can open a cmdk command palette with Ctrl/⌘ K or the header button, search borrowers by name, phone, email or national ID and loans by number or borrower, and jump straight to the record. The endpoint is limited to five matches per group and is staff-only. |
 | 2026-10-22 | Restored the `verified` middleware on the borrower dashboard, admin area and settings routes. Unverified accounts now return to the verification prompt, including staff accounts, and the full suite is green. |
 | 2026-10-22 | Added a printable loan statement (F7). The standalone page lays out the borrower and loan details, summary totals, full repayment schedule and payment history, and uses the browser Print / Save as PDF action, so no PDF package was needed. It is reachable from the loan file and loan queue, and PDF statements work without an email address. Server-side exports remain CSV. |
+| 2026-10-22 | Upgraded the report charts to Recharts (E7.4). Portfolio at risk shows the PAR thresholds, aging compares outstanding bucket totals, and collections compares due today, this week and overdue. The standalone table remains the accessible source of the figures. |

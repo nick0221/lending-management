@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
+import { ReportBarChart } from '@/components/admin/report-bar-chart';
+import type { ReportBarDatum } from '@/components/admin/report-bar-chart';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { FilterTabs } from '@/components/filter-tabs';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
@@ -213,6 +215,71 @@ export default function ReportsIndex({
               : filters.to
                 ? `until ${formatDateOnly(filters.to)}`
                 : null;
+
+    const agingChartData: ReportBarDatum[] = [
+        {
+            label: 'Current',
+            value: aging.current,
+            color: 'var(--chart-2)',
+        },
+        {
+            label: '1 - 30 days',
+            value: aging.days_1_30,
+            color: 'var(--chart-5)',
+        },
+        {
+            label: '31 - 60 days',
+            value: aging.days_31_60,
+            color: 'var(--chart-4)',
+        },
+        {
+            label: '61 - 90 days',
+            value: aging.days_61_90,
+            color: 'var(--destructive)',
+        },
+        {
+            label: 'Over 90 days',
+            value: aging.days_over_90,
+            color: 'var(--destructive)',
+        },
+    ];
+
+    const riskChartData: ReportBarDatum[] = [
+        { label: 'PAR', value: risk.par.ratio, color: 'var(--chart-1)' },
+        {
+            label: 'PAR 30',
+            value: risk.par30.ratio,
+            color: 'var(--chart-5)',
+        },
+        {
+            label: 'PAR 60',
+            value: risk.par60.ratio,
+            color: 'var(--chart-4)',
+        },
+        {
+            label: 'PAR 90',
+            value: risk.par90.ratio,
+            color: 'var(--destructive)',
+        },
+    ];
+
+    const collectionsChartData: ReportBarDatum[] = [
+        {
+            label: 'Due today',
+            value: collections.due_today,
+            color: 'var(--chart-2)',
+        },
+        {
+            label: 'Due this week',
+            value: collections.due_this_week,
+            color: 'var(--chart-1)',
+        },
+        {
+            label: 'Overdue',
+            value: collections.overdue,
+            color: 'var(--destructive)',
+        },
+    ];
 
     const collectionRows = [
         ...collections.overdue_installments,
@@ -434,6 +501,19 @@ export default function ReportsIndex({
                         </section>
 
                         <SectionCard
+                            title="Portfolio at risk"
+                            description="The share of outstanding balance that is overdue, by days past due threshold."
+                        >
+                            <div className="p-4">
+                                <ReportBarChart
+                                    data={riskChartData}
+                                    valueFormatter={formatPercent}
+                                    ariaLabel="Portfolio at risk by days past due"
+                                />
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard
                             title="Loan report"
                             description={`${loans.length} loan${
                                 loans.length === 1 ? '' : 's'
@@ -450,8 +530,15 @@ export default function ReportsIndex({
                 {currentTab === 'aging' && (
                     <SectionCard
                         title="Aging"
-                        description="Outstanding balance by days past due. Bars show each bucket's share of the total."
+                        description="Outstanding balance by days past due. The chart compares bucket totals; the table adds each bucket's share."
                     >
+                        <div className="border-b p-4">
+                            <ReportBarChart
+                                data={agingChartData}
+                                ariaLabel="Outstanding balance by aging bucket"
+                            />
+                        </div>
+
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -538,6 +625,18 @@ export default function ReportsIndex({
                                 }
                             />
                         </section>
+
+                        <SectionCard
+                            title="Collection outlook"
+                            description="Amounts due today and over the next seven days, compared with the current overdue balance."
+                        >
+                            <div className="p-4">
+                                <ReportBarChart
+                                    data={collectionsChartData}
+                                    ariaLabel="Collections due today, this week and overdue"
+                                />
+                            </div>
+                        </SectionCard>
 
                         <SectionCard
                             title="Due in the next 7 days"
