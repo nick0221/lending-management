@@ -1080,11 +1080,13 @@ class LoanController extends Controller
                 'type' => $log->type,
                 'type_label' => NotificationLog::label($log->type),
                 'channel' => $log->channel,
+                'channel_label' => NotificationLog::channelLabel($log->channel),
                 'status' => $log->status,
                 'status_label' => NotificationLog::statusLabel($log->status),
                 'error' => $log->error,
                 'sent_at' => $log->sent_at?->toIso8601String(),
-                'can_resend' => $actor->can('view', $loan) && filled($loan->borrower->email),
+                'can_resend' => $actor->can('view', $loan)
+                    && $loan->borrower->wantsChannel($log->type, $log->channel),
             ])
             ->values()
             ->all();

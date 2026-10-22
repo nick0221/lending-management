@@ -35,6 +35,7 @@ export type Borrower = {
     notify_overdue: boolean;
     notify_receipts: boolean;
     notify_statements: boolean;
+    notify_sms: boolean;
     created_at: string | null;
 };
 
@@ -403,6 +404,7 @@ export type NotificationLogEntry = {
     type: string;
     type_label: string;
     channel: string;
+    channel_label: string;
     status: NotificationStatus;
     status_label: string;
     error: string | null;

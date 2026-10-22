@@ -88,6 +88,7 @@ export function BorrowerForm({
         notify_receipts: borrower?.notify_receipts ?? true,
         notify_statements: borrower?.notify_statements ?? true,
     });
+    const [notifySms, setNotifySms] = useState(borrower?.notify_sms ?? false);
 
     const selectedUser = users.find(
         (option) => String(option.value) === userId,
@@ -314,10 +315,34 @@ export function BorrowerForm({
                         </SectionCard>
 
                         <SectionCard
-                            title="Email notifications"
-                            description="Sent to the borrower's email address. An address is required for any of these to be delivered."
+                            title="Notifications"
+                            description="Choose the events and delivery channels. Email needs an address; SMS needs a phone number."
                             contentClassName="space-y-4 p-4"
                         >
+                            <div className="flex items-start justify-between gap-4 rounded-md border bg-muted/30 p-3">
+                                <div className="grid min-w-0 flex-1 gap-1">
+                                    <Label htmlFor="notify_sms">
+                                        SMS notifications
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Text due-date reminders, overdue notices
+                                        and receipts. Statements stay by email.
+                                    </p>
+                                </div>
+
+                                <Switch
+                                    id="notify_sms"
+                                    checked={notifySms}
+                                    onCheckedChange={setNotifySms}
+                                />
+
+                                <input
+                                    type="hidden"
+                                    name="notify_sms"
+                                    value={notifySms ? '1' : '0'}
+                                />
+                            </div>
+
                             {notificationPreferences.map((preference) => (
                                 <div
                                     key={preference.key}
@@ -360,7 +385,8 @@ export function BorrowerForm({
                                     errors.notify_due_soon ??
                                     errors.notify_overdue ??
                                     errors.notify_receipts ??
-                                    errors.notify_statements
+                                    errors.notify_statements ??
+                                    errors.notify_sms
                                 }
                             />
                         </SectionCard>
@@ -431,6 +457,10 @@ export function BorrowerForm({
                                     ? 'All off'
                                     : `${enabledNotifications} of ${notificationPreferences.length} on`
                             }
+                        />
+                        <SummaryRow
+                            label="SMS"
+                            value={notifySms ? 'On' : 'Off'}
                         />
                     </FormSummary>
                 </>

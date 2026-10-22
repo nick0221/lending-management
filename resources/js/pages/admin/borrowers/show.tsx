@@ -405,18 +405,36 @@ export default function ShowBorrower({
 
                         <SectionCard
                             title="Notifications"
-                            description="Email preferences for this borrower."
+                            description="Email and SMS preferences for this borrower."
                             contentClassName="p-6"
                         >
                             <div className="space-y-4">
-                                <div className="text-sm">
+                                <div className="space-y-1 text-sm">
                                     {borrower.email ? (
-                                        <span className="text-muted-foreground">
+                                        <span className="block text-muted-foreground">
                                             {borrower.email}
                                         </span>
                                     ) : (
-                                        <span className="text-destructive">
+                                        <span className="block text-destructive">
                                             No email address on file
+                                        </span>
+                                    )}
+
+                                    <span className="block text-muted-foreground">
+                                        {borrower.phone}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-between border-b pb-2 text-sm">
+                                    <span>SMS channel</span>
+
+                                    {borrower.notify_sms ? (
+                                        <Badge variant="secondary">
+                                            <Check /> On
+                                        </Badge>
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground">
+                                            Off
                                         </span>
                                     )}
                                 </div>

@@ -120,6 +120,7 @@ class BorrowerImportService
                     'notify_overdue' => true,
                     'notify_receipts' => true,
                     'notify_statements' => true,
+                    'notify_sms' => false,
                 ];
 
                 $validator = Validator::make($data, StoreBorrowerRequest::baseRules());

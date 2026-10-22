@@ -9,11 +9,15 @@ use Throwable;
 class MarkNotificationFailed
 {
     /**
-     * Record the exception that stopped the mail channel from delivering.
+     * Record the exception that stopped a channel from delivering.
      */
     public function handle(NotificationFailed $event): void
     {
-        $logId = $event->notification->notificationLogId ?? null;
+        if (! method_exists($event->notification, 'logIdFor')) {
+            return;
+        }
+
+        $logId = $event->notification->logIdFor($event->channel);
 
         if ($logId === null) {
             return;

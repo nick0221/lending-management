@@ -1147,8 +1147,8 @@ export default function ShowLoan({
                                                         }
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground capitalize">
-                                                    {notification.channel}
+                                                <TableCell className="text-muted-foreground">
+                                                    {notification.channel_label}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="space-y-1">

@@ -25,6 +25,16 @@ use Illuminate\Support\Str;
 class NotificationLog extends Model
 {
     /**
+     * Email delivery channel.
+     */
+    public const CHANNEL_MAIL = 'mail';
+
+    /**
+     * SMS delivery channel.
+     */
+    public const CHANNEL_SMS = 'sms';
+
+    /**
      * Type of a reminder sent before an installment is due.
      */
     public const TYPE_DUE_SOON = 'due_soon';
@@ -40,7 +50,7 @@ class NotificationLog extends Model
     public const TYPE_RECEIPT = 'receipt';
 
     /**
-     * Type of a statement emailed on request.
+     * Type of a statement sent on request.
      */
     public const TYPE_STATEMENT = 'statement';
 
@@ -50,12 +60,12 @@ class NotificationLog extends Model
     public const STATUS_QUEUED = 'queued';
 
     /**
-     * The notification was delivered to the mail channel.
+     * The channel delivered the notification.
      */
     public const STATUS_SENT = 'sent';
 
     /**
-     * The mail channel threw an error while delivering the notification.
+     * A channel threw an error while delivering the notification.
      */
     public const STATUS_FAILED = 'failed';
 
@@ -121,6 +131,18 @@ class NotificationLog extends Model
     }
 
     /**
+     * Get the human-readable label for a delivery channel.
+     */
+    public static function channelLabel(string $channel): string
+    {
+        return match ($channel) {
+            self::CHANNEL_MAIL => __('Email'),
+            self::CHANNEL_SMS => __('SMS'),
+            default => Str::headline($channel),
+        };
+    }
+
+    /**
      * Get the human-readable label for a delivery status.
      */
     public static function statusLabel(string $status): string
@@ -143,7 +165,7 @@ class NotificationLog extends Model
         string $type,
         Borrower $borrower,
         ?Loan $loan = null,
-        string $channel = 'mail',
+        string $channel = self::CHANNEL_MAIL,
     ): ?self {
         $log = static::query()->firstOrCreate(
             ['key' => $key],

@@ -3,7 +3,11 @@
 namespace App\Providers;
 
 use App\Listeners\RecordAuthenticationActivity;
+use App\Notifications\Channels\SmsChannel;
 use App\Services\Settings;
+use App\Services\Sms\HttpSmsSender;
+use App\Services\Sms\LogSmsSender;
+use App\Services\Sms\SmsSender;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -13,9 +17,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,7 +30,31 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(SmsSender::class, function (): SmsSender {
+            $driver = strtolower((string) config('services.sms.driver', 'log'));
+
+            return match ($driver) {
+                'log' => new LogSmsSender,
+                'http' => new HttpSmsSender(
+                    url: config('services.sms.http.url'),
+                    method: config('services.sms.http.method', 'POST'),
+                    format: config('services.sms.http.format', 'json'),
+                    token: config('services.sms.http.token'),
+                    tokenHeader: config('services.sms.http.token_header', 'Authorization'),
+                    tokenPrefix: config('services.sms.http.token_prefix', 'Bearer '),
+                    headers: config('services.sms.http.headers', []),
+                    toField: config('services.sms.http.to_field', 'to'),
+                    messageField: config('services.sms.http.message_field', 'message'),
+                    from: config('services.sms.from'),
+                    fromField: config('services.sms.http.from_field', 'from'),
+                    timeout: (int) config('services.sms.http.timeout', 10),
+                    connectTimeout: (int) config('services.sms.http.connect_timeout', 3),
+                ),
+                default => throw new InvalidArgumentException(
+                    "Unsupported SMS driver [{$driver}].",
+                ),
+            };
+        });
     }
 
     /**
@@ -34,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuditTrail();
+        $this->configureNotifications();
         $this->configureRateLimiting();
     }
 
@@ -56,6 +87,17 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('search', fn (Request $request): Limit => Limit::perMinute(60)
             ->by($request->user()?->id ?: $request->ip()));
+    }
+
+    /**
+     * Register the application-specific SMS notification channel.
+     */
+    protected function configureNotifications(): void
+    {
+        Notification::extend(
+            'sms',
+            fn ($app): SmsChannel => $app->make(SmsChannel::class),
+        );
     }
 
     /**

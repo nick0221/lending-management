@@ -14,6 +14,25 @@ return [
     |
     */
 
+    'sms' => [
+        'driver' => env('SMS_DRIVER', 'log'),
+        'from' => env('SMS_FROM'),
+        'http' => [
+            'url' => env('SMS_HTTP_URL'),
+            'method' => env('SMS_HTTP_METHOD', 'POST'),
+            'format' => env('SMS_HTTP_FORMAT', 'json'),
+            'token' => env('SMS_HTTP_TOKEN'),
+            'token_header' => env('SMS_HTTP_TOKEN_HEADER', 'Authorization'),
+            'token_prefix' => env('SMS_HTTP_TOKEN_PREFIX', 'Bearer '),
+            'headers' => json_decode((string) env('SMS_HTTP_HEADERS', '{}'), true) ?: [],
+            'to_field' => env('SMS_HTTP_TO_FIELD', 'to'),
+            'message_field' => env('SMS_HTTP_MESSAGE_FIELD', 'message'),
+            'from_field' => env('SMS_HTTP_FROM_FIELD', 'from'),
+            'timeout' => (int) env('SMS_HTTP_TIMEOUT', 10),
+            'connect_timeout' => (int) env('SMS_HTTP_CONNECT_TIMEOUT', 3),
+        ],
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

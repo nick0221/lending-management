@@ -8,11 +8,15 @@ use Illuminate\Notifications\Events\NotificationSent;
 class MarkNotificationSent
 {
     /**
-     * Mark the delivery log as sent after the mail channel accepts it.
+     * Mark the matching delivery log as sent after a channel accepts it.
      */
     public function handle(NotificationSent $event): void
     {
-        $logId = $event->notification->notificationLogId ?? null;
+        if (! method_exists($event->notification, 'logIdFor')) {
+            return;
+        }
+
+        $logId = $event->notification->logIdFor($event->channel);
 
         if ($logId === null) {
             return;

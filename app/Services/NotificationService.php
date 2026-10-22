@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\LoanStatus;
+use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\NotificationLog;
@@ -17,8 +18,8 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Sends the borrower emails and records each one so scheduled commands stay
- * idempotent when they run more than once on the same day.
+ * Sends borrower notifications over email and SMS, recording every channel so
+ * scheduled commands stay idempotent when they run more than once per day.
  */
 class NotificationService
 {
@@ -30,7 +31,7 @@ class NotificationService
     private const OPEN_STATUSES = [LoanStatus::Active, LoanStatus::Defaulted];
 
     /**
-     * Email reminders for installments due in the configured number of days.
+     * Notify borrowers about installments due in the configured number of days.
      */
     public function sendDueReminders(?CarbonInterface $asOf = null, ?int $days = null): int
     {
@@ -49,29 +50,27 @@ class NotificationService
         foreach ($installments as $installment) {
             $borrower = $installment->loan?->borrower;
 
-            if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_DUE_SOON)) {
+            if ($borrower === null) {
                 continue;
             }
 
-            if ($installment->outstandingTotal() <= 0) {
+            $channels = $borrower->notificationChannels(NotificationLog::TYPE_DUE_SOON);
+
+            if ($channels === [] || $installment->outstandingTotal() <= 0) {
                 continue;
             }
 
             $key = sprintf('installment:%d:due_soon:%s', $installment->id, $dueOn->toDateString());
 
-            $log = NotificationLog::reserve($key, NotificationLog::TYPE_DUE_SOON, $borrower, $installment->loan);
-
-            if ($log === null) {
-                continue;
-            }
-
-            try {
-                $borrower->notify((new LoanDueSoon($installment))->forLog($log));
-
+            if ($this->dispatchNotification(
+                $borrower,
+                $installment->loan,
+                $key,
+                NotificationLog::TYPE_DUE_SOON,
+                new LoanDueSoon($installment),
+                $channels,
+            )) {
                 $sent++;
-            } catch (Throwable $exception) {
-                $log->markFailed($exception->getMessage());
-                report($exception);
             }
         }
 
@@ -102,7 +101,7 @@ class NotificationService
     }
 
     /**
-     * Email one overdue notice for the loan, summarising its unpaid
+     * Send one overdue notice for the loan, summarising its unpaid
      * installments. Returns false when the notice is not applicable or has
      * already gone out today.
      */
@@ -117,8 +116,9 @@ class NotificationService
         $loan->loadMissing(['borrower', 'installments.allocations']);
 
         $borrower = $loan->borrower;
+        $channels = $borrower?->notificationChannels(NotificationLog::TYPE_OVERDUE) ?? [];
 
-        if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_OVERDUE)) {
+        if ($borrower === null || $channels === []) {
             return false;
         }
 
@@ -133,36 +133,29 @@ class NotificationService
 
         $key = sprintf('loan:%d:overdue:%s', $loan->id, $asOf->toDateString());
 
-        $log = NotificationLog::reserve($key, NotificationLog::TYPE_OVERDUE, $borrower, $loan);
-
-        if ($log === null) {
-            return false;
-        }
-
-        try {
-            $borrower->notify((new LoanOverdue($loan, $overdue))->forLog($log));
-
-            return true;
-        } catch (Throwable $exception) {
-            $log->markFailed($exception->getMessage());
-            report($exception);
-
-            return false;
-        }
+        return $this->dispatchNotification(
+            $borrower,
+            $loan,
+            $key,
+            NotificationLog::TYPE_OVERDUE,
+            new LoanOverdue($loan, $overdue),
+            $channels,
+        );
     }
 
     /**
-     * Email a receipt for the given payment with the balance left afterwards.
+     * Send a receipt for the given payment with the balance left afterwards.
      * Pass `$force` when staff explicitly re-send a receipt so the once-only
-     * key does not suppress the new email.
+     * key does not suppress the new notification.
      */
     public function sendReceipt(Payment $payment, float $remainingOutstanding, bool $force = false): bool
     {
         $payment->loadMissing('loan.borrower');
 
         $borrower = $payment->loan?->borrower;
+        $channels = $borrower?->notificationChannels(NotificationLog::TYPE_RECEIPT) ?? [];
 
-        if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_RECEIPT)) {
+        if ($borrower === null || $channels === []) {
             return false;
         }
 
@@ -170,55 +163,40 @@ class NotificationService
             ? sprintf('payment:%d:receipt:%s', $payment->id, Str::uuid())
             : sprintf('payment:%d:receipt', $payment->id);
 
-        $log = NotificationLog::reserve($key, NotificationLog::TYPE_RECEIPT, $borrower, $payment->loan);
-
-        if ($log === null) {
-            return false;
-        }
-
-        try {
-            $borrower->notify((new PaymentReceived($payment, round(max($remainingOutstanding, 0.0), 2)))->forLog($log));
-
-            return true;
-        } catch (Throwable $exception) {
-            $log->markFailed($exception->getMessage());
-            report($exception);
-
-            return false;
-        }
+        return $this->dispatchNotification(
+            $borrower,
+            $payment->loan,
+            $key,
+            NotificationLog::TYPE_RECEIPT,
+            new PaymentReceived($payment, round(max($remainingOutstanding, 0.0), 2)),
+            $channels,
+        );
     }
 
     /**
-     * Email the loan's repayment schedule on request.
+     * Send the loan's repayment schedule on request.
      */
     public function sendStatement(Loan $loan): bool
     {
         $loan->loadMissing('borrower');
 
         $borrower = $loan->borrower;
+        $channels = $borrower?->notificationChannels(NotificationLog::TYPE_STATEMENT) ?? [];
 
-        if ($borrower === null || ! $borrower->wantsEmail(NotificationLog::TYPE_STATEMENT)) {
+        if ($borrower === null || $channels === []) {
             return false;
         }
 
         $key = sprintf('loan:%d:statement:%s', $loan->id, Str::uuid());
 
-        $log = NotificationLog::reserve($key, NotificationLog::TYPE_STATEMENT, $borrower, $loan);
-
-        if ($log === null) {
-            return false;
-        }
-
-        try {
-            $borrower->notify((new LoanStatement($loan))->forLog($log));
-
-            return true;
-        } catch (Throwable $exception) {
-            $log->markFailed($exception->getMessage());
-            report($exception);
-
-            return false;
-        }
+        return $this->dispatchNotification(
+            $borrower,
+            $loan,
+            $key,
+            NotificationLog::TYPE_STATEMENT,
+            new LoanStatement($loan),
+            $channels,
+        );
     }
 
     /**
@@ -236,8 +214,8 @@ class NotificationService
             return false;
         }
 
-        if (! $borrower->wantsEmail($log->type)) {
-            $log->markSkipped(__('The borrower has disabled this email type.'));
+        if (! $borrower->wantsChannel($log->type, $log->channel)) {
+            $log->markSkipped(__('The borrower has disabled this notification channel.'));
 
             return false;
         }
@@ -255,11 +233,69 @@ class NotificationService
         $log->markQueued();
 
         try {
-            $borrower->notify($notification->forLog($log));
+            $borrower->notify(
+                $notification
+                    ->forChannels([$log->channel])
+                    ->forLog($log),
+            );
 
             return true;
         } catch (Throwable $exception) {
             $log->markFailed($exception->getMessage());
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * Reserve a log for each enabled channel and send one notification.
+     *
+     * @param  array<int, string>  $channels
+     */
+    private function dispatchNotification(
+        Borrower $borrower,
+        ?Loan $loan,
+        string $key,
+        string $type,
+        Notification $notification,
+        array $channels,
+    ): bool {
+        $logs = [];
+
+        foreach ($channels as $channel) {
+            $log = NotificationLog::reserve(
+                $channel === NotificationLog::CHANNEL_MAIL
+                    ? $key
+                    : "{$key}:{$channel}",
+                $type,
+                $borrower,
+                $loan,
+                $channel,
+            );
+
+            if ($log !== null) {
+                $logs[$channel] = $log;
+            }
+        }
+
+        if ($logs === []) {
+            return false;
+        }
+
+        $notification
+            ->forChannels(array_keys($logs))
+            ->forLogs($logs);
+
+        try {
+            $borrower->notify($notification);
+
+            return true;
+        } catch (Throwable $exception) {
+            foreach ($logs as $log) {
+                $log->markFailed($exception->getMessage());
+            }
+
             report($exception);
 
             return false;

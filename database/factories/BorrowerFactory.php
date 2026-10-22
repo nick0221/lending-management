@@ -33,6 +33,7 @@ class BorrowerFactory extends Factory
             'notify_overdue' => true,
             'notify_receipts' => true,
             'notify_statements' => true,
+            'notify_sms' => false,
         ];
     }
 

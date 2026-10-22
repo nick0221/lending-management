@@ -44,6 +44,7 @@ class UpdateBorrowerRequest extends FormRequest
             'notify_overdue' => ['boolean'],
             'notify_receipts' => ['boolean'],
             'notify_statements' => ['boolean'],
+            'notify_sms' => ['boolean'],
         ];
     }
 

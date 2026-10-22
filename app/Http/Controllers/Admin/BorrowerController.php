@@ -235,6 +235,7 @@ class BorrowerController extends Controller
             'notify_overdue' => $borrower->notify_overdue,
             'notify_receipts' => $borrower->notify_receipts,
             'notify_statements' => $borrower->notify_statements,
+            'notify_sms' => $borrower->notify_sms,
             'created_at' => $borrower->created_at?->toIso8601String(),
         ];
     }

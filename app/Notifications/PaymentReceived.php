@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Notifications\Concerns\TracksNotificationLog;
 use Illuminate\Bus\Queueable;
@@ -22,7 +23,7 @@ class PaymentReceived extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->channelsFor($notifiable, NotificationLog::TYPE_RECEIPT);
     }
 
     /**
@@ -53,5 +54,17 @@ class PaymentReceived extends Notification implements ShouldQueue
                 'amount' => number_format($this->remainingOutstanding, 2, '.', ''),
             ]))
             ->line(__('Thank you.'));
+    }
+
+    /**
+     * Build the short text message for the SMS channel.
+     */
+    public function toSms(object $notifiable): string
+    {
+        return __('Payment of :amount received for loan #:id. Remaining balance: :balance.', [
+            'amount' => number_format((float) $this->payment->amount, 2, '.', ''),
+            'id' => $this->payment->loan_id,
+            'balance' => number_format($this->remainingOutstanding, 2, '.', ''),
+        ]);
     }
 }

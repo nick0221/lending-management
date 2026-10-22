@@ -12,7 +12,11 @@ class MarkNotificationSkipped
      */
     public function handle(NotificationSkipped $event): void
     {
-        $logId = $event->notification->notificationLogId ?? null;
+        if (! method_exists($event->notification, 'logIdFor')) {
+            return;
+        }
+
+        $logId = $event->notification->logIdFor($event->channel);
 
         if ($logId === null) {
             return;

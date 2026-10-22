@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Loan;
 use App\Models\LoanInstallment;
+use App\Models\NotificationLog;
 use App\Notifications\Concerns\TracksNotificationLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,7 +25,7 @@ class LoanStatement extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->channelsFor($notifiable, NotificationLog::TYPE_STATEMENT);
     }
 
     /**

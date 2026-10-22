@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property bool $notify_overdue
  * @property bool $notify_receipts
  * @property bool $notify_statements
+ * @property bool $notify_sms
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -45,6 +46,7 @@ use Illuminate\Support\Carbon;
     'notify_overdue',
     'notify_receipts',
     'notify_statements',
+    'notify_sms',
 ])]
 class Borrower extends Model
 {
@@ -65,6 +67,7 @@ class Borrower extends Model
             'notify_overdue' => 'boolean',
             'notify_receipts' => 'boolean',
             'notify_statements' => 'boolean',
+            'notify_sms' => 'boolean',
         ];
     }
 
@@ -73,10 +76,57 @@ class Borrower extends Model
      */
     public function wantsEmail(string $type): bool
     {
-        if (blank($this->email)) {
-            return false;
-        }
+        return filled($this->email) && $this->wantsType($type);
+    }
 
+    /**
+     * Determine whether the borrower wants the given SMS notification.
+     *
+     * Statements stay on email because a text message cannot carry the
+     * repayment schedule.
+     */
+    public function wantsSms(string $type): bool
+    {
+        return $this->notify_sms
+            && filled($this->phone)
+            && in_array($type, [
+                NotificationLog::TYPE_DUE_SOON,
+                NotificationLog::TYPE_OVERDUE,
+                NotificationLog::TYPE_RECEIPT,
+            ], true)
+            && $this->wantsType($type);
+    }
+
+    /**
+     * Get the delivery channels enabled for a notification type.
+     *
+     * @return array<int, string>
+     */
+    public function notificationChannels(string $type): array
+    {
+        return array_values(array_filter([
+            $this->wantsEmail($type) ? NotificationLog::CHANNEL_MAIL : null,
+            $this->wantsSms($type) ? NotificationLog::CHANNEL_SMS : null,
+        ]));
+    }
+
+    /**
+     * Determine whether the borrower wants one specific delivery channel.
+     */
+    public function wantsChannel(string $type, string $channel): bool
+    {
+        return match ($channel) {
+            NotificationLog::CHANNEL_MAIL => $this->wantsEmail($type),
+            NotificationLog::CHANNEL_SMS => $this->wantsSms($type),
+            default => false,
+        };
+    }
+
+    /**
+     * Determine whether the event-level preference is enabled.
+     */
+    private function wantsType(string $type): bool
+    {
         return match ($type) {
             NotificationLog::TYPE_DUE_SOON => $this->notify_due_soon,
             NotificationLog::TYPE_OVERDUE => $this->notify_overdue,
