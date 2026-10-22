@@ -235,7 +235,7 @@ export default function ReportsIndex({
         {
             label: '61 - 90 days',
             value: aging.days_61_90,
-            color: 'var(--destructive)',
+            color: 'var(--chart-3)',
         },
         {
             label: 'Over 90 days',
@@ -508,6 +508,7 @@ export default function ReportsIndex({
                                 <ReportBarChart
                                     data={riskChartData}
                                     valueFormatter={formatPercent}
+                                    valueLabel="Share"
                                     ariaLabel="Portfolio at risk by days past due"
                                 />
                             </div>

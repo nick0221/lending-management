@@ -23,10 +23,12 @@ export type ReportBarDatum = {
 export function ReportBarChart({
     data,
     valueFormatter = formatMoney,
+    valueLabel = 'Amount',
     ariaLabel,
 }: {
     data: ReportBarDatum[];
     valueFormatter?: (value: number) => string;
+    valueLabel?: string;
     ariaLabel: string;
 }) {
     return (
@@ -77,7 +79,7 @@ export function ReportBarChart({
                             cursor={{ fill: 'var(--muted)' }}
                             formatter={(value) => [
                                 valueFormatter(Number(value)),
-                                'Amount',
+                                valueLabel,
                             ]}
                             contentStyle={{
                                 background: 'var(--popover)',
