@@ -627,8 +627,8 @@ export default function ShowLoan({
                                     approved.
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>#</TableHead>
                                             <TableHead>Due date</TableHead>
@@ -904,8 +904,8 @@ export default function ShowLoan({
                                     )}
                                 </div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Date</TableHead>
                                             <TableHead className="text-right">
@@ -1065,8 +1065,8 @@ export default function ShowLoan({
                                     appear here.
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Date</TableHead>
                                             <TableHead className="text-right">
@@ -1124,8 +1124,8 @@ export default function ShowLoan({
                                     any delivery failures.
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Type</TableHead>
                                             <TableHead>Channel</TableHead>

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
     Pagination,
@@ -6,14 +6,26 @@ import {
     PaginationItem,
     PaginationLink,
 } from '@/components/ui/pagination';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import type { Paginated } from '@/types';
+
+const PAGE_SIZES = [15, 25, 50, 100];
+const SMALLEST_PAGE_SIZE = Math.min(...PAGE_SIZES);
 
 /**
  * Shared paginator for server-driven lists. Keeps the page number, range and
  * navigation in one place so every list behaves the same.
  */
 export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
-    if (paginator.last_page <= 1) {
+    const page = usePage();
+
+    if (paginator.total <= SMALLEST_PAGE_SIZE) {
         return null;
     }
 
@@ -21,13 +33,60 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
         link.label.includes('Previous'),
     );
     const next = paginator.links.find((link) => link.label.includes('Next'));
+    const pageSizes = PAGE_SIZES.includes(paginator.per_page)
+        ? PAGE_SIZES
+        : [...PAGE_SIZES, paginator.per_page].sort(
+              (first, second) => first - second,
+          );
+
+    const changePageSize = (value: string) => {
+        const url = new URL(page.url, window.location.origin);
+
+        url.searchParams.set('per_page', value);
+        url.searchParams.delete('page');
+
+        router.get(
+            url.pathname + url.search,
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
 
     return (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
-                Showing {paginator.from ?? 0}–{paginator.to ?? 0} of{' '}
-                {paginator.total}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="text-sm text-muted-foreground">
+                    Showing {paginator.from ?? 0}–{paginator.to ?? 0} of{' '}
+                    {paginator.total}
+                </p>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Rows</span>
+
+                    <Select
+                        value={String(paginator.per_page)}
+                        onValueChange={changePageSize}
+                    >
+                        <SelectTrigger
+                            className="h-8 w-[4.75rem]"
+                            aria-label="Rows per page"
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+
+                        <SelectContent align="start">
+                            {pageSizes.map((size) => (
+                                <SelectItem key={size} value={String(size)}>
+                                    {size}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
             <Pagination className="mx-0 w-auto justify-start">
                 <PaginationContent>

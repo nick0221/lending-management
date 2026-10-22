@@ -193,8 +193,8 @@ export default function ShowBorrower({
                                     start the file.
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Loan</TableHead>
                                             <TableHead>Product</TableHead>
@@ -295,8 +295,8 @@ export default function ShowBorrower({
                                     No payments recorded yet.
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Date</TableHead>
                                             <TableHead>Loan</TableHead>

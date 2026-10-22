@@ -68,7 +68,7 @@ class ActivityController extends Controller
             ->when($filters['from'] ?? null, fn ($query, string $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['to'] ?? null, fn ($query, string $date) => $query->whereDate('created_at', '<=', $date))
             ->orderByDesc('id')
-            ->paginate(25)
+            ->paginate($this->perPage($request, 25))
             ->withQueryString()
             ->through(fn (ActivityLog $log): array => [
                 'id' => $log->id,

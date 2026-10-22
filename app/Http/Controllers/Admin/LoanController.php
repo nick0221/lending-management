@@ -95,7 +95,7 @@ class LoanController extends Controller
                 in_array($sort, ['principal', 'applied_at'], true),
                 fn (Builder $query) => $query->orderBy($sort, $direction),
             )
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString()
             ->through(fn (Loan $loan): array => [
                 ...$this->toPayload($loan),

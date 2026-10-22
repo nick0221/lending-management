@@ -45,7 +45,7 @@ class LoanProductController extends Controller
             ->withCount('loans')
             ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive))
             ->orderBy('name')
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString()
             ->through(fn (LoanProduct $loanProduct): array => [
                 ...$this->toPayload($loanProduct),

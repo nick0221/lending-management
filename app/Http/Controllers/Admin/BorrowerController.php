@@ -51,7 +51,7 @@ class BorrowerController extends Controller
             ->when($status, fn ($query) => $query->where('kyc_status', $status))
             ->when($search !== '', $applySearch)
             ->orderBy('name')
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString()
             ->through(fn (Borrower $borrower): array => [
                 ...$this->toPayload($borrower),

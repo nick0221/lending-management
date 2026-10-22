@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
+import { useState } from 'react';
 import { ReportBarChart } from '@/components/admin/report-bar-chart';
 import type { ReportBarDatum } from '@/components/admin/report-bar-chart';
 import { DateRangePicker } from '@/components/date-range-picker';
@@ -56,6 +57,34 @@ const agingRows: {
 
 type ReportsTab = 'portfolio' | 'aging' | 'collections' | 'arrears';
 
+const REPORT_ROWS_PER_PAGE = 50;
+
+function TableLoadMore({
+    shown,
+    total,
+    onLoadMore,
+}: {
+    shown: number;
+    total: number;
+    onLoadMore: () => void;
+}) {
+    if (shown >= total) {
+        return null;
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-between gap-3 border-t p-4 sm:flex-row">
+            <p className="text-sm text-muted-foreground">
+                Showing {shown} of {total}
+            </p>
+
+            <Button variant="outline" size="sm" onClick={onLoadMore}>
+                Load more
+            </Button>
+        </div>
+    );
+}
+
 function LoanReportTable({
     loans,
     emptyMessage,
@@ -63,6 +92,8 @@ function LoanReportTable({
     loans: ReportLoanRow[];
     emptyMessage: string;
 }) {
+    const [visibleCount, setVisibleCount] = useState(REPORT_ROWS_PER_PAGE);
+    const visibleLoans = loans.slice(0, visibleCount);
     const totals = loans.reduce(
         (totals, loan) => ({
             principal: totals.principal + loan.principal,
@@ -74,106 +105,121 @@ function LoanReportTable({
     );
 
     return (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Loan</TableHead>
-                    <TableHead>Borrower</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Principal</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Outstanding</TableHead>
-                    <TableHead className="text-right">Arrears</TableHead>
-                    <TableHead className="text-right">DPD</TableHead>
-                </TableRow>
-            </TableHeader>
+        <>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Loan</TableHead>
+                        <TableHead>Borrower</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Principal</TableHead>
+                        <TableHead className="text-right">Paid</TableHead>
+                        <TableHead className="text-right">
+                            Outstanding
+                        </TableHead>
+                        <TableHead className="text-right">Arrears</TableHead>
+                        <TableHead className="text-right">DPD</TableHead>
+                    </TableRow>
+                </TableHeader>
 
-            <TableBody>
-                {loans.map((loan) => (
-                    <TableRow key={loan.id}>
-                        <TableCell>
-                            <Link
-                                href={showLoan(loan.id)}
-                                className="font-medium hover:underline"
-                                prefetch
+                <TableBody>
+                    {visibleLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                            <TableCell>
+                                <Link
+                                    href={showLoan(loan.id)}
+                                    className="font-medium hover:underline"
+                                    prefetch
+                                >
+                                    #{loan.id}
+                                </Link>
+                            </TableCell>
+                            <TableCell>{loan.borrower ?? '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                                {loan.product ?? '—'}
+                            </TableCell>
+                            <TableCell>
+                                <LoanStatusBadge status={loan.status} />
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {formatMoney(loan.principal)}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground tabular-nums">
+                                {formatMoney(loan.paid)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                <span className="font-medium">
+                                    {formatMoney(loan.outstanding)}
+                                </span>
+                                {loan.outstanding_penalty > 0 && (
+                                    <span className="block text-xs text-muted-foreground">
+                                        incl.{' '}
+                                        {formatMoney(loan.outstanding_penalty)}{' '}
+                                        penalty
+                                    </span>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {loan.arrears > 0 ? (
+                                    <span className="font-medium text-destructive">
+                                        {formatMoney(loan.arrears)}
+                                    </span>
+                                ) : (
+                                    <span className="text-muted-foreground">
+                                        —
+                                    </span>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground tabular-nums">
+                                {loan.days_past_due > 0
+                                    ? loan.days_past_due
+                                    : '—'}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+
+                    {loans.length === 0 && (
+                        <TableRow>
+                            <TableCell
+                                colSpan={9}
+                                className="py-8 text-center text-muted-foreground"
                             >
-                                #{loan.id}
-                            </Link>
-                        </TableCell>
-                        <TableCell>{loan.borrower ?? '—'}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                            {loan.product ?? '—'}
-                        </TableCell>
-                        <TableCell>
-                            <LoanStatusBadge status={loan.status} />
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {formatMoney(loan.principal)}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                            {formatMoney(loan.paid)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            <span className="font-medium">
-                                {formatMoney(loan.outstanding)}
-                            </span>
-                            {loan.outstanding_penalty > 0 && (
-                                <span className="block text-xs text-muted-foreground">
-                                    incl.{' '}
-                                    {formatMoney(loan.outstanding_penalty)}{' '}
-                                    penalty
-                                </span>
-                            )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {loan.arrears > 0 ? (
-                                <span className="font-medium text-destructive">
-                                    {formatMoney(loan.arrears)}
-                                </span>
-                            ) : (
-                                <span className="text-muted-foreground">—</span>
-                            )}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground tabular-nums">
-                            {loan.days_past_due > 0 ? loan.days_past_due : '—'}
-                        </TableCell>
-                    </TableRow>
-                ))}
+                                {emptyMessage}
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
 
-                {loans.length === 0 && (
-                    <TableRow>
-                        <TableCell
-                            colSpan={9}
-                            className="py-8 text-center text-muted-foreground"
-                        >
-                            {emptyMessage}
-                        </TableCell>
-                    </TableRow>
+                {loans.length > 0 && (
+                    <TableFooter>
+                        <TableRow>
+                            <TableCell colSpan={4}>Total</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {formatMoney(totals.principal)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {formatMoney(totals.paid)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {formatMoney(totals.outstanding)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                                {formatMoney(totals.arrears)}
+                            </TableCell>
+                            <TableCell />
+                        </TableRow>
+                    </TableFooter>
                 )}
-            </TableBody>
-
-            {loans.length > 0 && (
-                <TableFooter>
-                    <TableRow>
-                        <TableCell colSpan={4}>Total</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {formatMoney(totals.principal)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {formatMoney(totals.paid)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {formatMoney(totals.outstanding)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                            {formatMoney(totals.arrears)}
-                        </TableCell>
-                        <TableCell />
-                    </TableRow>
-                </TableFooter>
-            )}
-        </Table>
+            </Table>
+            <TableLoadMore
+                shown={visibleLoans.length}
+                total={loans.length}
+                onLoadMore={() =>
+                    setVisibleCount((count) => count + REPORT_ROWS_PER_PAGE)
+                }
+            />
+        </>
     );
 }
 
@@ -198,6 +244,8 @@ export default function ReportsIndex({
         (total, row) => total + aging[row.key],
         0,
     );
+    const [visibleCollectionCount, setVisibleCollectionCount] =
+        useState(REPORT_ROWS_PER_PAGE);
 
     const share = (amount: number) =>
         agingTotal > 0 ? (amount / agingTotal) * 100 : 0;
@@ -285,6 +333,10 @@ export default function ReportsIndex({
         ...collections.overdue_installments,
         ...collections.upcoming,
     ].sort((a, b) => a.due_date.localeCompare(b.due_date));
+    const visibleCollectionRows = collectionRows.slice(
+        0,
+        visibleCollectionCount,
+    );
 
     const arrearsLoans = loans
         .filter((loan) => loan.arrears > 0)
@@ -657,7 +709,7 @@ export default function ReportsIndex({
                                 </TableHeader>
 
                                 <TableBody>
-                                    {collectionRows.map((row) => (
+                                    {visibleCollectionRows.map((row) => (
                                         <TableRow
                                             key={`${row.loan_id}-${row.sequence}`}
                                         >
@@ -702,6 +754,16 @@ export default function ReportsIndex({
                                     )}
                                 </TableBody>
                             </Table>
+
+                            <TableLoadMore
+                                shown={visibleCollectionRows.length}
+                                total={collectionRows.length}
+                                onLoadMore={() =>
+                                    setVisibleCollectionCount(
+                                        (count) => count + REPORT_ROWS_PER_PAGE,
+                                    )
+                                }
+                            />
                         </SectionCard>
                     </>
                 )}
