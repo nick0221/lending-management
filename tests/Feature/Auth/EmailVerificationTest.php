@@ -26,6 +26,14 @@ test('unverified users are redirected to the email verification prompt', functio
     $response->assertRedirect(route('verification.notice'));
 });
 
+test('unverified staff are redirected from the admin area', function () {
+    $admin = User::factory()->admin()->unverified()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertRedirect(route('verification.notice'));
+});
+
 test('email can be verified', function () {
     $user = User::factory()->unverified()->create();
 
