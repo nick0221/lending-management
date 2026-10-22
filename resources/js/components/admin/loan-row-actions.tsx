@@ -19,7 +19,10 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { destroy as destroyLoan, show as showLoan } from '@/routes/admin/loans';
-import { download as downloadStatement, print as printStatement } from '@/routes/admin/loans/statement';
+import {
+    download as downloadStatement,
+    print as printStatement,
+} from '@/routes/admin/loans/statement';
 import type { LoanListItem } from '@/types';
 
 /**

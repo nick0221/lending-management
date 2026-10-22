@@ -32,7 +32,10 @@ import {
     reject as rejectLoan,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
-import { download as downloadStatement, print as printStatement } from '@/routes/admin/loans/statement';
+import {
+    download as downloadStatement,
+    print as printStatement,
+} from '@/routes/admin/loans/statement';
 import type {
     DisbursementMethodOption,
     Loan,
