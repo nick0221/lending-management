@@ -598,4 +598,18 @@ export type AppSettings = {
     money_rate_limit: string;
     reports_rate_limit: string;
     reminders_rate_limit: string;
+    sms_driver: string;
+    sms_from: string;
+    sms_http_url: string;
+    sms_http_method: string;
+    sms_http_format: string;
+    sms_http_token_configured: boolean;
+    sms_http_token_header: string;
+    sms_http_token_prefix: string;
+    sms_http_headers: string;
+    sms_http_to_field: string;
+    sms_http_message_field: string;
+    sms_http_from_field: string;
+    sms_http_timeout: string;
+    sms_http_connect_timeout: string;
 };

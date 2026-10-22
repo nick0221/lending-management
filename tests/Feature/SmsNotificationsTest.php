@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\LoanOverdue;
 use App\Notifications\LoanStatement;
 use App\Services\RepaymentService;
+use App\Services\Settings;
 use App\Services\Sms\SmsSender;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Notifications\Events\NotificationSent;
@@ -118,21 +119,26 @@ test('SMS stays off until the borrower opts in', function () {
         ->and(NotificationLog::query()->where('channel', NotificationLog::CHANNEL_MAIL)->count())->toBe(1);
 });
 
-test('the HTTP SMS sender posts the configured payload and headers', function () {
-    config([
-        'services.sms.driver' => 'http',
-        'services.sms.from' => 'LENDER',
-        'services.sms.http.url' => 'https://sms.test/send',
-        'services.sms.http.method' => 'POST',
-        'services.sms.http.format' => 'json',
-        'services.sms.http.token' => 'secret',
-        'services.sms.http.token_header' => 'X-Api-Key',
-        'services.sms.http.token_prefix' => '',
-        'services.sms.http.headers' => ['X-Tenant' => 'lending'],
-        'services.sms.http.to_field' => 'recipient',
-        'services.sms.http.message_field' => 'text',
-        'services.sms.http.from_field' => 'sender',
+test('the HTTP SMS sender uses gateway settings saved in the UI', function () {
+    $settings = app(Settings::class);
+
+    $settings->current()->update([
+        'sms_driver' => 'http',
+        'sms_from' => 'LENDER',
+        'sms_http_url' => 'https://sms.test/send',
+        'sms_http_method' => 'POST',
+        'sms_http_format' => 'json',
+        'sms_http_token' => 'secret',
+        'sms_http_token_header' => 'X-Api-Key',
+        'sms_http_token_prefix' => '',
+        'sms_http_headers' => '{"X-Tenant":"lending"}',
+        'sms_http_to_field' => 'recipient',
+        'sms_http_message_field' => 'text',
+        'sms_http_from_field' => 'sender',
+        'sms_http_timeout' => 10,
+        'sms_http_connect_timeout' => 3,
     ]);
+    $settings->flush();
 
     $this->app->forgetInstance(SmsSender::class);
     Http::fake([

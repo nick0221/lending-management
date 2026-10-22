@@ -192,7 +192,7 @@ file — not a wall of sections.
 | E8.2 | Resend         | Resend a failed or skipped notification from the log.                        | ✅     |
 | E8.3 | Switch toggles | Replace the four preference checkboxes with `ui/switch` rows.                | ✅     |
 | E8.4 | Email preview  | Preview the rendered markdown email before sending a statement.              | ✅     |
-| E8.5 | SMS channel    | Generic HTTP SMS gateway with log fallback, per-channel delivery logs.       | ✅     |
+| E8.5 | SMS channel    | Admin-configurable HTTP SMS gateway with log fallback and per-channel logs. | ✅     |
 
 ---
 
@@ -219,7 +219,7 @@ file — not a wall of sections.
 | F5  | Borrower CSV import                  | Onboard existing books.                                   | M      | ✅     |
 | F6  | Bulk loan actions                    | Approve / remind in batches.                              | M      | ✅     |
 | F7  | PDF statements & exports             | Per-loan printable statement with Print / Save as PDF; report summary print view. Server exports stay CSV. | M      | ✅     |
-| F8  | SMS channel                          | Second notification channel using a configurable generic HTTP gateway. | L      | ✅     |
+| F8  | SMS channel                          | Second notification channel using an admin-configurable generic HTTP gateway. | L      | ✅     |
 | F9  | Multi-currency                       | Only if the business needs it.                            | L      | 🔒     |
 
 ---
@@ -287,3 +287,4 @@ file — not a wall of sections.
 | 2026-10-22 | Added a printable loan statement (F7). The standalone page lays out the borrower and loan details, summary totals, full repayment schedule and payment history, and uses the browser Print / Save as PDF action, so no PDF package was needed. It is reachable from the loan file and loan queue, and PDF statements work without an email address. Server-side exports remain CSV. |
 | 2026-10-22 | Upgraded the report charts to Recharts (E7.4). Portfolio at risk shows the PAR thresholds, aging compares outstanding bucket totals, and collections compares due today, this week and overdue. The standalone table remains the accessible source of the figures. |
 | 2026-10-22 | Added the SMS notification channel (E8.5, F8). Due-soon, overdue and receipt notifications can now go by email and SMS, with per-channel delivery logs and resend support. A generic HTTP gateway handles JSON or form posts with configurable fields, headers and token; the log driver is the safe default until credentials are supplied. |
+| 2026-10-22 | Moved SMS gateway configuration into Settings. Super admins can choose the log or HTTP driver, set the endpoint, method, payload format, sender ID, field mapping, timeouts, custom headers and an encrypted API token without editing `.env`. Environment values remain the fallback until a driver is saved. |

@@ -30,25 +30,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(SmsSender::class, function (): SmsSender {
-            $driver = strtolower((string) config('services.sms.driver', 'log'));
+        $this->app->scoped(SmsSender::class, function ($app): SmsSender {
+            $sms = $app->make(Settings::class)->smsConfig();
+            $driver = strtolower($sms['driver']);
 
             return match ($driver) {
                 'log' => new LogSmsSender,
                 'http' => new HttpSmsSender(
-                    url: config('services.sms.http.url'),
-                    method: config('services.sms.http.method', 'POST'),
-                    format: config('services.sms.http.format', 'json'),
-                    token: config('services.sms.http.token'),
-                    tokenHeader: config('services.sms.http.token_header', 'Authorization'),
-                    tokenPrefix: config('services.sms.http.token_prefix', 'Bearer '),
-                    headers: config('services.sms.http.headers', []),
-                    toField: config('services.sms.http.to_field', 'to'),
-                    messageField: config('services.sms.http.message_field', 'message'),
-                    from: config('services.sms.from'),
-                    fromField: config('services.sms.http.from_field', 'from'),
-                    timeout: (int) config('services.sms.http.timeout', 10),
-                    connectTimeout: (int) config('services.sms.http.connect_timeout', 3),
+                    url: $sms['http']['url'],
+                    method: $sms['http']['method'],
+                    format: $sms['http']['format'],
+                    token: $sms['http']['token'],
+                    tokenHeader: $sms['http']['token_header'],
+                    tokenPrefix: $sms['http']['token_prefix'],
+                    headers: $sms['http']['headers'],
+                    toField: $sms['http']['to_field'],
+                    messageField: $sms['http']['message_field'],
+                    from: $sms['from'],
+                    fromField: $sms['http']['from_field'],
+                    timeout: $sms['http']['timeout'],
+                    connectTimeout: $sms['http']['connect_timeout'],
                 ),
                 default => throw new InvalidArgumentException(
                     "Unsupported SMS driver [{$driver}].",
