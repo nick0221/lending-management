@@ -66,3 +66,46 @@ test('regular users cannot download loan statements', function () {
         ->get(route('admin.loans.statement.download', ['loan' => $loan]))
         ->assertForbidden();
 });
+
+test('admins can open a printable loan statement', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2026-07-01'],
+    ]);
+    $loan->borrower->update(['name' => 'Ada Lovelace']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.statement.print', ['loan' => $loan]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/statement/print')
+            ->where('loan.id', $loan->id)
+            ->where('borrower.name', 'Ada Lovelace')
+            ->has('installments')
+            ->has('payments')
+            ->has('totals')
+        );
+});
+
+test('printable loan statements do not require an email address', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2026-07-01'],
+    ]);
+    $loan->borrower->update(['email' => null]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.statement.print', ['loan' => $loan]))
+        ->assertOk();
+});
+
+test('regular users cannot open printable loan statements', function () {
+    $user = User::factory()->create();
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2026-07-01'],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('admin.loans.statement.print', ['loan' => $loan]))
+        ->assertForbidden();
+});

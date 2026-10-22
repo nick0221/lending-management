@@ -1,5 +1,12 @@
 import { Link } from '@inertiajs/react';
-import { Download, Eye, Mail, MoreHorizontal, Trash2 } from 'lucide-react';
+import {
+    Download,
+    Eye,
+    Mail,
+    MoreHorizontal,
+    Printer,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
@@ -12,7 +19,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { destroy as destroyLoan, show as showLoan } from '@/routes/admin/loans';
-import { download as downloadStatement } from '@/routes/admin/loans/statement';
+import { download as downloadStatement, print as printStatement } from '@/routes/admin/loans/statement';
 import type { LoanListItem } from '@/types';
 
 /**
@@ -68,6 +75,20 @@ export function LoanRowActions({ loan }: { loan: LoanListItem }) {
                             <a href={downloadStatement.url(loan.id)}>
                                 <Download />
                                 Download statement
+                            </a>
+                        </DropdownMenuItem>
+                    )}
+
+                    {loan.can.download_statement && (
+                        <DropdownMenuItem asChild>
+                            <a
+                                href={printStatement.url(loan.id)}
+                                target="_blank"
+                                rel="noreferrer"
+                                data-test="print-statement-button"
+                            >
+                                <Printer />
+                                Print statement
                             </a>
                         </DropdownMenuItem>
                     )}

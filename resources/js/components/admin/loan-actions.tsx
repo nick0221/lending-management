@@ -6,6 +6,7 @@ import {
     Download,
     Mail,
     MoreHorizontal,
+    Printer,
     Trash2,
     Wrench,
     X,
@@ -31,7 +32,7 @@ import {
     reject as rejectLoan,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
-import { download as downloadStatement } from '@/routes/admin/loans/statement';
+import { download as downloadStatement, print as printStatement } from '@/routes/admin/loans/statement';
 import type {
     DisbursementMethodOption,
     Loan,
@@ -163,6 +164,19 @@ export function LoanActions({
                                 <DropdownMenuItem asChild>
                                     <a href={downloadStatement.url(loan.id)}>
                                         <Download /> Download statement
+                                    </a>
+                                </DropdownMenuItem>
+                            )}
+
+                            {can.download_statement && (
+                                <DropdownMenuItem asChild>
+                                    <a
+                                        href={printStatement.url(loan.id)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        data-test="print-statement-button"
+                                    >
+                                        <Printer /> Print statement
                                     </a>
                                 </DropdownMenuItem>
                             )}

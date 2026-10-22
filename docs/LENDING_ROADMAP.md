@@ -313,5 +313,5 @@ Settled during Phase 1, except where noted.
 | 7 | Overpayment handling | Rejected — a payment may not exceed the outstanding balance (incl. accrued penalties); no advance-credit ledger |
 | 8 | Penalty model | Per product, a monthly percentage of the overdue amount plus a grace period; accrued by a daily command, one period per whole 30 days past due |
 | 9 | Restructuring | Re-amortises the outstanding principal onto a new term from the loan's own snapshotted terms; payment history is preserved and never rewritten |
-| 10 | Report export format | CSV first (summary, loans, collections); PDF is deferred until a rendering dependency (`barryvdh/laravel-dompdf` or `spatie/laravel-pdf`) is approved, and will reuse the same `ReportingService` figures |
+| 10 | Report export format | CSV for data exports (summary, loans, collections); printable statements and the portfolio summary use the browser Print / Save as PDF action, so no PDF rendering dependency is needed |
 | 11 | Notification channels & cadence | Email only for now (SMS deferred); due reminders go 3 days before the due date (`LENDING_DUE_REMINDER_DAYS`), overdue notices at most once per loan per day, receipts fire automatically on payment, and statements are emailed on demand from the loan page; preferences are boolean columns on the borrower and every send is recorded in `notification_logs` |

@@ -217,7 +217,7 @@ file — not a wall of sections.
 | F4  | Payment reversal                     | Correct mistakes without editing the database.            | M      | ✅     |
 | F5  | Borrower CSV import                  | Onboard existing books.                                   | M      | ✅     |
 | F6  | Bulk loan actions                    | Approve / remind in batches.                              | M      | ✅     |
-| F7  | PDF statements & exports             | Printable documents (dependency gate).                    | M      | 🔒     |
+| F7  | PDF statements & exports             | Per-loan printable statement with Print / Save as PDF; report summary print view. Server exports stay CSV. | M      | ✅     |
 | F8  | SMS channel                          | Second notification channel (provider decision).          | L      | 🔒     |
 | F9  | Multi-currency                       | Only if the business needs it.                            | L      | 🔒     |
 
@@ -283,3 +283,4 @@ file — not a wall of sections.
 | 2026-10-22 | Added the shared popover and calendar primitives plus a date-range picker (E0.12, E7.2). Reports now narrow the loan cohort by application date, the audit log uses the same picker, and print and CSV exports carry the selected period. |
 | 2026-10-22 | Added global search (F2). Staff can open a cmdk command palette with Ctrl/⌘ K or the header button, search borrowers by name, phone, email or national ID and loans by number or borrower, and jump straight to the record. The endpoint is limited to five matches per group and is staff-only. |
 | 2026-10-22 | Restored the `verified` middleware on the borrower dashboard, admin area and settings routes. Unverified accounts now return to the verification prompt, including staff accounts, and the full suite is green. |
+| 2026-10-22 | Added a printable loan statement (F7). The standalone page lays out the borrower and loan details, summary totals, full repayment schedule and payment history, and uses the browser Print / Save as PDF action, so no PDF package was needed. It is reachable from the loan file and loan queue, and PDF statements work without an email address. Server-side exports remain CSV. |

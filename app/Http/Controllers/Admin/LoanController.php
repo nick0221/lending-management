@@ -604,6 +604,38 @@ class LoanController extends Controller
     }
 
     /**
+     * Show a printable loan statement that can be saved as a PDF.
+     */
+    public function printStatement(Request $request, Loan $loan): Response
+    {
+        Gate::authorize('view', $loan);
+
+        $loan->load([
+            'borrower',
+            'loanProduct',
+            'installments.allocations',
+            'payments.recordedBy',
+            'payments.reversedBy',
+            'payments.allocations',
+        ]);
+
+        return Inertia::render('admin/loans/statement/print', [
+            'organisation' => app(Settings::class)->organisationName(),
+            'generated_at' => Date::now()->toIso8601String(),
+            'loan' => $this->toPayload($loan),
+            'borrower' => [
+                'name' => $loan->borrower->name,
+                'phone' => $loan->borrower->phone,
+                'email' => $loan->borrower->email,
+                'national_id' => $loan->borrower->national_id,
+            ],
+            'installments' => $this->installmentPayload($loan),
+            'payments' => $this->paymentPayload($loan->payments, $request->user(), $loan),
+            'totals' => $this->paymentTotals($loan),
+        ]);
+    }
+
+    /**
      * Download the loan statement as a CSV, including the schedule and
      * payments, without requiring an email address.
      */

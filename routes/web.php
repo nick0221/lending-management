@@ -64,6 +64,10 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             Route::get('loans/{loan}/statement/preview', [LoanController::class, 'previewStatement'])->name('loans.statement.preview');
         });
 
+        Route::get('loans/{loan}/statement/print', [LoanController::class, 'printStatement'])
+            ->middleware('throttle:reports')
+            ->name('loans.statement.print');
+
         Route::get('loans/{loan}/statement/download', [LoanController::class, 'downloadStatement'])
             ->middleware('throttle:reports')
             ->name('loans.statement.download');
