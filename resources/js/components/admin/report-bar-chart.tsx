@@ -3,7 +3,6 @@ import {
     BarChart,
     CartesianGrid,
     Cell,
-    ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
@@ -38,70 +37,64 @@ export function ReportBarChart({
                 role="img"
                 aria-label={ariaLabel}
             >
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                        data={data}
-                        layout="vertical"
-                        margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
-                    >
-                        <CartesianGrid
-                            horizontal={false}
-                            stroke="var(--border)"
-                            strokeDasharray="3 3"
-                        />
+                <BarChart
+                    responsive
+                    style={{ width: '100%', height: '100%' }}
+                    data={data}
+                    layout="vertical"
+                    margin={{ top: 8, right: 24, bottom: 8, left: 8 }}
+                >
+                    <CartesianGrid
+                        horizontal={false}
+                        stroke="var(--border)"
+                        strokeDasharray="3 3"
+                    />
 
-                        <XAxis
-                            type="number"
-                            tickLine={false}
-                            axisLine={false}
-                            tick={{
-                                fill: 'var(--muted-foreground)',
-                                fontSize: 12,
-                            }}
-                            tickFormatter={(value) =>
-                                valueFormatter(Number(value))
-                            }
-                        />
+                    <XAxis
+                        type="number"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{
+                            fill: 'var(--muted-foreground)',
+                            fontSize: 12,
+                        }}
+                        tickFormatter={(value) => valueFormatter(Number(value))}
+                    />
 
-                        <YAxis
-                            type="category"
-                            dataKey="label"
-                            width={104}
-                            tickLine={false}
-                            axisLine={false}
-                            tick={{
-                                fill: 'var(--muted-foreground)',
-                                fontSize: 12,
-                            }}
-                        />
+                    <YAxis
+                        type="category"
+                        dataKey="label"
+                        width={104}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{
+                            fill: 'var(--muted-foreground)',
+                            fontSize: 12,
+                        }}
+                    />
 
-                        <Tooltip
-                            cursor={{ fill: 'var(--muted)' }}
-                            formatter={(value) => [
-                                valueFormatter(Number(value)),
-                                valueLabel,
-                            ]}
-                            contentStyle={{
-                                background: 'var(--popover)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius)',
-                                color: 'var(--popover-foreground)',
-                                fontSize: '0.75rem',
-                            }}
-                            labelStyle={{ color: 'var(--foreground)' }}
-                        />
+                    <Tooltip
+                        cursor={{ fill: 'var(--muted)' }}
+                        formatter={(value) => [
+                            valueFormatter(Number(value)),
+                            valueLabel,
+                        ]}
+                        contentStyle={{
+                            background: 'var(--popover)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius)',
+                            color: 'var(--popover-foreground)',
+                            fontSize: '0.75rem',
+                        }}
+                        labelStyle={{ color: 'var(--foreground)' }}
+                    />
 
-                        <Bar
-                            dataKey="value"
-                            radius={[0, 4, 4, 0]}
-                            maxBarSize={28}
-                        >
-                            {data.map((entry) => (
-                                <Cell key={entry.label} fill={entry.color} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={28}>
+                        {data.map((entry) => (
+                            <Cell key={entry.label} fill={entry.color} />
+                        ))}
+                    </Bar>
+                </BarChart>
             </div>
 
             <p className="sr-only">
