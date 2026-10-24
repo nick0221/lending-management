@@ -63,6 +63,7 @@ test('the audit trail exposes before and after values', function () {
             ->where('logs.data.0.changes.0.key', 'Name')
             ->where('logs.data.0.changes.0.old', 'Before')
             ->where('logs.data.0.changes.0.new', 'After')
+            ->where('logs.data.0.subject_url', route('admin.borrowers.show', $borrower->id))
         );
 });
 
@@ -215,4 +216,32 @@ test('the audit trail can be filtered by event, record type, user and date', fun
     $this->get(route('admin.activity.index', ['to' => today()->subDay()->toDateString()]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('logs.data', 0));
+});
+
+test('the audit trail can be searched by actor and record id', function () {
+    $superAdmin = User::factory()->superAdmin()->create([
+        'name' => 'Unique Auditor',
+    ]);
+
+    $this->actingAs($superAdmin);
+
+    $borrower = Borrower::factory()->create();
+
+    $this->get(route('admin.activity.index', ['search' => 'Unique Auditor']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.user_name', 'Unique Auditor')
+        );
+
+    $this->get(route('admin.activity.index', [
+        'search' => (string) $borrower->id,
+        'type' => 'Borrower',
+    ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.subject_type', 'Borrower')
+            ->where('logs.data.0.subject_id', $borrower->id)
+        );
 });

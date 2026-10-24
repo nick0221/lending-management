@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -69,6 +70,7 @@ export default function ActivityIndex({
     types: string[];
     users: UserOption[];
 }) {
+    const [search, setSearch] = useState(filters.search ?? '');
     const [event, setEvent] = useState(filters.event ?? ALL);
     const [type, setType] = useState(filters.type ?? ALL);
     const [user, setUser] = useState(filters.user ? String(filters.user) : ALL);
@@ -81,17 +83,27 @@ export default function ActivityIndex({
     });
     const [selected, setSelected] = useState<ActivityLogRow | null>(null);
     const { url } = usePage();
+    const perPage = new URL(url, 'http://localhost').searchParams.get(
+        'per_page',
+    );
+
+    const resetHref = (() => {
+        const target = new URL(activityIndex().url, 'http://localhost');
+
+        if (perPage) {
+            target.searchParams.set('per_page', perPage);
+        }
+
+        return target.pathname + target.search;
+    })();
 
     const applyFilters = (formEvent: FormEvent<HTMLFormElement>) => {
         formEvent.preventDefault();
 
-        const perPage = new URL(url, 'http://localhost').searchParams.get(
-            'per_page',
-        );
-
         router.get(
             activityIndex().url,
             {
+                ...(search.trim() ? { search: search.trim() } : {}),
                 ...(event !== ALL ? { event } : {}),
                 ...(type !== ALL ? { type } : {}),
                 ...(user !== ALL ? { user } : {}),
@@ -122,6 +134,18 @@ export default function ActivityIndex({
                         onSubmit={applyFilters}
                         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
                     >
+                        <div className="grid gap-2 sm:col-span-2 lg:col-span-4">
+                            <Label htmlFor="search">Search</Label>
+                            <Input
+                                id="search"
+                                value={search}
+                                onChange={(inputEvent) =>
+                                    setSearch(inputEvent.target.value)
+                                }
+                                placeholder="Description, event, record ID or actor"
+                            />
+                        </div>
+
                         <div className="grid gap-2">
                             <Label htmlFor="event">Event</Label>
 
@@ -207,7 +231,7 @@ export default function ActivityIndex({
                             </Button>
 
                             <Button asChild variant="outline">
-                                <Link href={activityIndex()} preserveScroll>
+                                <Link href={resetHref} preserveScroll>
                                     <RotateCcw /> Reset
                                 </Link>
                             </Button>
@@ -278,9 +302,20 @@ export default function ActivityIndex({
                                     </TableCell>
 
                                     <TableCell className="text-muted-foreground">
-                                        {log.subject_type
-                                            ? `${log.subject_type} #${log.subject_id}`
-                                            : '—'}
+                                        {log.subject_url ? (
+                                            <Link
+                                                href={log.subject_url}
+                                                prefetch
+                                                className="font-medium text-foreground hover:underline"
+                                            >
+                                                {log.subject_type} #
+                                                {log.subject_id}
+                                            </Link>
+                                        ) : log.subject_type ? (
+                                            `${log.subject_type} #${log.subject_id}`
+                                        ) : (
+                                            '—'
+                                        )}
                                     </TableCell>
 
                                     <TableCell>
@@ -385,9 +420,19 @@ export default function ActivityIndex({
                                             Record
                                         </dt>
                                         <dd className="font-medium">
-                                            {selected.subject_type
-                                                ? `${selected.subject_type} #${selected.subject_id}`
-                                                : '—'}
+                                            {selected.subject_url ? (
+                                                <Link
+                                                    href={selected.subject_url}
+                                                    prefetch
+                                                    className="hover:underline"
+                                                >
+                                                    {`${selected.subject_type} #${selected.subject_id}`}
+                                                </Link>
+                                            ) : selected.subject_type ? (
+                                                `${selected.subject_type} #${selected.subject_id}`
+                                            ) : (
+                                                '—'
+                                            )}
                                         </dd>
                                     </div>
 

@@ -548,6 +548,7 @@ export type ActivityLogRow = {
     user_email: string | null;
     subject_type: string | null;
     subject_id: number | null;
+    subject_url: string | null;
     ip_address: string | null;
     user_agent: string | null;
     changes: ActivityLogChange[];
@@ -555,6 +556,7 @@ export type ActivityLogRow = {
 };
 
 export type ActivityLogFilters = {
+    search: string | null;
     event: string | null;
     type: string | null;
     user: number | null;
