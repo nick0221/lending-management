@@ -41,12 +41,14 @@ import {
     show as showBorrower,
 } from '@/routes/admin/borrowers';
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
+import { receipt as receiptForPayment } from '@/routes/admin/loans/payments';
 import { download as downloadStatement } from '@/routes/admin/loans/statement';
 import type {
     BorrowerActivity,
     BorrowerDetail,
     BorrowerLoanSummary,
     BorrowerPayment,
+    UpcomingInstallment,
 } from '@/types';
 
 type BorrowerSummary = {
@@ -54,13 +56,8 @@ type BorrowerSummary = {
     open_loan_count: number;
     outstanding: number;
     arrears: number;
-    next_due: {
-        loan_id: number;
-        sequence: number;
-        due_date: string;
-        amount: number;
-        days_past_due: number;
-    } | null;
+    next_due: UpcomingInstallment | null;
+    upcoming: UpcomingInstallment[];
     loans: BorrowerLoanSummary[];
     payments: BorrowerPayment[];
 };
@@ -292,6 +289,76 @@ export default function ShowBorrower({
                         </SectionCard>
 
                         <SectionCard
+                            title="Upcoming installments"
+                            description="The next scheduled amounts across open loans."
+                        >
+                            {summary.upcoming.length === 0 ? (
+                                <p className="p-6 text-sm text-muted-foreground">
+                                    No upcoming installments.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Due</TableHead>
+                                            <TableHead>Loan</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">
+                                                Amount
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {summary.upcoming.map((installment) => (
+                                            <TableRow
+                                                key={`${installment.loan_id}-${installment.sequence}`}
+                                            >
+                                                <TableCell className="whitespace-nowrap text-muted-foreground">
+                                                    {formatDateOnly(
+                                                        installment.due_date,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Link
+                                                        href={showLoan(
+                                                            installment.loan_id,
+                                                        )}
+                                                        className="font-medium hover:underline"
+                                                        prefetch
+                                                    >
+                                                        {`Loan #${installment.loan_id}`}
+                                                    </Link>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Installment{' '}
+                                                        {installment.sequence}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {installment.days_past_due >
+                                                    0 ? (
+                                                        <span className="text-sm font-medium text-destructive">
+                                                            {`${installment.days_past_due}d overdue`}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">
+                                                            Scheduled
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium tabular-nums">
+                                                    {formatMoney(
+                                                        installment.amount,
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </SectionCard>
+
+                        <SectionCard
                             title="Payment history"
                             description="The latest payments recorded against these loans."
                         >
@@ -310,6 +377,11 @@ export default function ShowBorrower({
                                             </TableHead>
                                             <TableHead>Method</TableHead>
                                             <TableHead>Recorded by</TableHead>
+                                            <TableHead className="w-12">
+                                                <span className="sr-only">
+                                                    Receipt
+                                                </span>
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -347,6 +419,28 @@ export default function ShowBorrower({
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {payment.recorded_by ?? '—'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={receiptForPayment(
+                                                                {
+                                                                    loan: payment.loan_id,
+                                                                    payment:
+                                                                        payment.id,
+                                                                },
+                                                            )}
+                                                            aria-label={`View receipt for payment #${payment.id}`}
+                                                            title="View receipt"
+                                                            prefetch
+                                                        >
+                                                            <Receipt />
+                                                        </Link>
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
