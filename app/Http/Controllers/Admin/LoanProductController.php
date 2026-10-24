@@ -36,9 +36,10 @@ class LoanProductController extends Controller
         $counts = LoanProduct::query()
             ->selectRaw('is_active, count(*) as aggregate')
             ->groupBy('is_active')
+            ->toBase()
             ->get()
-            ->mapWithKeys(fn (LoanProduct $loanProduct): array => [
-                ($loanProduct->is_active ? 'active' : 'inactive') => (int) $loanProduct->aggregate,
+            ->mapWithKeys(fn (object $row): array => [
+                ($row->is_active ? 'active' : 'inactive') => (int) $row->aggregate,
             ]);
 
         $loanProducts = LoanProduct::query()

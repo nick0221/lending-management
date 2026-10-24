@@ -1,10 +1,21 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus, ShieldCheck, Users } from 'lucide-react';
+import {
+    BadgeCheck,
+    Clock,
+    Pencil,
+    Plus,
+    RotateCcw,
+    ShieldCheck,
+    Users,
+} from 'lucide-react';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
+import { FilterTabs } from '@/components/filter-tabs';
 import { PageHeader } from '@/components/page-header';
 import { RoleBadge } from '@/components/role-badge';
+import { SearchInput } from '@/components/search-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -14,6 +25,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { formatDate } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import {
@@ -22,13 +34,31 @@ import {
     edit as editUser,
     index as usersIndex,
 } from '@/routes/admin/users';
-import type { AdminUserListItem, Paginated } from '@/types';
+import type { AdminUserListItem, Paginated, Role, RoleOption } from '@/types';
 
 export default function UsersIndex({
     users,
+    roles,
+    currentRole,
+    search,
+    roleCounts,
 }: {
     users: Paginated<AdminUserListItem>;
+    roles: RoleOption[];
+    currentRole: Role | null;
+    search: string;
+    roleCounts: Record<string, number>;
 }) {
+    const withFilters = (role?: Role) =>
+        usersIndex({
+            query: {
+                ...(role ? { role } : {}),
+                ...(search ? { search } : {}),
+            },
+        });
+
+    const isFiltered = search !== '' || currentRole !== null;
+
     return (
         <>
             <Head title="Users" />
@@ -56,18 +86,62 @@ export default function UsersIndex({
                     }
                 />
 
+                <div className="flex flex-wrap items-center gap-3">
+                    <SearchInput
+                        value={search}
+                        placeholder="Search name or email"
+                        label="Search users"
+                    />
+
+                    <FilterTabs
+                        tabs={[
+                            {
+                                value: 'all',
+                                label: 'All',
+                                count: roleCounts.all,
+                                href: withFilters(),
+                            },
+                            ...roles.map((role) => ({
+                                value: role.value,
+                                label: role.label,
+                                count: roleCounts[role.value] ?? 0,
+                                href: withFilters(role.value),
+                            })),
+                        ]}
+                        value={currentRole ?? 'all'}
+                        label="Filter users by role"
+                        className="min-w-0 flex-1 basis-full lg:basis-auto"
+                    />
+                </div>
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {users.data.length === 0 ? (
                         <EmptyState
                             icon={Users}
-                            title="No users found"
-                            description="Create the first account to give someone access to the admin panel."
+                            title={
+                                isFiltered
+                                    ? 'No matching users'
+                                    : 'No users yet'
+                            }
+                            description={
+                                isFiltered
+                                    ? 'No accounts match the current search and role filter.'
+                                    : 'Create the first account to give someone access to the admin panel.'
+                            }
                             action={
-                                <Button asChild size="sm">
-                                    <Link href={createUser()}>
-                                        <Plus /> New user
-                                    </Link>
-                                </Button>
+                                isFiltered ? (
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link href={usersIndex()}>
+                                            <RotateCcw /> Clear filters
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <Button asChild size="sm">
+                                        <Link href={createUser()}>
+                                            <Plus /> New user
+                                        </Link>
+                                    </Button>
+                                )
                             }
                         />
                     ) : (
@@ -77,6 +151,8 @@ export default function UsersIndex({
                                     <TableHead>Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Joined</TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -94,6 +170,28 @@ export default function UsersIndex({
                                         </TableCell>
                                         <TableCell>
                                             <RoleBadge role={user.role} />
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.email_verified_at ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400"
+                                                >
+                                                    <BadgeCheck />
+                                                    Verified
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    <Clock />
+                                                    Pending
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                                            {formatDate(user.created_at)}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">

@@ -23,8 +23,28 @@ class UserController extends Controller
         Gate::authorize('viewAny', User::class);
 
         $actor = $request->user();
+        $search = trim($request->string('search')->toString());
+        $role = Role::tryFrom($request->string('role')->toString());
+
+        $applySearch = fn ($query) => $query->whereAny(
+            ['name', 'email'],
+            'like',
+            "%{$search}%",
+        );
+
+        $counts = User::query()
+            ->when($search !== '', $applySearch)
+            ->selectRaw('role, count(*) as aggregate')
+            ->groupBy('role')
+            ->toBase()
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [
+                $row->role => (int) $row->aggregate,
+            ]);
 
         $users = User::query()
+            ->when($role, fn ($query) => $query->where('role', $role))
+            ->when($search !== '', $applySearch)
             ->orderBy('name')
             ->paginate($this->perPage($request))
             ->withQueryString()
@@ -38,6 +58,17 @@ class UserController extends Controller
 
         return Inertia::render('admin/users/index', [
             'users' => $users,
+            'roles' => $this->roleOptions(Role::cases()),
+            'currentRole' => $role?->value,
+            'search' => $search,
+            'roleCounts' => [
+                'all' => (int) $counts->sum(),
+                ...collect(Role::cases())
+                    ->mapWithKeys(fn (Role $case): array => [
+                        $case->value => $counts->get($case->value, 0),
+                    ])
+                    ->all(),
+            ],
         ]);
     }
 

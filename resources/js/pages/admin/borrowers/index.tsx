@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Plus, Upload, Users } from 'lucide-react';
+import { Plus, RotateCcw, Upload, Users } from 'lucide-react';
 import { BorrowerRowActions } from '@/components/admin/borrower-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -117,19 +117,31 @@ export default function BorrowersIndex({
                                       : 'Register the first borrower or import your existing book to start originating loans.'
                             }
                             action={
-                                <div className="flex flex-wrap items-center justify-center gap-2">
-                                    <Button asChild size="sm">
-                                        <Link href={createBorrower()}>
-                                            <Plus /> Add borrower
-                                        </Link>
-                                    </Button>
-
+                                search || currentKycStatus ? (
                                     <Button asChild size="sm" variant="outline">
-                                        <Link href={importBorrowers()}>
-                                            <Upload /> Import CSV
+                                        <Link href={borrowersIndex()}>
+                                            <RotateCcw /> Clear filters
                                         </Link>
                                     </Button>
-                                </div>
+                                ) : (
+                                    <div className="flex flex-wrap items-center justify-center gap-2">
+                                        <Button asChild size="sm">
+                                            <Link href={createBorrower()}>
+                                                <Plus /> Add borrower
+                                            </Link>
+                                        </Button>
+
+                                        <Button
+                                            asChild
+                                            size="sm"
+                                            variant="outline"
+                                        >
+                                            <Link href={importBorrowers()}>
+                                                <Upload /> Import CSV
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                )
                             }
                         />
                     ) : (

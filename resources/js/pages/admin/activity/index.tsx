@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Eye, Filter, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -80,9 +80,14 @@ export default function ActivityIndex({
         to: filters.to ?? null,
     });
     const [selected, setSelected] = useState<ActivityLogRow | null>(null);
+    const { url } = usePage();
 
     const applyFilters = (formEvent: FormEvent<HTMLFormElement>) => {
         formEvent.preventDefault();
+
+        const perPage = new URL(url, 'http://localhost').searchParams.get(
+            'per_page',
+        );
 
         router.get(
             activityIndex().url,
@@ -92,6 +97,7 @@ export default function ActivityIndex({
                 ...(user !== ALL ? { user } : {}),
                 ...(range.from ? { from: range.from } : {}),
                 ...(range.to ? { to: range.to } : {}),
+                ...(perPage ? { per_page: perPage } : {}),
             },
             { preserveScroll: true, preserveState: true },
         );

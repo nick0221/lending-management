@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Check, Minus } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { RoleBadge } from '@/components/role-badge';
@@ -11,6 +11,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as rolesIndex } from '@/routes/admin/roles';
+import { index as usersIndex } from '@/routes/admin/users';
 import type { RoleMatrixGroup, RoleOption } from '@/types';
 
 function PermissionCell({ allowed }: { allowed: boolean }) {
@@ -34,9 +37,11 @@ function PermissionCell({ allowed }: { allowed: boolean }) {
 export default function RoleMatrixPage({
     groups,
     roles,
+    counts,
 }: {
     groups: RoleMatrixGroup[];
     roles: RoleOption[];
+    counts: Record<string, number>;
 }) {
     return (
         <>
@@ -66,7 +71,20 @@ export default function RoleMatrixPage({
                                             key={role.value}
                                             className="text-center"
                                         >
-                                            <RoleBadge role={role.value} />
+                                            <Link
+                                                href={usersIndex({
+                                                    query: {
+                                                        role: role.value,
+                                                    },
+                                                })}
+                                                prefetch
+                                                className="inline-flex items-center gap-1.5 rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                            >
+                                                <RoleBadge role={role.value} />
+                                                <span className="text-xs font-normal text-muted-foreground tabular-nums">
+                                                    {counts[role.value] ?? 0}
+                                                </span>
+                                            </Link>
                                         </TableHead>
                                     ))}
                                 </TableRow>
@@ -113,3 +131,20 @@ export default function RoleMatrixPage({
         </>
     );
 }
+
+RoleMatrixPage.layout = {
+    breadcrumbs: [
+        {
+            title: 'Administration',
+            href: adminDashboard(),
+        },
+        {
+            title: 'Users',
+            href: usersIndex(),
+        },
+        {
+            title: 'Role matrix',
+            href: rolesIndex(),
+        },
+    ],
+};

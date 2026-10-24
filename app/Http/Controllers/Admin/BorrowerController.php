@@ -41,9 +41,10 @@ class BorrowerController extends Controller
             ->when($search !== '', $applySearch)
             ->selectRaw('kyc_status, count(*) as aggregate')
             ->groupBy('kyc_status')
+            ->toBase()
             ->get()
-            ->mapWithKeys(fn (Borrower $borrower): array => [
-                $borrower->kyc_status->value => (int) $borrower->aggregate,
+            ->mapWithKeys(fn (object $row): array => [
+                $row->kyc_status => (int) $row->aggregate,
             ]);
 
         $borrowers = Borrower::query()

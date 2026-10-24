@@ -19,6 +19,49 @@ test('the user list exposes the abilities for every row', function () {
         );
 });
 
+test('the user list can be searched by name or email', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    User::factory()->admin()->create([
+        'name' => 'Needle Person',
+        'email' => 'needle@example.com',
+    ]);
+    User::factory()->create([
+        'name' => 'Someone Else',
+        'email' => 'someone@example.com',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['search' => 'needle']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.email', 'needle@example.com')
+            ->where('search', 'needle')
+            ->where('roleCounts.admin', 1)
+            ->where('roleCounts.user', 0)
+            ->where('roleCounts.all', 1)
+        );
+});
+
+test('the user list can be filtered by role', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $admin = User::factory()->admin()->create();
+    User::factory()->create();
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['role' => Role::Admin->value]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $admin->id)
+            ->where('currentRole', Role::Admin->value)
+            ->where('roleCounts.super_admin', 1)
+            ->where('roleCounts.admin', 1)
+            ->where('roleCounts.user', 1)
+            ->where('roleCounts.all', 3)
+        );
+});
+
 test('super admins can create a super admin', function () {
     $superAdmin = User::factory()->superAdmin()->create();
 

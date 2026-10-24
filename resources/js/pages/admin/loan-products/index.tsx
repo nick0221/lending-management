@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Landmark, Plus } from 'lucide-react';
+import { Landmark, Plus, RotateCcw } from 'lucide-react';
 import { LoanProductCard } from '@/components/admin/loan-product-card';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -82,11 +82,19 @@ export default function LoanProductsIndex({
                                       : 'Create a product to define the interest, fees and terms you offer.'
                             }
                             action={
-                                <Button asChild size="sm">
-                                    <Link href={createLoanProduct()}>
-                                        <Plus /> Add product
-                                    </Link>
-                                </Button>
+                                currentState ? (
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link href={loanProductsIndex()}>
+                                            <RotateCcw /> View all products
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <Button asChild size="sm">
+                                        <Link href={createLoanProduct()}>
+                                            <Plus /> Add product
+                                        </Link>
+                                    </Button>
+                                )
                             }
                         />
                     </div>
