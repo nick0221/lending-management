@@ -7,9 +7,11 @@ import type { BorrowerOption, LoanProductOption } from '@/types';
 export default function CreateLoan({
     borrowers,
     loanProducts,
+    selectedBorrowerId,
 }: {
     borrowers: BorrowerOption[];
     loanProducts: LoanProductOption[];
+    selectedBorrowerId: number | null;
 }) {
     return (
         <>
@@ -25,6 +27,7 @@ export default function CreateLoan({
                     action={store.form()}
                     borrowers={borrowers}
                     loanProducts={loanProducts}
+                    selectedBorrowerId={selectedBorrowerId}
                     submitLabel="Create loan"
                 />
             </div>

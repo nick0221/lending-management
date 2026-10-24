@@ -29,12 +29,20 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('search', SearchController::class)
             ->middleware('throttle:search')
             ->name('search');
+        Route::post('users/{user}/verification', [UserController::class, 'sendVerificationEmail'])
+            ->middleware('throttle:reminders')
+            ->name('users.verification');
+        Route::post('users/{user}/password-reset', [UserController::class, 'sendPasswordReset'])
+            ->middleware('throttle:reminders')
+            ->name('users.password-reset');
         Route::resource('users', UserController::class)->except('show');
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');
         Route::post('borrowers/import', [BorrowerImportController::class, 'store'])->name('borrowers.imports.store');
         Route::get('borrowers/import/template', [BorrowerImportController::class, 'template'])->name('borrowers.imports.template');
         Route::resource('borrowers', BorrowerController::class);
+        Route::patch('loan-products/{loanProduct}/availability', [LoanProductController::class, 'toggleAvailability'])
+            ->name('loan-products.availability');
         Route::resource('loan-products', LoanProductController::class)->except('show');
         Route::post('loans/remind', [LoanController::class, 'sendReminders'])
             ->middleware('throttle:reminders')

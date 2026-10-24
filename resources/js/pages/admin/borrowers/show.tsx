@@ -181,7 +181,12 @@ export default function ShowBorrower({
                             description="Every loan filed for this borrower."
                             actions={
                                 <Button size="sm" asChild>
-                                    <Link href={createLoan()} prefetch>
+                                    <Link
+                                        href={createLoan({
+                                            query: { borrower: borrower.id },
+                                        })}
+                                        prefetch
+                                    >
                                         <Plus /> New loan
                                     </Link>
                                 </Button>

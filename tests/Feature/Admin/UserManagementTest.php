@@ -2,7 +2,10 @@
 
 use App\Enums\Role;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 
 test('the user list exposes the abilities for every row', function () {
     $superAdmin = User::factory()->superAdmin()->create();
@@ -60,6 +63,103 @@ test('the user list can be filtered by role', function () {
             ->where('roleCounts.user', 1)
             ->where('roleCounts.all', 3)
         );
+});
+
+test('creating a user sends a verification email', function () {
+    Notification::fake();
+
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin)
+        ->post(route('admin.users.store'), [
+            'name' => 'New User',
+            'email' => 'new-user@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => Role::User->value,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $user = User::where('email', 'new-user@example.com')->firstOrFail();
+
+    Notification::assertSentTo($user, VerifyEmail::class);
+});
+
+test('changing a user email resets verification and sends a new link', function () {
+    Notification::fake();
+
+    $superAdmin = User::factory()->superAdmin()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($superAdmin)
+        ->put(route('admin.users.update', $user), [
+            'name' => $user->name,
+            'email' => 'changed@example.com',
+            'role' => Role::User->value,
+        ])
+        ->assertSessionHasNoErrors();
+
+    $user->refresh();
+
+    expect($user->email_verified_at)->toBeNull();
+
+    Notification::assertSentTo($user, VerifyEmail::class);
+});
+
+test('admins can resend a verification link', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.verification', $user))
+        ->assertRedirect();
+
+    Notification::assertSentTo($user, VerifyEmail::class);
+});
+
+test('verified users do not receive another verification link', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.verification', $user))
+        ->assertRedirect();
+
+    Notification::assertNotSentTo($user, VerifyEmail::class);
+});
+
+test('admins can send a password reset link', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.password-reset', $user))
+        ->assertRedirect();
+
+    Notification::assertSentTo($user, ResetPassword::class);
+});
+
+test('admins cannot send recovery emails to another admin', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $otherAdmin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.verification', $otherAdmin))
+        ->assertForbidden();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.password-reset', $otherAdmin))
+        ->assertForbidden();
+
+    Notification::assertNothingSent();
 });
 
 test('super admins can create a super admin', function () {

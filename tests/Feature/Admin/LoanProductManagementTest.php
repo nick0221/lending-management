@@ -149,6 +149,36 @@ test('admins can delete a loan product', function () {
     expect($loanProduct->fresh())->toBeNull();
 });
 
+test('a loan product with loans cannot be deleted', function () {
+    $admin = User::factory()->admin()->create();
+    $loanProduct = LoanProduct::factory()->create();
+    $loan = Loan::factory()->forProduct($loanProduct)->create();
+
+    $this->actingAs($admin)
+        ->delete(route('admin.loan-products.destroy', $loanProduct))
+        ->assertRedirect();
+
+    expect($loanProduct->fresh())->not->toBeNull()
+        ->and($loan->fresh())->not->toBeNull();
+});
+
+test('admins can toggle a loan product availability', function () {
+    $admin = User::factory()->admin()->create();
+    $loanProduct = LoanProduct::factory()->create(['is_active' => true]);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.loan-products.availability', $loanProduct))
+        ->assertRedirect();
+
+    expect($loanProduct->refresh()->is_active)->toBeFalse();
+
+    $this->actingAs($admin)
+        ->patch(route('admin.loan-products.availability', $loanProduct))
+        ->assertRedirect();
+
+    expect($loanProduct->refresh()->is_active)->toBeTrue();
+});
+
 test('the active scope only returns active loan products', function () {
     LoanProduct::factory()->create(['name' => 'Active Loan', 'is_active' => true]);
     LoanProduct::factory()->inactive()->create(['name' => 'Dormant Loan']);

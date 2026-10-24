@@ -38,6 +38,7 @@ type Props = {
     action: RouteFormDefinition<'post'>;
     borrowers: BorrowerOption[];
     loanProducts: LoanProductOption[];
+    selectedBorrowerId?: number | null;
     submitLabel: string;
 };
 
@@ -51,9 +52,12 @@ export function LoanForm({
     action,
     borrowers,
     loanProducts,
+    selectedBorrowerId = null,
     submitLabel,
 }: Props) {
-    const [borrowerId, setBorrowerId] = useState<string>('');
+    const [borrowerId, setBorrowerId] = useState<string>(
+        selectedBorrowerId === null ? '' : String(selectedBorrowerId),
+    );
     const [loanProductId, setLoanProductId] = useState<string>('');
     const [principal, setPrincipal] = useState<string>('');
     const [termMonths, setTermMonths] = useState<string>('');

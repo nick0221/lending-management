@@ -126,11 +126,39 @@ class LoanProductController extends Controller
     }
 
     /**
+     * Toggle whether the given loan product is available for new loans.
+     */
+    public function toggleAvailability(LoanProduct $loanProduct): RedirectResponse
+    {
+        Gate::authorize('update', $loanProduct);
+
+        $loanProduct->update(['is_active' => ! $loanProduct->is_active]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $loanProduct->is_active
+                ? __('Loan product activated.')
+                : __('Loan product deactivated.'),
+        ]);
+
+        return back();
+    }
+
+    /**
      * Remove the given loan product.
      */
     public function destroy(LoanProduct $loanProduct): RedirectResponse
     {
         Gate::authorize('delete', $loanProduct);
+
+        if ($loanProduct->loans()->exists()) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('This product has loans attached. Deactivate it instead of deleting it.'),
+            ]);
+
+            return back();
+        }
 
         $loanProduct->delete();
 

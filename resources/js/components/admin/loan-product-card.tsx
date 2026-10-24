@@ -1,5 +1,5 @@
-import { Link } from '@inertiajs/react';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Link, router } from '@inertiajs/react';
+import { MoreHorizontal, Pencil, Power, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
@@ -22,6 +22,7 @@ import {
 import { formatMoney, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
+    availability,
     destroy as destroyLoanProduct,
     edit as editLoanProduct,
 } from '@/routes/admin/loan-products';
@@ -92,17 +93,38 @@ export function LoanProductCard({
                                     className="w-44"
                                 >
                                     {loanProduct.can.update && (
-                                        <DropdownMenuItem asChild>
-                                            <Link
-                                                href={editLoanProduct(
-                                                    loanProduct.id,
-                                                )}
-                                                prefetch
+                                        <>
+                                            <DropdownMenuItem asChild>
+                                                <Link
+                                                    href={editLoanProduct(
+                                                        loanProduct.id,
+                                                    )}
+                                                    prefetch
+                                                >
+                                                    <Pencil />
+                                                    Edit
+                                                </Link>
+                                            </DropdownMenuItem>
+
+                                            <DropdownMenuItem
+                                                onSelect={() =>
+                                                    router.patch(
+                                                        availability(
+                                                            loanProduct.id,
+                                                        ).url,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
                                             >
-                                                <Pencil />
-                                                Edit
-                                            </Link>
-                                        </DropdownMenuItem>
+                                                <Power />
+                                                {loanProduct.is_active
+                                                    ? 'Deactivate'
+                                                    : 'Activate'}
+                                            </DropdownMenuItem>
+                                        </>
                                     )}
 
                                     {loanProduct.can.delete && (
@@ -111,13 +133,18 @@ export function LoanProductCard({
 
                                             <DropdownMenuItem
                                                 variant="destructive"
+                                                disabled={
+                                                    loanProduct.loans_count > 0
+                                                }
                                                 onSelect={(event) => {
                                                     event.preventDefault();
                                                     setConfirmOpen(true);
                                                 }}
                                             >
                                                 <Trash2 />
-                                                Delete
+                                                {loanProduct.loans_count > 0
+                                                    ? 'Delete (in use)'
+                                                    : 'Delete'}
                                             </DropdownMenuItem>
                                         </>
                                     )}
@@ -195,7 +222,7 @@ export function LoanProductCard({
             <ConfirmDeleteDialog
                 form={destroyLoanProduct.form(loanProduct.id)}
                 title={`Delete ${loanProduct.name}?`}
-                description="This permanently deletes the product and every loan originated from it, including payments and schedules. Deactivate it instead if you only want to stop offering it."
+                description="This permanently deletes the product. Products with loans attached cannot be deleted; deactivate them instead to stop offering them."
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
             />

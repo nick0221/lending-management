@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -94,12 +95,14 @@ class UserController extends Controller
 
         Gate::authorize('assignRole', [new User, $role]);
 
-        User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => $role,
         ]);
+
+        $user->sendEmailVerificationNotification();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('User created.')]);
 
@@ -145,9 +148,65 @@ class UserController extends Controller
 
         $user->save();
 
+        if ($user->wasChanged('email')) {
+            $user->sendEmailVerificationNotification();
+        }
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __('User updated.')]);
 
         return to_route('admin.users.index');
+    }
+
+    /**
+     * Send a fresh verification link to the given user.
+     */
+    public function sendVerificationEmail(User $user): RedirectResponse
+    {
+        Gate::authorize('update', $user);
+
+        if ($user->hasVerifiedEmail()) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => __('This account is already verified.'),
+            ]);
+
+            return back();
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Verification link sent to :email.', ['email' => $user->email]),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Send a password reset link to the given user.
+     */
+    public function sendPasswordReset(User $user): RedirectResponse
+    {
+        Gate::authorize('update', $user);
+
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __($status),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Password reset link sent to :email.', ['email' => $user->email]),
+        ]);
+
+        return back();
     }
 
     /**

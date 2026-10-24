@@ -27,6 +27,26 @@ test('the loan list exposes the abilities for every row', function () {
         );
 });
 
+test('the loan form preselects a borrower from the query string', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/create')
+            ->where('selectedBorrowerId', $borrower->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('selectedBorrowerId', null)
+        );
+});
+
 test('the loan list can be filtered by status', function () {
     $admin = User::factory()->admin()->create();
     Loan::factory()->pending()->create(['principal' => 1111]);

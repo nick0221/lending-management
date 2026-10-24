@@ -131,13 +131,19 @@ class LoanController extends Controller
     /**
      * Show the form for originating a new loan.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         Gate::authorize('create', Loan::class);
+
+        $selectedBorrowerId = $request->integer('borrower');
 
         return Inertia::render('admin/loans/create', [
             'borrowers' => $this->borrowerOptions(),
             'loanProducts' => $this->loanProductOptions(),
+            'selectedBorrowerId' => $selectedBorrowerId > 0
+                && Borrower::whereKey($selectedBorrowerId)->exists()
+                    ? $selectedBorrowerId
+                    : null,
         ]);
     }
 

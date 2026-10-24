@@ -2,13 +2,12 @@ import { Head, Link } from '@inertiajs/react';
 import {
     BadgeCheck,
     Clock,
-    Pencil,
     Plus,
     RotateCcw,
     ShieldCheck,
     Users,
 } from 'lucide-react';
-import { ConfirmDelete } from '@/components/confirm-delete';
+import { UserRowActions } from '@/components/admin/user-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
@@ -30,8 +29,6 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import {
     create as createUser,
-    destroy as destroyUser,
-    edit as editUser,
     index as usersIndex,
 } from '@/routes/admin/users';
 import type { AdminUserListItem, Paginated, Role, RoleOption } from '@/types';
@@ -194,35 +191,8 @@ export default function UsersIndex({
                                             {formatDate(user.created_at)}
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center justify-end gap-2">
-                                                {user.can.update && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={editUser(
-                                                                user.id,
-                                                            )}
-                                                            prefetch
-                                                        >
-                                                            <Pencil />
-                                                            Edit
-                                                        </Link>
-                                                    </Button>
-                                                )}
-
-                                                {user.can.delete && (
-                                                    <ConfirmDelete
-                                                        form={destroyUser.form(
-                                                            user.id,
-                                                        )}
-                                                        title={`Delete ${user.name}?`}
-                                                        description="This permanently removes the account and revokes access. Any linked borrower profile and its loan history are kept."
-                                                        testId="delete-user-button"
-                                                    />
-                                                )}
+                                            <div className="flex items-center justify-end">
+                                                <UserRowActions user={user} />
                                             </div>
                                         </TableCell>
                                     </TableRow>
