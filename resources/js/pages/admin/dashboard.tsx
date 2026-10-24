@@ -6,15 +6,36 @@ import {
     CalendarClock,
     FileBarChart,
     Landmark,
-    Users,
+    Plus,
+    UserPlus,
     Wallet,
 } from 'lucide-react';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
+import { SectionCard } from '@/components/section-card';
 import StatCard from '@/components/stat-card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate, formatMoney, formatPercent } from '@/lib/format';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    formatDate,
+    formatDateOnly,
+    formatMoney,
+    formatPercent,
+} from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
-import { index as adminLoans, show as showLoan } from '@/routes/admin/loans';
+import { create as createBorrower } from '@/routes/admin/borrowers';
+import {
+    create as createLoan,
+    index as adminLoans,
+    show as showLoan,
+} from '@/routes/admin/loans';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminUsers } from '@/routes/admin/users';
 import type {
@@ -40,6 +61,32 @@ const agingRows: { key: keyof AgingBuckets; label: string }[] = [
     { key: 'days_over_90', label: 'Over 90 days' },
 ];
 
+function dueStatus(asOf: string, dueDate: string) {
+    const days = Math.round(
+        (Date.parse(`${dueDate}T00:00:00`) - Date.parse(`${asOf}T00:00:00`)) /
+            86_400_000,
+    );
+
+    if (days < 0) {
+        return {
+            label: `${Math.abs(days)}d overdue`,
+            className: 'border-destructive/30 text-destructive',
+        };
+    }
+
+    if (days === 0) {
+        return {
+            label: 'Due today',
+            className: 'border-amber-600/30 text-amber-700 dark:text-amber-400',
+        };
+    }
+
+    return {
+        label: `Due in ${days}d`,
+        className: 'text-muted-foreground',
+    };
+}
+
 export default function AdminDashboard({
     stats,
     summary,
@@ -55,36 +102,49 @@ export default function AdminDashboard({
     risk: PortfolioRisk;
     recentPayments: RecentPayment[];
 }) {
+    const portfolioReport = reportsIndex({ query: { tab: 'portfolio' } });
+    const collectionsReport = reportsIndex({ query: { tab: 'collections' } });
+    const agingReport = reportsIndex({ query: { tab: 'aging' } });
+    const overdueLoans = adminLoans({ query: { overdue: '1' } });
+
+    const attentionRows = [
+        ...collections.overdue_installments,
+        ...collections.upcoming,
+    ].slice(0, 8);
+
+    const dueTodayCount = collections.upcoming.filter(
+        (installment) => installment.due_date === collections.as_of,
+    ).length;
+
     return (
         <>
             <Head title="Administration" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        title="Administration"
-                        description="Portfolio health, collections and arrears at a glance."
-                    />
-
-                    <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline">
-                            <Link href={adminLoans()} prefetch>
-                                <Wallet /> Loans
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline">
-                            <Link href={adminUsers()} prefetch>
-                                <Users /> Users
-                            </Link>
-                        </Button>
-                        <Button asChild>
-                            <Link href={reportsIndex()} prefetch>
-                                <FileBarChart /> Reports
-                                <ArrowRight />
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
+                <PageHeader
+                    title="Administration"
+                    description="Portfolio health, collections and arrears at a glance."
+                    actions={
+                        <>
+                            <Button variant="outline" asChild>
+                                <Link href={createBorrower()} prefetch>
+                                    <UserPlus /> Add borrower
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <Link href={createLoan()} prefetch>
+                                    <Plus /> New loan
+                                </Link>
+                            </Button>
+                            <Button asChild>
+                                <Link href={reportsIndex()} prefetch>
+                                    <FileBarChart /> Reports
+                                    <ArrowRight />
+                                </Link>
+                            </Button>
+                        </>
+                    }
+                />
 
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
@@ -94,12 +154,14 @@ export default function AdminDashboard({
                             summary.open_loans === 1 ? '' : 's'
                         }`}
                         icon={Landmark}
+                        href={portfolioReport}
                     />
                     <StatCard
                         title="Principal disbursed"
                         value={formatMoney(summary.disbursed)}
                         hint={`${summary.loans} loans on file`}
                         icon={Banknote}
+                        href={portfolioReport}
                     />
                     <StatCard
                         title="Collected"
@@ -107,6 +169,7 @@ export default function AdminDashboard({
                         hint={`${formatMoney(summary.collected_interest)} interest`}
                         icon={Wallet}
                         tone="success"
+                        href={portfolioReport}
                     />
                     <StatCard
                         title="Arrears"
@@ -114,6 +177,7 @@ export default function AdminDashboard({
                         hint={`${summary.defaulted_loans} defaulted`}
                         icon={AlertTriangle}
                         tone={summary.arrears > 0 ? 'danger' : 'default'}
+                        href={overdueLoans}
                     />
                 </section>
 
@@ -121,12 +185,20 @@ export default function AdminDashboard({
                     <StatCard
                         title="Due today"
                         value={formatMoney(collections.due_today)}
+                        hint={`${dueTodayCount} installment${
+                            dueTodayCount === 1 ? '' : 's'
+                        }`}
                         icon={CalendarClock}
+                        href={collectionsReport}
                     />
                     <StatCard
                         title="Due this week"
                         value={formatMoney(collections.due_this_week)}
+                        hint={`${collections.upcoming.length} installment${
+                            collections.upcoming.length === 1 ? '' : 's'
+                        }`}
                         icon={CalendarClock}
+                        href={collectionsReport}
                     />
                     <StatCard
                         title="Overdue"
@@ -137,6 +209,7 @@ export default function AdminDashboard({
                                 : 's'
                         }`}
                         tone={collections.overdue > 0 ? 'danger' : 'default'}
+                        href={overdueLoans}
                     />
                     <StatCard
                         title="Portfolio at risk"
@@ -145,127 +218,209 @@ export default function AdminDashboard({
                             risk.par30.ratio,
                         )}`}
                         tone={risk.par.ratio > 0 ? 'warning' : 'default'}
+                        href={agingReport}
                     />
                 </section>
 
+                <SectionCard
+                    title="Needs attention"
+                    description="Overdue installments first, then what is due within the next week."
+                    actions={
+                        <Button size="sm" variant="outline" asChild>
+                            <Link href={overdueLoans} prefetch>
+                                View overdue loans <ArrowRight />
+                            </Link>
+                        </Button>
+                    }
+                >
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Borrower</TableHead>
+                                <TableHead>Due</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">
+                                    Amount
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+
+                        <TableBody>
+                            {attentionRows.map((installment) => {
+                                const status = dueStatus(
+                                    collections.as_of,
+                                    installment.due_date,
+                                );
+
+                                return (
+                                    <TableRow
+                                        key={`${installment.loan_id}-${installment.sequence}`}
+                                    >
+                                        <TableCell>
+                                            <Link
+                                                href={showLoan(
+                                                    installment.loan_id,
+                                                )}
+                                                prefetch
+                                                className="font-medium hover:underline"
+                                            >
+                                                {installment.borrower ??
+                                                    `Loan #${installment.loan_id}`}
+                                            </Link>
+                                            <p className="text-xs text-muted-foreground">
+                                                Installment{' '}
+                                                {installment.sequence}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                                            {formatDateOnly(
+                                                installment.due_date,
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className={status.className}
+                                            >
+                                                {status.label}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium tabular-nums">
+                                            {formatMoney(installment.amount)}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+
+                            {attentionRows.length === 0 && (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={4}
+                                        className="py-8 text-center text-muted-foreground"
+                                    >
+                                        Nothing is overdue or due in the next
+                                        seven days.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </SectionCard>
+
                 <section className="grid gap-6 lg:grid-cols-3">
-                    <div className="space-y-3 lg:col-span-1">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-semibold">Aging</h2>
+                    <SectionCard
+                        title="Aging"
+                        description="Outstanding by days past due."
+                        className="lg:col-span-1"
+                        actions={
                             <Link
-                                href={reportsIndex()}
+                                href={agingReport}
                                 className="text-xs text-muted-foreground hover:underline"
                                 prefetch
                             >
                                 View report
                             </Link>
-                        </div>
+                        }
+                    >
+                        <Table>
+                            <TableBody>
+                                {agingRows.map((row) => (
+                                    <TableRow key={row.key}>
+                                        <TableCell className="text-muted-foreground">
+                                            {row.label}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium tabular-nums">
+                                            {formatMoney(aging[row.key])}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </SectionCard>
 
-                        <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                            <table className="w-full text-left text-sm">
-                                <tbody>
-                                    {agingRows.map((row) => (
-                                        <tr
-                                            key={row.key}
-                                            className="border-b border-sidebar-border/70 last:border-b-0 dark:border-sidebar-border"
-                                        >
-                                            <td className="px-4 py-3 text-muted-foreground">
-                                                {row.label}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-medium tabular-nums">
-                                                {formatMoney(aging[row.key])}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <SectionCard
+                        title="Recent payments"
+                        description="The latest payments recorded across the portfolio."
+                        className="lg:col-span-2"
+                    >
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Borrower</TableHead>
+                                    <TableHead>Method</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right">
+                                        Amount
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
 
-                    <div className="space-y-3 lg:col-span-2">
-                        <h2 className="text-sm font-semibold">
-                            Recent payments
-                        </h2>
-
-                        <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                                        <tr>
-                                            <th className="px-4 py-3 font-medium">
-                                                Borrower
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Method
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Date
-                                            </th>
-                                            <th className="px-4 py-3 text-right font-medium">
-                                                Amount
-                                            </th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        {recentPayments.map((payment) => (
-                                            <tr
-                                                key={payment.id}
-                                                className="border-t border-sidebar-border/70 dark:border-sidebar-border"
+                            <TableBody>
+                                {recentPayments.map((payment) => (
+                                    <TableRow key={payment.id}>
+                                        <TableCell>
+                                            <Link
+                                                href={showLoan(payment.loan_id)}
+                                                prefetch
+                                                className="font-medium hover:underline"
                                             >
-                                                <td className="px-4 py-3">
-                                                    <Link
-                                                        href={showLoan(
-                                                            payment.loan_id,
-                                                        )}
-                                                        className="font-medium hover:underline"
-                                                    >
-                                                        {payment.borrower ??
-                                                            `Loan #${payment.loan_id}`}
-                                                    </Link>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {payment.method_label}
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {formatDate(
-                                                        payment.payment_date,
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-medium tabular-nums">
-                                                    {formatMoney(payment.amount)}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                {payment.borrower ??
+                                                    `Loan #${payment.loan_id}`}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {payment.method_label}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {formatDate(payment.payment_date)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium tabular-nums">
+                                            {formatMoney(payment.amount)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
 
-                                        {recentPayments.length === 0 && (
-                                            <tr>
-                                                <td
-                                                    colSpan={4}
-                                                    className="px-4 py-8 text-center text-muted-foreground"
-                                                >
-                                                    No payments recorded yet.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                                {recentPayments.length === 0 && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={4}
+                                            className="py-8 text-center text-muted-foreground"
+                                        >
+                                            No payments recorded yet.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </SectionCard>
                 </section>
 
                 <section className="space-y-3">
                     <h2 className="text-sm font-semibold">Accounts</h2>
 
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total users" value={stats.total} />
+                        <StatCard
+                            title="Total users"
+                            value={stats.total}
+                            href={adminUsers()}
+                        />
                         <StatCard
                             title="Super admins"
                             value={stats.superAdmins}
+                            href={adminUsers({
+                                query: { role: 'super_admin' },
+                            })}
                         />
-                        <StatCard title="Admins" value={stats.admins} />
-                        <StatCard title="Users" value={stats.users} />
+                        <StatCard
+                            title="Admins"
+                            value={stats.admins}
+                            href={adminUsers({ query: { role: 'admin' } })}
+                        />
+                        <StatCard
+                            title="Users"
+                            value={stats.users}
+                            href={adminUsers({ query: { role: 'user' } })}
+                        />
                     </div>
                 </section>
             </div>

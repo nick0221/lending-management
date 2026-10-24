@@ -1,4 +1,6 @@
+import { Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import {
     Card,
     CardContent,
@@ -21,15 +23,23 @@ export default function StatCard({
     hint,
     icon: Icon,
     tone = 'default',
+    href,
 }: {
     title: string;
     value: string | number;
     hint?: string;
     icon?: LucideIcon;
     tone?: keyof typeof tones;
+    href?: ComponentProps<typeof Link>['href'];
 }) {
-    return (
-        <Card>
+    const card = (
+        <Card
+            className={cn(
+                'h-full',
+                href &&
+                    'transition-colors hover:border-primary/40 hover:bg-accent/30',
+            )}
+        >
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <div className="space-y-1">
                     <CardDescription>{title}</CardDescription>
@@ -51,5 +61,19 @@ export default function StatCard({
                 </CardContent>
             )}
         </Card>
+    );
+
+    if (!href) {
+        return card;
+    }
+
+    return (
+        <Link
+            href={href}
+            prefetch
+            className="block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+            {card}
+        </Link>
     );
 }
