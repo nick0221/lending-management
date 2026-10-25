@@ -25,8 +25,14 @@ class BorrowerImportController extends Controller
     {
         Gate::authorize('create', Borrower::class);
 
+        $summary = $request->session()->get('import_summary');
+
+        if (is_array($summary)) {
+            $summary['errors'] = array_slice($summary['errors'] ?? [], 0, 20);
+        }
+
         return Inertia::render('admin/borrowers/import', [
-            'summary' => $request->session()->get('import_summary'),
+            'summary' => $summary,
         ]);
     }
 
@@ -56,6 +62,39 @@ class BorrowerImportController extends Controller
 
         return to_route('admin.borrowers.imports.create')
             ->with('import_summary', $summary);
+    }
+
+    /**
+     * Download every error from the last import as a CSV.
+     */
+    public function downloadErrors(Request $request, CsvExporter $csvExporter): StreamedResponse|RedirectResponse
+    {
+        Gate::authorize('create', Borrower::class);
+
+        $summary = $request->session()->get('import_summary');
+        $errors = is_array($summary) ? ($summary['errors'] ?? []) : [];
+
+        if ($errors === []) {
+            Inertia::flash('toast', [
+                'type' => 'info',
+                'message' => __('There are no import errors to download.'),
+            ]);
+
+            return back();
+        }
+
+        return $csvExporter->stream(
+            'borrower-import-errors-'.now()->format('Y-m-d-His').'.csv',
+            [
+                ['Line', 'Issue'],
+                ...collect($errors)
+                    ->map(fn (array $error): array => [
+                        $error['line'] === 0 ? 'File' : $error['line'],
+                        $error['message'],
+                    ])
+                    ->all(),
+            ],
+        );
     }
 
     /**

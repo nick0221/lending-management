@@ -182,7 +182,7 @@ class BorrowerImportService
             'imported' => $imported,
             'skipped' => $totalRows - $imported,
             'total_rows' => $totalRows,
-            'errors' => array_slice($errors, 0, 20),
+            'errors' => $errors,
             'error_count' => count($errors),
         ];
     }

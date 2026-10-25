@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');
         Route::post('borrowers/import', [BorrowerImportController::class, 'store'])->name('borrowers.imports.store');
         Route::get('borrowers/import/template', [BorrowerImportController::class, 'template'])->name('borrowers.imports.template');
+        Route::get('borrowers/import/errors', [BorrowerImportController::class, 'downloadErrors'])->name('borrowers.imports.errors');
         Route::resource('borrowers', BorrowerController::class);
         Route::patch('loan-products/{loanProduct}/availability', [LoanProductController::class, 'toggleAvailability'])
             ->name('loan-products.availability');

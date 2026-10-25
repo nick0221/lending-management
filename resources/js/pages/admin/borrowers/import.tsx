@@ -25,6 +25,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import {
     create as importCreate,
+    errors as downloadImportErrors,
     store,
     template,
 } from '@/routes/admin/borrowers/imports';
@@ -220,6 +221,15 @@ function ImportSummaryCard({ summary }: { summary: BorrowerImportSummary }) {
             title="Last import"
             description={`${summary.imported} of ${summary.total_rows} rows imported.`}
             contentClassName="space-y-4 p-4"
+            actions={
+                hasErrors ? (
+                    <Button size="sm" variant="outline" asChild>
+                        <a href={downloadImportErrors.url()}>
+                            <Download /> Download errors
+                        </a>
+                    </Button>
+                ) : undefined
+            }
         >
             <div className="grid gap-3 sm:grid-cols-3">
                 <SummaryMetric label="Imported" value={summary.imported} />
@@ -236,8 +246,10 @@ function ImportSummaryCard({ summary }: { summary: BorrowerImportSummary }) {
                         {summary.error_count === 1
                             ? 'issue was'
                             : 'issues were'}{' '}
-                        found. The table shows the first {summary.errors.length}
-                        .
+                        found.{' '}
+                        {summary.error_count > summary.errors.length
+                            ? `The table shows the first ${summary.errors.length}; download the CSV for all of them.`
+                            : 'Review the rows below.'}
                     </AlertDescription>
                 </Alert>
             ) : (

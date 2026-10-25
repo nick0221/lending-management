@@ -138,6 +138,35 @@ test('the csv template downloads with the expected headers', function () {
         ->toContain('name,phone,email,national_id,date_of_birth,address,kyc_status,notes');
 });
 
+test('import errors can be downloaded as a csv', function () {
+    $admin = User::factory()->admin()->create();
+
+    Borrower::factory()->create(['national_id' => 'NID-EXISTING']);
+
+    $csv = <<<'CSV'
+name,phone,national_id
+Existing Person,+1-555-0000,NID-EXISTING
+Missing Phone,,NID-MISSING
+CSV;
+
+    $this->actingAs($admin)
+        ->post(route('admin.borrowers.imports.store'), [
+            'file' => UploadedFile::fake()->createWithContent('borrowers.csv', $csv),
+        ])
+        ->assertSessionHasNoErrors();
+
+    $response = $this->get(route('admin.borrowers.imports.errors'));
+
+    $response->assertOk()->assertDownload();
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Line,Issue')
+        ->toContain('National ID NID-EXISTING is already registered.')
+        ->toContain('The phone field is required.');
+});
+
 test('regular users cannot import borrowers', function () {
     $user = User::factory()->create();
 
