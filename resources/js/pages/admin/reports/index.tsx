@@ -1,5 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, Printer } from 'lucide-react';
+import {
+    ArrowDown,
+    ArrowUp,
+    ChevronsUpDown,
+    Download,
+    Printer,
+} from 'lucide-react';
 import { useState } from 'react';
 import { ReportBarChart } from '@/components/admin/report-bar-chart';
 import type { ReportBarDatum } from '@/components/admin/report-bar-chart';
@@ -59,6 +65,85 @@ type ReportsTab = 'portfolio' | 'aging' | 'collections' | 'arrears';
 
 const REPORT_ROWS_PER_PAGE = 50;
 
+type LoanSortKey =
+    | 'id'
+    | 'borrower'
+    | 'principal'
+    | 'paid'
+    | 'outstanding'
+    | 'arrears'
+    | 'days_past_due';
+
+type LoanSort = {
+    key: LoanSortKey;
+    direction: 'asc' | 'desc';
+};
+
+function loanSortValue(loan: ReportLoanRow, key: LoanSortKey): string | number {
+    switch (key) {
+        case 'borrower':
+            return (loan.borrower ?? '').toLowerCase();
+        case 'id':
+            return loan.id;
+        case 'principal':
+            return loan.principal;
+        case 'paid':
+            return loan.paid;
+        case 'outstanding':
+            return loan.outstanding;
+        case 'arrears':
+            return loan.arrears;
+        case 'days_past_due':
+            return loan.days_past_due;
+    }
+}
+
+function SortableHead({
+    label,
+    column,
+    sort,
+    onSort,
+    align = 'left',
+}: {
+    label: string;
+    column: LoanSortKey;
+    sort: LoanSort | null;
+    onSort: (column: LoanSortKey) => void;
+    align?: 'left' | 'right';
+}) {
+    const activeSort = sort?.key === column ? sort : null;
+    const Icon = !activeSort
+        ? ChevronsUpDown
+        : activeSort.direction === 'asc'
+          ? ArrowUp
+          : ArrowDown;
+
+    return (
+        <TableHead
+            aria-sort={
+                activeSort
+                    ? activeSort.direction === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                    : 'none'
+            }
+        >
+            <button
+                type="button"
+                onClick={() => onSort(column)}
+                className={cn(
+                    'inline-flex items-center gap-1 text-sm font-medium transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                    align === 'right' && 'w-full justify-end',
+                    activeSort ? 'text-foreground' : 'text-muted-foreground',
+                )}
+            >
+                {label}
+                <Icon className="size-3.5 shrink-0" aria-hidden />
+            </button>
+        </TableHead>
+    );
+}
+
 function TableLoadMore({
     shown,
     total,
@@ -93,7 +178,43 @@ function LoanReportTable({
     emptyMessage: string;
 }) {
     const [visibleCount, setVisibleCount] = useState(REPORT_ROWS_PER_PAGE);
-    const visibleLoans = loans.slice(0, visibleCount);
+    const [sort, setSort] = useState<LoanSort | null>(null);
+
+    const sortedLoans = sort
+        ? [...loans].sort((first, second) => {
+              const left = loanSortValue(first, sort.key);
+              const right = loanSortValue(second, sort.key);
+
+              const comparison =
+                  typeof left === 'string' && typeof right === 'string'
+                      ? left.localeCompare(right)
+                      : Number(left) - Number(right);
+
+              if (comparison === 0) {
+                  return first.id - second.id;
+              }
+
+              return sort.direction === 'asc' ? comparison : -comparison;
+          })
+        : loans;
+
+    const visibleLoans = sortedLoans.slice(0, visibleCount);
+
+    const toggleSort = (column: LoanSortKey) => {
+        setVisibleCount(REPORT_ROWS_PER_PAGE);
+        setSort((current) =>
+            current?.key === column
+                ? {
+                      key: column,
+                      direction: current.direction === 'asc' ? 'desc' : 'asc',
+                  }
+                : {
+                      key: column,
+                      direction: column === 'borrower' ? 'asc' : 'desc',
+                  },
+        );
+    };
+
     const totals = loans.reduce(
         (totals, loan) => ({
             principal: totals.principal + loan.principal,
@@ -109,17 +230,55 @@ function LoanReportTable({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Loan</TableHead>
-                        <TableHead>Borrower</TableHead>
+                        <SortableHead
+                            label="Loan"
+                            column="id"
+                            sort={sort}
+                            onSort={toggleSort}
+                        />
+                        <SortableHead
+                            label="Borrower"
+                            column="borrower"
+                            sort={sort}
+                            onSort={toggleSort}
+                        />
                         <TableHead>Product</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Principal</TableHead>
-                        <TableHead className="text-right">Paid</TableHead>
-                        <TableHead className="text-right">
-                            Outstanding
-                        </TableHead>
-                        <TableHead className="text-right">Arrears</TableHead>
-                        <TableHead className="text-right">DPD</TableHead>
+                        <SortableHead
+                            label="Principal"
+                            column="principal"
+                            sort={sort}
+                            onSort={toggleSort}
+                            align="right"
+                        />
+                        <SortableHead
+                            label="Paid"
+                            column="paid"
+                            sort={sort}
+                            onSort={toggleSort}
+                            align="right"
+                        />
+                        <SortableHead
+                            label="Outstanding"
+                            column="outstanding"
+                            sort={sort}
+                            onSort={toggleSort}
+                            align="right"
+                        />
+                        <SortableHead
+                            label="Arrears"
+                            column="arrears"
+                            sort={sort}
+                            onSort={toggleSort}
+                            align="right"
+                        />
+                        <SortableHead
+                            label="DPD"
+                            column="days_past_due"
+                            sort={sort}
+                            onSort={toggleSort}
+                            align="right"
+                        />
                     </TableRow>
                 </TableHeader>
 
@@ -389,6 +548,18 @@ export default function ReportsIndex({
                     <a
                         href={
                             download(
+                                { report: 'arrears' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Arrears
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
                                 { report: 'collections' },
                                 { query: periodQuery },
                             ).url
@@ -570,7 +741,11 @@ export default function ReportsIndex({
                             title="Loan report"
                             description={`${loans.length} loan${
                                 loans.length === 1 ? '' : 's'
-                            } ${periodLabel ? 'applied in this period' : 'on file'}.`}
+                            } ${
+                                periodLabel
+                                    ? 'applied in this period'
+                                    : 'on file'
+                            }. Sort any column to reorder; totals still cover every loan.`}
                         >
                             <LoanReportTable
                                 loans={loans}
@@ -793,7 +968,7 @@ export default function ReportsIndex({
 
                         <SectionCard
                             title="Loans in arrears"
-                            description="Sorted by the largest outstanding arrears."
+                            description="Largest arrears first by default; sort any column to reorder. Totals still cover every loan in arrears."
                         >
                             <LoanReportTable
                                 loans={arrearsLoans}

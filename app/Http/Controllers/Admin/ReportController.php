@@ -7,6 +7,7 @@ use App\Services\CsvExporter;
 use App\Services\ReportingService;
 use App\Services\Settings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    private const EXPORTS = ['summary', 'loans', 'collections'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -75,6 +76,7 @@ class ReportController extends Controller
             'summary' => $this->exportSummary(),
             'loans' => $this->exportLoans(),
             'collections' => $this->exportCollections(),
+            'arrears' => $this->exportArrears(),
         };
     }
 
@@ -155,27 +157,52 @@ class ReportController extends Controller
 
     private function exportLoans(): StreamedResponse
     {
+        return $this->exportLoanRows(
+            'loan-report.csv',
+            $this->reporting->loanRows(),
+        );
+    }
+
+    /**
+     * Export loans carrying an overdue balance, largest arrears first.
+     */
+    private function exportArrears(): StreamedResponse
+    {
+        $loans = $this->reporting->loanRows()
+            ->filter(fn (array $loan): bool => $loan['arrears'] > 0)
+            ->sortByDesc('arrears')
+            ->values();
+
+        return $this->exportLoanRows('arrears-report.csv', $loans);
+    }
+
+    /**
+     * Stream the shared per-loan columns for the given loan rows.
+     *
+     * @param  Collection<int, array<string, mixed>>  $loans
+     */
+    private function exportLoanRows(string $filename, Collection $loans): StreamedResponse
+    {
         $money = $this->money(...);
 
-        $rows = $this->reporting->loanRows()
-            ->map(fn (array $loan): array => [
-                $loan['id'],
-                $loan['borrower'],
-                $loan['product'],
-                $money($loan['principal']),
-                $loan['status_label'],
-                $loan['disbursed_at'],
-                $money($loan['paid']),
-                $money($loan['outstanding']),
-                $money($loan['outstanding_principal']),
-                $money($loan['outstanding_interest']),
-                $money($loan['outstanding_fee']),
-                $money($loan['outstanding_penalty']),
-                $money($loan['arrears']),
-                $loan['days_past_due'],
-            ]);
+        $rows = $loans->map(fn (array $loan): array => [
+            $loan['id'],
+            $loan['borrower'],
+            $loan['product'],
+            $money($loan['principal']),
+            $loan['status_label'],
+            $loan['disbursed_at'],
+            $money($loan['paid']),
+            $money($loan['outstanding']),
+            $money($loan['outstanding_principal']),
+            $money($loan['outstanding_interest']),
+            $money($loan['outstanding_fee']),
+            $money($loan['outstanding_penalty']),
+            $money($loan['arrears']),
+            $loan['days_past_due'],
+        ]);
 
-        return $this->csv('loan-report.csv', [
+        return $this->csv($filename, [
             'Loan',
             'Borrower',
             'Product',

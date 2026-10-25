@@ -90,7 +90,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/print', [ReportController::class, 'printSummary'])->name('reports.print');
         Route::get('reports/download/{report}', [ReportController::class, 'download'])
-            ->whereIn('report', ['summary', 'loans', 'collections'])
+            ->whereIn('report', ReportController::EXPORTS)
             ->middleware('throttle:reports')
             ->name('reports.download');
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');

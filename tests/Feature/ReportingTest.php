@@ -349,6 +349,34 @@ test('the collections export lists due and overdue installments', function () {
         ->and($lines[1])->toContain(',2026-06-01,125.00,0,Due');
 });
 
+test('the arrears export lists only loans with overdue balances', function () {
+    $this->travelTo('2026-06-15');
+
+    $admin = User::factory()->admin()->create();
+
+    activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5, 'due_date' => '2026-06-01'],
+    ]);
+
+    activeLoanWithDatedSchedule([
+        ['principal' => 50, 'interest' => 10, 'fee' => 0, 'due_date' => '2026-06-20'],
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reports.download', ['report' => 'arrears']));
+
+    $response->assertOk();
+
+    $content = $response->streamedContent();
+
+    $lines = explode("\n", trim($content));
+
+    expect($lines)->toHaveCount(2)
+        ->and($lines[0])->toContain('Arrears')
+        ->and($lines[1])->toContain(',0.00,125.00,100.00,20.00,5.00,0.00,125.00,')
+        ->and($content)->not->toContain(',50.00,Active,');
+});
+
 test('an unknown report export is not found', function () {
     $admin = User::factory()->admin()->create();
 
