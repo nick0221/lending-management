@@ -40,6 +40,14 @@ class BorrowerPolicy
     }
 
     /**
+     * Determine whether the user can update several borrowers at once.
+     */
+    public function updateAny(User $user): bool
+    {
+        return $user->canAccessAdminPanel();
+    }
+
+    /**
      * Determine whether the user can delete the given borrower.
      */
     public function delete(User $user, Borrower $borrower): bool

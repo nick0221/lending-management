@@ -236,6 +236,33 @@ test('admins can update a borrower', function () {
         ->and($borrower->kyc_status)->toBe(KycStatus::Rejected);
 });
 
+test('admins can update the kyc status of several borrowers at once', function () {
+    $admin = User::factory()->admin()->create();
+
+    $borrowers = Borrower::factory()
+        ->count(3)
+        ->create(['kyc_status' => KycStatus::Pending->value]);
+
+    $selected = $borrowers->take(2);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.borrowers.kyc-status'), [
+            'borrowers' => $selected->pluck('id')->all(),
+            'kyc_status' => KycStatus::Verified->value,
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect($selected[0]->refresh()->kyc_status)->toBe(KycStatus::Verified)
+        ->and($selected[1]->refresh()->kyc_status)->toBe(KycStatus::Verified)
+        ->and($borrowers[2]->refresh()->kyc_status)->toBe(KycStatus::Pending)
+        ->and(ActivityLog::query()
+            ->where('event', ActivityLog::EVENT_UPDATED)
+            ->whereIn('subject_id', $selected->pluck('id'))
+            ->where('subject_type', Borrower::class)
+            ->count())->toBe(2);
+});
+
 test('admins can delete a borrower', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();

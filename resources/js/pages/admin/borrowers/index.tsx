@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
-import { Plus, RotateCcw, Upload, Users } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { BadgeCheck, Plus, RotateCcw, Upload, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { BorrowerRowActions } from '@/components/admin/borrower-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -8,6 +9,14 @@ import { KycBadge } from '@/components/kyc-badge';
 import { PageHeader } from '@/components/page-header';
 import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -20,6 +29,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
     index as borrowersIndex,
+    kycStatus as updateBorrowerKyc,
     show as showBorrower,
 } from '@/routes/admin/borrowers';
 import { create as importBorrowers } from '@/routes/admin/borrowers/imports';
@@ -43,6 +53,43 @@ export default function BorrowersIndex({
     kycCounts: Record<string, number>;
     search: string;
 }) {
+    const [selected, setSelected] = useState<number[]>([]);
+    const [bulkStatus, setBulkStatus] = useState<KycStatus>('verified');
+    const [updating, setUpdating] = useState(false);
+
+    useEffect(() => {
+        setSelected((current) =>
+            current.filter((id) =>
+                borrowers.data.some((borrower) => borrower.id === id),
+            ),
+        );
+    }, [borrowers]);
+
+    const pageIds = borrowers.data.map((borrower) => borrower.id);
+    const allSelected =
+        pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
+    const someSelected = selected.length > 0 && !allSelected;
+
+    const submitBulkKyc = () => {
+        if (selected.length === 0) {
+            return;
+        }
+
+        router.patch(
+            updateBorrowerKyc().url,
+            {
+                borrowers: selected,
+                kyc_status: bulkStatus,
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setUpdating(true),
+                onFinish: () => setUpdating(false),
+                onSuccess: () => setSelected([]),
+            },
+        );
+    };
+
     const withFilters = (kycStatus?: KycStatus) =>
         borrowersIndex({
             query: {
@@ -104,6 +151,59 @@ export default function BorrowersIndex({
                     />
                 </div>
 
+                {selected.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-medium">
+                            {selected.length} borrower
+                            {selected.length === 1 ? '' : 's'} selected
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelected([])}
+                            >
+                                Clear
+                            </Button>
+
+                            <Select
+                                value={bulkStatus}
+                                onValueChange={(value) =>
+                                    setBulkStatus(value as KycStatus)
+                                }
+                            >
+                                <SelectTrigger
+                                    className="w-[150px]"
+                                    aria-label="KYC status to apply"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    {kycStatuses.map((status) => (
+                                        <SelectItem
+                                            key={status.value}
+                                            value={status.value}
+                                        >
+                                            {status.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Button
+                                size="sm"
+                                onClick={submitBulkKyc}
+                                disabled={updating}
+                            >
+                                <BadgeCheck />
+                                {updating ? 'Updating…' : 'Apply KYC'}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {borrowers.data.length === 0 ? (
                         <EmptyState
@@ -148,6 +248,25 @@ export default function BorrowersIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={
+                                                allSelected
+                                                    ? true
+                                                    : someSelected
+                                                      ? 'indeterminate'
+                                                      : false
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked === true
+                                                        ? pageIds
+                                                        : [],
+                                                )
+                                            }
+                                            aria-label="Select all borrowers on this page"
+                                        />
+                                    </TableHead>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Phone</TableHead>
                                     <TableHead>National ID</TableHead>
@@ -161,6 +280,28 @@ export default function BorrowersIndex({
                             <TableBody>
                                 {borrowers.data.map((borrower) => (
                                     <TableRow key={borrower.id}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selected.includes(
+                                                    borrower.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    setSelected((current) =>
+                                                        checked === true
+                                                            ? [
+                                                                  ...current,
+                                                                  borrower.id,
+                                                              ]
+                                                            : current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      borrower.id,
+                                                              ),
+                                                    )
+                                                }
+                                                aria-label={`Select ${borrower.name}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
                                             <Link
                                                 href={showBorrower(borrower.id)}

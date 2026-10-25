@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\KycStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreBorrowerRequest;
+use App\Http\Requests\Admin\UpdateBorrowerKycRequest;
 use App\Http\Requests\Admin\UpdateBorrowerRequest;
 use App\Models\ActivityLog;
 use App\Models\Borrower;
@@ -180,6 +181,41 @@ class BorrowerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Borrower updated.')]);
 
         return to_route('admin.borrowers.index');
+    }
+
+    /**
+     * Update the KYC status of several borrowers at once.
+     */
+    public function updateKycStatus(UpdateBorrowerKycRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+        $status = KycStatus::from($validated['kyc_status']);
+        $updated = 0;
+
+        Borrower::query()
+            ->whereKey($validated['borrowers'])
+            ->get()
+            ->each(function (Borrower $borrower) use ($status, &$updated): void {
+                if ($borrower->kyc_status === $status) {
+                    return;
+                }
+
+                $borrower->update(['kyc_status' => $status]);
+                $updated++;
+            });
+
+        Inertia::flash('toast', [
+            'type' => $updated > 0 ? 'success' : 'info',
+            'message' => $updated > 0
+                ? trans_choice(
+                    'KYC status updated for :count borrower.|KYC status updated for :count borrowers.',
+                    $updated,
+                    ['count' => $updated],
+                )
+                : __('The selected borrowers already have that KYC status.'),
+        ]);
+
+        return back();
     }
 
     /**
