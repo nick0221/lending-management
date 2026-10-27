@@ -417,7 +417,6 @@ export default function LoansIndex({
                                     )}
                                     <TableHead>Loan</TableHead>
                                     <TableHead>Borrower</TableHead>
-                                    <TableHead>Product</TableHead>
                                     <TableHead className="text-right">
                                         <div className="flex justify-end">
                                             <SortableHeader
@@ -433,6 +432,9 @@ export default function LoansIndex({
                                                 }
                                             />
                                         </div>
+                                    </TableHead>
+                                    <TableHead className="text-right">
+                                        Outstanding
                                     </TableHead>
                                     <TableHead>Terms</TableHead>
                                     <TableHead>Status</TableHead>
@@ -515,6 +517,9 @@ export default function LoansIndex({
                                             >
                                                 Loan #{loan.id}
                                             </Link>
+                                            <div className="text-xs text-muted-foreground">
+                                                {loan.loan_product_name}
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <Link
@@ -527,11 +532,11 @@ export default function LoansIndex({
                                                 {loan.borrower_name}
                                             </Link>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {loan.loan_product_name}
-                                        </TableCell>
                                         <TableCell className="text-right text-muted-foreground tabular-nums">
                                             {formatMoney(loan.principal)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {formatMoney(loan.outstanding)}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {loan.term_months} mo ·{' '}

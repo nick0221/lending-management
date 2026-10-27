@@ -241,6 +241,7 @@ export type Loan = {
 };
 
 export type LoanListItem = Loan & {
+    outstanding: string;
     arrears: string;
     can: {
         view: boolean;

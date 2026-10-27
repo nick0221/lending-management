@@ -105,6 +105,12 @@ class LoanController extends Controller
             ->withQueryString()
             ->through(fn (Loan $loan): array => [
                 ...$this->toPayload($loan),
+                'outstanding' => number_format(round(
+                    $loan->installments->sum(
+                        fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
+                    ),
+                    2,
+                ), 2, '.', ''),
                 'arrears' => number_format($this->loanArrears($loan), 2, '.', ''),
                 'can' => [
                     'view' => $actor->can('view', $loan),

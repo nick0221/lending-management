@@ -305,3 +305,4 @@ file — not a wall of sections.
 | 2026-10-27 | Added a product filter to the loans register. Status counts follow the selected product, page size survives filter changes, and the loan count on each product card links straight to that product's loans. |
 | 2026-10-27 | Made the user register security-aware. Each account shows whether two-factor authentication is on, names open the edit form when the viewer may update the account, and the page description covers access levels and 2FA. |
 | 2026-10-27 | Made the borrower file honest about truncated lists. Upcoming installments, payment history and activity now report their full totals when the visible window is shorter, so staff know more records exist and where to find them. |
+| 2026-10-27 | Added an outstanding balance column to the loans register and moved the product under the loan number, so the queue shows what is still owed without pushing the row actions off screen. |

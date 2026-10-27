@@ -27,6 +27,36 @@ test('the loan list exposes the abilities for every row', function () {
         );
 });
 
+test('the loan list reports the outstanding balance for every row', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->create();
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $loan->id,
+        'sequence' => 1,
+        'principal_due' => 100,
+        'interest_due' => 20,
+        'fee_due' => 5,
+        'penalty_accrued' => 0,
+    ]);
+    LoanInstallment::factory()->create([
+        'loan_id' => $loan->id,
+        'sequence' => 2,
+        'principal_due' => 50,
+        'interest_due' => 10,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('loans.data.0.outstanding', '185.00')
+        );
+});
+
 test('the loan form preselects a borrower from the query string', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();
