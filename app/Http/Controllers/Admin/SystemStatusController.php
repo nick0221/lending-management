@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\NotificationLog;
 use App\Services\Settings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -40,6 +42,7 @@ class SystemStatusController extends Controller
                 'from_address' => config('mail.from.address'),
                 'from_name' => config('mail.from.name'),
             ],
+            'sms' => $this->smsStatus(),
             'storage' => $this->storageStatus(),
         ]);
     }
@@ -118,6 +121,70 @@ class SystemStatusController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Report the SMS gateway configuration and recent delivery health.
+     *
+     * @return array<string, mixed>
+     */
+    private function smsStatus(): array
+    {
+        $sms = app(Settings::class)->smsConfig();
+        $windowDays = 7;
+        $since = now()->subDays($windowDays);
+
+        $counts = NotificationLog::query()
+            ->where('channel', NotificationLog::CHANNEL_SMS)
+            ->where('created_at', '>=', $since)
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $lastSent = NotificationLog::query()
+            ->where('channel', NotificationLog::CHANNEL_SMS)
+            ->whereNotNull('sent_at')
+            ->latest('sent_at')
+            ->first();
+
+        $lastFailure = NotificationLog::query()
+            ->where('channel', NotificationLog::CHANNEL_SMS)
+            ->where('status', NotificationLog::STATUS_FAILED)
+            ->latest('created_at')
+            ->first();
+
+        return [
+            'driver' => $sms['driver'],
+            'configured' => $sms['driver'] === 'log' || filled($sms['http']['url']),
+            'endpoint' => $this->endpointHost($sms['http']['url']),
+            'method' => $sms['http']['method'],
+            'format' => $sms['http']['format'],
+            'from' => $sms['from'],
+            'window_days' => $windowDays,
+            'deliveries' => [
+                'sent' => (int) ($counts[NotificationLog::STATUS_SENT] ?? 0),
+                'failed' => (int) ($counts[NotificationLog::STATUS_FAILED] ?? 0),
+                'skipped' => (int) ($counts[NotificationLog::STATUS_SKIPPED] ?? 0),
+                'queued' => (int) ($counts[NotificationLog::STATUS_QUEUED] ?? 0),
+            ],
+            'last_sent_at' => $lastSent?->sent_at?->toIso8601String(),
+            'last_failure' => $lastFailure === null ? null : [
+                'message' => Str::limit((string) $lastFailure->error, 200),
+                'at' => $lastFailure->created_at?->toIso8601String(),
+            ],
+        ];
+    }
+
+    /**
+     * Show only the gateway host so credentials in the URL never reach the page.
+     */
+    private function endpointHost(?string $url): ?string
+    {
+        if (blank($url)) {
+            return null;
+        }
+
+        return parse_url($url, PHP_URL_HOST) ?: 'Configured';
     }
 
     /**

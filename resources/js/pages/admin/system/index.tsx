@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { RefreshCw } from 'lucide-react';
+import { Check, Copy, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useClipboard } from '@/hooks/use-clipboard';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
@@ -37,6 +39,7 @@ export default function SystemStatus({
     queue,
     scheduled,
     mail,
+    sms,
     storage,
 }: {
     app: {
@@ -68,6 +71,26 @@ export default function SystemStatus({
         from_address: string | null;
         from_name: string | null;
     };
+    sms: {
+        driver: string;
+        configured: boolean;
+        endpoint: string | null;
+        method: string;
+        format: string;
+        from: string | null;
+        window_days: number;
+        deliveries: {
+            sent: number;
+            failed: number;
+            skipped: number;
+            queued: number;
+        };
+        last_sent_at: string | null;
+        last_failure: {
+            message: string;
+            at: string | null;
+        } | null;
+    };
     storage: {
         disk: string;
         path: string;
@@ -76,6 +99,33 @@ export default function SystemStatus({
         used_percent: number | null;
     };
 }) {
+    const [, copy] = useClipboard();
+    const [copiedDiagnostics, setCopiedDiagnostics] = useState(false);
+
+    const diagnostics = [
+        `${app.name} system diagnostics`,
+        `Generated: ${formatDateTime(app.now)}`,
+        `Environment: ${app.environment} (debug ${app.debug ? 'on' : 'off'})`,
+        `URL: ${app.url}`,
+        `Laravel: ${app.laravel}; PHP: ${app.php}`,
+        `Database: ${database.connection} (${database.driver}) - ${database.status}`,
+        `Queue: ${queue.connection} - pending ${queue.pending ?? 'n/a'}, failed ${queue.failed ?? 'n/a'}`,
+        `Mail: ${mail.mailer} from ${mail.from_address ?? 'not configured'}`,
+        `SMS: ${sms.driver} - sent ${sms.deliveries.sent}, failed ${sms.deliveries.failed}, skipped ${sms.deliveries.skipped} in the last ${sms.window_days} days`,
+        `Storage: ${storage.free ?? 'unknown'} free of ${storage.total ?? 'unknown'} (${storage.used_percent ?? 'unknown'}% used)`,
+    ].join('\n');
+
+    const copyDiagnostics = async () => {
+        const copied = await copy(diagnostics);
+
+        if (!copied) {
+            return;
+        }
+
+        setCopiedDiagnostics(true);
+        window.setTimeout(() => setCopiedDiagnostics(false), 2000);
+    };
+
     return (
         <>
             <Head title="System status" />
@@ -83,13 +133,26 @@ export default function SystemStatus({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="System status"
-                    description="Queue, scheduler, mail and storage health for this environment."
+                    description="Queue, scheduler, mail, SMS and storage health for this environment."
                     actions={
-                        <Button asChild variant="outline">
-                            <Link href={systemIndex()} preserveScroll>
-                                <RefreshCw /> Refresh
-                            </Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={copyDiagnostics}
+                            >
+                                {copiedDiagnostics ? <Check /> : <Copy />}
+                                {copiedDiagnostics
+                                    ? 'Copied'
+                                    : 'Copy diagnostics'}
+                            </Button>
+
+                            <Button asChild variant="outline">
+                                <Link href={systemIndex()} preserveScroll>
+                                    <RefreshCw /> Refresh
+                                </Link>
+                            </Button>
+                        </div>
                     }
                 />
 
@@ -162,7 +225,10 @@ export default function SystemStatus({
                                     </span>
                                 }
                             />
-                            <DetailRow label="Cache store" value={database.cache} />
+                            <DetailRow
+                                label="Cache store"
+                                value={database.cache}
+                            />
                             <DetailRow
                                 label="Session driver"
                                 value={database.session}
@@ -238,6 +304,111 @@ export default function SystemStatus({
                     </SectionCard>
 
                     <SectionCard
+                        title="SMS"
+                        description="Gateway configuration and delivery health from the notification log."
+                        className="lg:col-span-2"
+                        contentClassName="space-y-4 p-4"
+                    >
+                        <dl className="divide-y">
+                            <DetailRow
+                                label="Driver"
+                                value={
+                                    sms.driver === 'http'
+                                        ? 'HTTP gateway'
+                                        : sms.driver === 'log'
+                                          ? 'Log only'
+                                          : sms.driver
+                                }
+                            />
+                            <DetailRow
+                                label="Status"
+                                value={
+                                    sms.configured
+                                        ? 'Configured'
+                                        : 'Needs an endpoint'
+                                }
+                                tone={sms.configured ? 'ok' : 'bad'}
+                            />
+                            <DetailRow
+                                label="Endpoint"
+                                value={
+                                    sms.endpoint ??
+                                    (sms.driver === 'log'
+                                        ? 'Log only'
+                                        : 'Not configured')
+                                }
+                            />
+                            <DetailRow
+                                label="Request"
+                                value={`${sms.method} · ${sms.format}`}
+                            />
+                            <DetailRow
+                                label="Sender ID"
+                                value={sms.from ?? 'Not configured'}
+                            />
+                            <DetailRow
+                                label="Last delivered"
+                                value={
+                                    sms.last_sent_at ? (
+                                        <span
+                                            title={formatDateTime(
+                                                sms.last_sent_at,
+                                            )}
+                                        >
+                                            {formatRelativeTime(
+                                                sms.last_sent_at,
+                                            )}
+                                        </span>
+                                    ) : (
+                                        'Never'
+                                    )
+                                }
+                            />
+                        </dl>
+
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <Metric label="Sent" value={sms.deliveries.sent} />
+                            <Metric
+                                label="Failed"
+                                value={sms.deliveries.failed}
+                                tone={
+                                    sms.deliveries.failed > 0
+                                        ? 'bad'
+                                        : undefined
+                                }
+                            />
+                            <Metric
+                                label="Skipped"
+                                value={sms.deliveries.skipped}
+                            />
+                            <Metric
+                                label="Queued"
+                                value={sms.deliveries.queued}
+                            />
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            Counts cover the last {sms.window_days} days. A log
+                            driver records messages without contacting a
+                            gateway.
+                        </p>
+
+                        {sms.last_failure && (
+                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+                                <p className="text-xs font-medium text-destructive">
+                                    Last failure
+                                    {sms.last_failure.at
+                                        ? ` · ${formatRelativeTime(sms.last_failure.at)}`
+                                        : ''}
+                                </p>
+                                <p className="mt-1 text-xs break-words text-muted-foreground">
+                                    {sms.last_failure.message}
+                                </p>
+                            </div>
+                        )}
+                    </SectionCard>
+
+                    <SectionCard
                         title="Scheduler"
                         description="Scheduled commands and when each one runs next."
                         className="lg:col-span-2"
@@ -295,7 +466,10 @@ export default function SystemStatus({
                         contentClassName="space-y-4 p-4"
                     >
                         <dl className="divide-y">
-                            <DetailRow label="Default disk" value={storage.disk} />
+                            <DetailRow
+                                label="Default disk"
+                                value={storage.disk}
+                            />
                             <DetailRow
                                 label="Path"
                                 value={

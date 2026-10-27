@@ -5,27 +5,56 @@ export type CopiedValue = string | null;
 export type CopyFn = (text: string) => Promise<boolean>;
 export type UseClipboardReturn = [CopiedValue, CopyFn];
 
+/**
+ * Copy to the clipboard, falling back to a hidden textarea when the
+ * asynchronous clipboard API is unavailable outside a secure context.
+ */
+function legacyCopy(text: string): boolean {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.opacity = '0';
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+
+    try {
+        return document.execCommand('copy');
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
+
 export function useClipboard(): UseClipboardReturn {
     const [copiedText, setCopiedText] = useState<CopiedValue>(null);
 
     const copy: CopyFn = async (text) => {
-        if (!navigator?.clipboard) {
-            console.warn('Clipboard not supported');
-
-            return false;
-        }
+        let copied = false;
 
         try {
-            await navigator.clipboard.writeText(text);
-            setCopiedText(text);
-
-            return true;
-        } catch (error) {
-            console.warn('Copy failed', error);
-            setCopiedText(null);
-
-            return false;
+            if (window.isSecureContext && navigator?.clipboard) {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            }
+        } catch {
+            copied = false;
         }
+
+        if (!copied) {
+            try {
+                copied = legacyCopy(text);
+            } catch {
+                copied = false;
+            }
+        }
+
+        setCopiedText(copied ? text : null);
+
+        return copied;
     };
 
     return [copiedText, copy];
