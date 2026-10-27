@@ -22,6 +22,16 @@ export default function LoanProductsIndex({
     currentState: 'active' | 'inactive' | null;
     counts: Record<string, number>;
 }) {
+    const withState = (state?: 'active' | 'inactive') =>
+        loanProductsIndex({
+            query: {
+                ...(state ? { state } : {}),
+                ...(loanProducts.per_page !== 15
+                    ? { per_page: loanProducts.per_page }
+                    : {}),
+            },
+        });
+
     return (
         <>
             <Head title="Loan products" />
@@ -45,23 +55,19 @@ export default function LoanProductsIndex({
                             value: 'all',
                             label: 'All',
                             count: counts.all,
-                            href: loanProductsIndex(),
+                            href: withState(),
                         },
                         {
                             value: 'active',
                             label: 'Active',
                             count: counts.active,
-                            href: loanProductsIndex({
-                                query: { state: 'active' },
-                            }),
+                            href: withState('active'),
                         },
                         {
                             value: 'inactive',
                             label: 'Inactive',
                             count: counts.inactive,
-                            href: loanProductsIndex({
-                                query: { state: 'inactive' },
-                            }),
+                            href: withState('inactive'),
                         },
                     ]}
                     value={currentState ?? 'all'}
@@ -84,7 +90,7 @@ export default function LoanProductsIndex({
                             action={
                                 currentState ? (
                                     <Button asChild size="sm" variant="outline">
-                                        <Link href={loanProductsIndex()}>
+                                        <Link href={withState()}>
                                             <RotateCcw /> View all products
                                         </Link>
                                     </Button>

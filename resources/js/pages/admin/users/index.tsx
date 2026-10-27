@@ -53,8 +53,13 @@ export default function UsersIndex({
             query: {
                 ...(role ? { role } : {}),
                 ...(search ? { search } : {}),
+                ...(users.per_page !== 15 ? { per_page: users.per_page } : {}),
             },
         });
+
+    const clearFilters = usersIndex({
+        query: users.per_page !== 15 ? { per_page: users.per_page } : undefined,
+    });
 
     const isFiltered = search !== '' || currentRole !== null;
 
@@ -130,7 +135,7 @@ export default function UsersIndex({
                             action={
                                 isFiltered ? (
                                     <Button asChild size="sm" variant="outline">
-                                        <Link href={usersIndex()}>
+                                        <Link href={clearFilters}>
                                             <RotateCcw /> Clear filters
                                         </Link>
                                     </Button>
