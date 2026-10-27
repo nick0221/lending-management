@@ -77,6 +77,52 @@ test('the loan form preselects a borrower from the query string', function () {
         );
 });
 
+test('the loan form preselects calculator terms within the product limits', function () {
+    $admin = User::factory()->admin()->create();
+    $product = LoanProduct::factory()->create([
+        'min_amount' => 1000,
+        'max_amount' => 50000,
+        'min_term_months' => 6,
+        'max_term_months' => 24,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create', [
+            'product' => $product->id,
+            'principal' => '12000',
+            'term_months' => 12,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/create')
+            ->where('selectedProductId', $product->id)
+            ->where('defaultPrincipal', '12000')
+            ->where('defaultTermMonths', 12)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create', [
+            'product' => $product->id,
+            'principal' => '999999',
+            'term_months' => 99,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('selectedProductId', $product->id)
+            ->where('defaultPrincipal', null)
+            ->where('defaultTermMonths', null)
+        );
+
+    $inactive = LoanProduct::factory()->inactive()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create', ['product' => $inactive->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('selectedProductId', null)
+        );
+});
+
 test('the loan list can be filtered by status', function () {
     $admin = User::factory()->admin()->create();
     Loan::factory()->pending()->create(['principal' => 1111]);

@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Calculator, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calculator, Loader2, Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { SummaryRow } from '@/components/admin/summary-row';
 import InputError from '@/components/input-error';
@@ -28,6 +28,7 @@ import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     calculator as loanCalculator,
+    create as createLoan,
     index as loansIndex,
 } from '@/routes/admin/loans';
 import type { LoanProductOption, LoanSchedulePreview } from '@/types';
@@ -369,6 +370,25 @@ export default function LoanCalculator({
                                 Indicative only. The final schedule is generated
                                 when the loan is approved.
                             </p>
+
+                            <Button asChild className="mt-4 w-full">
+                                <Link
+                                    href={createLoan({
+                                        query: {
+                                            product: Number(
+                                                filters.loan_product_id,
+                                            ),
+                                            principal: filters.principal,
+                                            term_months: Number(
+                                                filters.term_months,
+                                            ),
+                                        },
+                                    })}
+                                    prefetch
+                                >
+                                    <Plus /> Use these terms
+                                </Link>
+                            </Button>
                         </SectionCard>
                     </div>
                 ) : (

@@ -39,6 +39,9 @@ type Props = {
     borrowers: BorrowerOption[];
     loanProducts: LoanProductOption[];
     selectedBorrowerId?: number | null;
+    selectedProductId?: number | null;
+    defaultPrincipal?: string | null;
+    defaultTermMonths?: number | null;
     submitLabel: string;
 };
 
@@ -53,14 +56,21 @@ export function LoanForm({
     borrowers,
     loanProducts,
     selectedBorrowerId = null,
+    selectedProductId = null,
+    defaultPrincipal = null,
+    defaultTermMonths = null,
     submitLabel,
 }: Props) {
     const [borrowerId, setBorrowerId] = useState<string>(
         selectedBorrowerId === null ? '' : String(selectedBorrowerId),
     );
-    const [loanProductId, setLoanProductId] = useState<string>('');
-    const [principal, setPrincipal] = useState<string>('');
-    const [termMonths, setTermMonths] = useState<string>('');
+    const [loanProductId, setLoanProductId] = useState<string>(
+        selectedProductId === null ? '' : String(selectedProductId),
+    );
+    const [principal, setPrincipal] = useState<string>(defaultPrincipal ?? '');
+    const [termMonths, setTermMonths] = useState<string>(
+        defaultTermMonths === null ? '' : String(defaultTermMonths),
+    );
     const [preview, setPreview] = useState<LoanSchedulePreview | null>(null);
     const [previewing, setPreviewing] = useState(false);
     const [previewFailed, setPreviewFailed] = useState(false);
@@ -217,7 +227,9 @@ export function LoanForm({
                                         id="borrower_id"
                                         className="w-full"
                                     >
-                                        <SelectValue placeholder="Select a borrower" />
+                                        <SelectValue placeholder="Select a borrower">
+                                            {selectedBorrower?.label}
+                                        </SelectValue>
                                     </SelectTrigger>
 
                                     <SelectContent>
@@ -254,7 +266,9 @@ export function LoanForm({
                                         id="loan_product_id"
                                         className="w-full"
                                     >
-                                        <SelectValue placeholder="Select a loan product" />
+                                        <SelectValue placeholder="Select a loan product">
+                                            {selectedProduct?.label}
+                                        </SelectValue>
                                     </SelectTrigger>
 
                                     <SelectContent>

@@ -8,10 +8,16 @@ export default function CreateLoan({
     borrowers,
     loanProducts,
     selectedBorrowerId,
+    selectedProductId,
+    defaultPrincipal,
+    defaultTermMonths,
 }: {
     borrowers: BorrowerOption[];
     loanProducts: LoanProductOption[];
     selectedBorrowerId: number | null;
+    selectedProductId: number | null;
+    defaultPrincipal: string | null;
+    defaultTermMonths: number | null;
 }) {
     return (
         <>
@@ -28,6 +34,9 @@ export default function CreateLoan({
                     borrowers={borrowers}
                     loanProducts={loanProducts}
                     selectedBorrowerId={selectedBorrowerId}
+                    selectedProductId={selectedProductId}
+                    defaultPrincipal={defaultPrincipal}
+                    defaultTermMonths={defaultTermMonths}
                     submitLabel="Create loan"
                 />
             </div>

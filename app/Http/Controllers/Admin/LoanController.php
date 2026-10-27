@@ -157,6 +157,29 @@ class LoanController extends Controller
         Gate::authorize('create', Loan::class);
 
         $selectedBorrowerId = $request->integer('borrower');
+        $selectedProduct = LoanProduct::query()
+            ->active()
+            ->find($request->integer('product'));
+
+        $defaultPrincipal = null;
+        $defaultTermMonths = null;
+
+        if ($selectedProduct !== null) {
+            $principal = $request->string('principal')->toString();
+
+            if (is_numeric($principal)
+                && (float) $principal >= (float) $selectedProduct->min_amount
+                && (float) $principal <= (float) $selectedProduct->max_amount) {
+                $defaultPrincipal = $principal;
+            }
+
+            $term = $request->integer('term_months');
+
+            if ($term >= $selectedProduct->min_term_months
+                && $term <= $selectedProduct->max_term_months) {
+                $defaultTermMonths = $term;
+            }
+        }
 
         return Inertia::render('admin/loans/create', [
             'borrowers' => $this->borrowerOptions(),
@@ -165,6 +188,9 @@ class LoanController extends Controller
                 && Borrower::whereKey($selectedBorrowerId)->exists()
                     ? $selectedBorrowerId
                     : null,
+            'selectedProductId' => $selectedProduct?->id,
+            'defaultPrincipal' => $defaultPrincipal,
+            'defaultTermMonths' => $defaultTermMonths,
         ]);
     }
 
