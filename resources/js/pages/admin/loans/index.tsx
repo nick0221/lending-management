@@ -213,6 +213,10 @@ export default function LoansIndex({
         );
     };
 
+    const selectedProduct = products.find(
+        (product) => product.value === currentProduct,
+    );
+
     return (
         <>
             <Head title="Loans" />
@@ -253,7 +257,11 @@ export default function LoansIndex({
                             className="h-9 w-[180px]"
                             aria-label="Filter loans by product"
                         >
-                            <SelectValue placeholder="All products" />
+                            <SelectValue placeholder="All products">
+                                {currentProduct
+                                    ? selectedProduct?.label
+                                    : 'All products'}
+                            </SelectValue>
                         </SelectTrigger>
 
                         <SelectContent>

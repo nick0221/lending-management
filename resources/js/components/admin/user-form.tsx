@@ -39,6 +39,7 @@ export function UserForm({
     const [role, setRole] = useState<Role>(
         user?.role ?? roles[0]?.value ?? 'user',
     );
+    const selectedRole = roles.find((option) => option.value === role);
 
     return (
         <Form
@@ -106,7 +107,9 @@ export function UserForm({
                                     }
                                 >
                                     <SelectTrigger id="role" className="w-full">
-                                        <SelectValue placeholder="Select a role" />
+                                        <SelectValue placeholder="Select a role">
+                                            {selectedRole?.label}
+                                        </SelectValue>
                                     </SelectTrigger>
 
                                     <SelectContent>

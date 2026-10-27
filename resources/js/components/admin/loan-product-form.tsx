@@ -60,6 +60,12 @@ export function LoanProductForm({
     const [frequency, setFrequency] = useState<RepaymentFrequency>(
         loanProduct?.repayment_frequency ?? frequencies[0]?.value ?? 'monthly',
     );
+    const selectedInterestMethod = interestMethods.find(
+        (option) => option.value === interestMethod,
+    );
+    const selectedFrequency = frequencies.find(
+        (option) => option.value === frequency,
+    );
     const [processingFeeRate, setProcessingFeeRate] = useState(
         String(loanProduct?.processing_fee_rate ?? 0),
     );
@@ -200,7 +206,9 @@ export function LoanProductForm({
                                             id="interest_method"
                                             className="w-full"
                                         >
-                                            <SelectValue placeholder="Select a method" />
+                                            <SelectValue placeholder="Select a method">
+                                                {selectedInterestMethod?.label}
+                                            </SelectValue>
                                         </SelectTrigger>
 
                                         <SelectContent>
@@ -299,7 +307,9 @@ export function LoanProductForm({
                                             id="repayment_frequency"
                                             className="w-full"
                                         >
-                                            <SelectValue placeholder="Select a frequency" />
+                                            <SelectValue placeholder="Select a frequency">
+                                                {selectedFrequency?.label}
+                                            </SelectValue>
                                         </SelectTrigger>
 
                                         <SelectContent>

@@ -177,7 +177,14 @@ export default function BorrowersIndex({
                                     className="w-[150px]"
                                     aria-label="KYC status to apply"
                                 >
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {
+                                            kycStatuses.find(
+                                                (status) =>
+                                                    status.value === bulkStatus,
+                                            )?.label
+                                        }
+                                    </SelectValue>
                                 </SelectTrigger>
 
                                 <SelectContent>

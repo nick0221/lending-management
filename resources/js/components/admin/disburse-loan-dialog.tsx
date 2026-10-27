@@ -36,6 +36,7 @@ export function DisburseLoanDialog({
 }) {
     const [open, setOpen] = useState(false);
     const [method, setMethod] = useState<string>(methods[0]?.value ?? '');
+    const selectedMethod = methods.find((option) => option.value === method);
     const today = new Date().toISOString().slice(0, 10);
     const [amount, setAmount] = useState<string>(
         Number(loan.principal).toFixed(2),
@@ -109,7 +110,9 @@ export function DisburseLoanDialog({
                                         id="disburse-method"
                                         className="w-full"
                                     >
-                                        <SelectValue placeholder="Select a method" />
+                                        <SelectValue placeholder="Select a method">
+                                            {selectedMethod?.label}
+                                        </SelectValue>
                                     </SelectTrigger>
 
                                     <SelectContent>

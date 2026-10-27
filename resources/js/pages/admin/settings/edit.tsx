@@ -192,7 +192,12 @@ export default function EditSettings({ settings }: { settings: AppSettings }) {
                                                         id="sms_driver"
                                                         className="w-full"
                                                     >
-                                                        <SelectValue />
+                                                        <SelectValue>
+                                                            {sms.driver ===
+                                                            'http'
+                                                                ? 'HTTP gateway'
+                                                                : 'Log only'}
+                                                        </SelectValue>
                                                     </SelectTrigger>
 
                                                     <SelectContent>
@@ -319,7 +324,9 @@ export default function EditSettings({ settings }: { settings: AppSettings }) {
                                                             id="sms_http_method"
                                                             className="w-full"
                                                         >
-                                                            <SelectValue />
+                                                            <SelectValue>
+                                                                {sms.method}
+                                                            </SelectValue>
                                                         </SelectTrigger>
 
                                                         <SelectContent>
@@ -370,7 +377,12 @@ export default function EditSettings({ settings }: { settings: AppSettings }) {
                                                             id="sms_http_format"
                                                             className="w-full"
                                                         >
-                                                            <SelectValue />
+                                                            <SelectValue>
+                                                                {sms.format ===
+                                                                'form'
+                                                                    ? 'Form fields'
+                                                                    : 'JSON body'}
+                                                            </SelectValue>
                                                         </SelectTrigger>
 
                                                         <SelectContent>

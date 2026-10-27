@@ -1,19 +1,19 @@
-import { Link, router, usePage } from "@inertiajs/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link, router, usePage } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
     Pagination,
     PaginationContent,
     PaginationItem,
     PaginationLink,
-} from "@/components/ui/pagination";
+} from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
-import type { Paginated } from "@/types";
+} from '@/components/ui/select';
+import type { Paginated } from '@/types';
 
 const PAGE_SIZES = [15, 25, 50, 100];
 const SMALLEST_PAGE_SIZE = Math.min(...PAGE_SIZES);
@@ -30,9 +30,9 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
     }
 
     const previous = paginator.links.find((link) =>
-        link.label.includes("Previous"),
+        link.label.includes('Previous'),
     );
-    const next = paginator.links.find((link) => link.label.includes("Next"));
+    const next = paginator.links.find((link) => link.label.includes('Next'));
     const pageSizes = PAGE_SIZES.includes(paginator.per_page)
         ? PAGE_SIZES
         : [...PAGE_SIZES, paginator.per_page].sort(
@@ -42,8 +42,8 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
     const changePageSize = (value: string) => {
         const url = new URL(page.url, window.location.origin);
 
-        url.searchParams.set("per_page", value);
-        url.searchParams.delete("page");
+        url.searchParams.set('per_page', value);
+        url.searchParams.delete('page');
 
         router.get(
             url.pathname + url.search,
@@ -59,7 +59,7 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <p className="text-sm text-muted-foreground">
-                    Showing {paginator.from ?? 0}–{paginator.to ?? 0} of{" "}
+                    Showing {paginator.from ?? 0}–{paginator.to ?? 0} of{' '}
                     {paginator.total}
                 </p>
 
@@ -74,7 +74,7 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
                             className="h-8 w-[4.75rem]"
                             aria-label="Rows per page"
                         >
-                            <SelectValue />
+                            <SelectValue>{paginator.per_page}</SelectValue>
                         </SelectTrigger>
 
                         <SelectContent align="start" position="popper">
@@ -121,7 +121,7 @@ export function DataPagination<T>({ paginator }: { paginator: Paginated<T> }) {
 
                     <PaginationItem>
                         <span className="px-2 text-sm whitespace-nowrap text-muted-foreground">
-                            Page {paginator.current_page} of{" "}
+                            Page {paginator.current_page} of{' '}
                             {paginator.last_page}
                         </span>
                     </PaginationItem>

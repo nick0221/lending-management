@@ -93,6 +93,9 @@ export function BorrowerForm({
     const selectedUser = users.find(
         (option) => String(option.value) === userId,
     );
+    const selectedKycStatus = kycStatuses.find(
+        (option) => option.value === kycStatus,
+    );
     const enabledNotifications = notificationPreferences.filter(
         (preference) => preferences[preference.key],
     ).length;
@@ -247,7 +250,9 @@ export function BorrowerForm({
                                             id="kyc_status"
                                             className="w-full"
                                         >
-                                            <SelectValue placeholder="Select a status" />
+                                            <SelectValue placeholder="Select a status">
+                                                {selectedKycStatus?.label}
+                                            </SelectValue>
                                         </SelectTrigger>
 
                                         <SelectContent>
@@ -284,7 +289,11 @@ export function BorrowerForm({
                                             id="user_id"
                                             className="w-full"
                                         >
-                                            <SelectValue placeholder="No linked account" />
+                                            <SelectValue placeholder="No linked account">
+                                                {userId === NO_USER
+                                                    ? 'No linked account'
+                                                    : selectedUser?.label}
+                                            </SelectValue>
                                         </SelectTrigger>
 
                                         <SelectContent>

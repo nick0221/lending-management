@@ -133,7 +133,9 @@ export default function LoanCalculator({
                                 onValueChange={handleProductChange}
                             >
                                 <SelectTrigger id="calculator-product">
-                                    <SelectValue placeholder="Choose a product" />
+                                    <SelectValue placeholder="Choose a product">
+                                        {selectedProduct?.label}
+                                    </SelectValue>
                                 </SelectTrigger>
 
                                 <SelectContent>

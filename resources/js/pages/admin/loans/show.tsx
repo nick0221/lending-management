@@ -283,6 +283,12 @@ export default function ShowLoan({
         paymentFilters.method || paymentFilters.from || paymentFilters.to,
     );
 
+    const selectedPaymentMethod = paymentFilters.method
+        ? paymentMethods.find(
+              (method) => method.value === paymentFilters.method,
+          )?.label
+        : 'All methods';
+
     const applyPaymentFilters = (overrides: Partial<PaymentFilters>): void => {
         const next = { ...paymentFilters, ...overrides };
         const query: Record<string, string> = { tab: 'payments' };
@@ -789,7 +795,9 @@ export default function ShowLoan({
                                                 id="payment-method"
                                                 className="w-44"
                                             >
-                                                <SelectValue placeholder="All methods" />
+                                                <SelectValue placeholder="All methods">
+                                                    {selectedPaymentMethod}
+                                                </SelectValue>
                                             </SelectTrigger>
 
                                             <SelectContent>

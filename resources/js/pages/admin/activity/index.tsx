@@ -85,6 +85,15 @@ export default function ActivityIndex({
         to: filters.to ?? null,
     });
     const [selected, setSelected] = useState<ActivityLogRow | null>(null);
+    const selectedEvent =
+        event === ALL
+            ? 'Any event'
+            : events.find((option) => option.value === event)?.label;
+    const selectedType = type === ALL ? 'Any record' : type;
+    const selectedUser =
+        user === ALL
+            ? 'Any user'
+            : users.find((option) => String(option.value) === user)?.label;
     const { url } = usePage();
     const perPage = new URL(url, 'http://localhost').searchParams.get(
         'per_page',
@@ -167,7 +176,9 @@ export default function ActivityIndex({
 
                             <Select value={event} onValueChange={setEvent}>
                                 <SelectTrigger id="event">
-                                    <SelectValue placeholder="Any event" />
+                                    <SelectValue placeholder="Any event">
+                                        {selectedEvent}
+                                    </SelectValue>
                                 </SelectTrigger>
 
                                 <SelectContent>
@@ -191,7 +202,9 @@ export default function ActivityIndex({
 
                             <Select value={type} onValueChange={setType}>
                                 <SelectTrigger id="type">
-                                    <SelectValue placeholder="Any record" />
+                                    <SelectValue placeholder="Any record">
+                                        {selectedType}
+                                    </SelectValue>
                                 </SelectTrigger>
 
                                 <SelectContent>
@@ -212,7 +225,9 @@ export default function ActivityIndex({
 
                             <Select value={user} onValueChange={setUser}>
                                 <SelectTrigger id="user">
-                                    <SelectValue placeholder="Any user" />
+                                    <SelectValue placeholder="Any user">
+                                        {selectedUser}
+                                    </SelectValue>
                                 </SelectTrigger>
 
                                 <SelectContent>
