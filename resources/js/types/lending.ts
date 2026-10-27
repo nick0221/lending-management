@@ -40,6 +40,9 @@ export type Borrower = {
 };
 
 export type BorrowerListItem = Borrower & {
+    loan_count: number;
+    open_loan_count: number;
+    outstanding: string;
     can: {
         view: boolean;
         update: boolean;

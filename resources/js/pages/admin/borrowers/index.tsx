@@ -25,6 +25,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { formatMoney } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
@@ -95,8 +96,18 @@ export default function BorrowersIndex({
             query: {
                 ...(kycStatus ? { kyc_status: kycStatus } : {}),
                 ...(search ? { search } : {}),
+                ...(borrowers.per_page !== 15
+                    ? { per_page: borrowers.per_page }
+                    : {}),
             },
         });
+
+    const clearFilters = borrowersIndex({
+        query:
+            borrowers.per_page !== 15
+                ? { per_page: borrowers.per_page }
+                : undefined,
+    });
 
     return (
         <>
@@ -226,7 +237,7 @@ export default function BorrowersIndex({
                             action={
                                 search || currentKycStatus ? (
                                     <Button asChild size="sm" variant="outline">
-                                        <Link href={borrowersIndex()}>
+                                        <Link href={clearFilters}>
                                             <RotateCcw /> Clear filters
                                         </Link>
                                     </Button>
@@ -278,6 +289,10 @@ export default function BorrowersIndex({
                                     <TableHead>Phone</TableHead>
                                     <TableHead>National ID</TableHead>
                                     <TableHead>KYC</TableHead>
+                                    <TableHead>Loans</TableHead>
+                                    <TableHead className="text-right">
+                                        Outstanding
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -333,6 +348,32 @@ export default function BorrowersIndex({
                                             <KycBadge
                                                 status={borrower.kyc_status}
                                             />
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {borrower.open_loan_count > 0 ? (
+                                                <>
+                                                    <span className="text-foreground tabular-nums">
+                                                        {
+                                                            borrower.open_loan_count
+                                                        }
+                                                    </span>{' '}
+                                                    open
+                                                </>
+                                            ) : (
+                                                'None open'
+                                            )}
+                                            {borrower.loan_count > 0 && (
+                                                <div className="text-xs">
+                                                    {borrower.loan_count} filed
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {borrower.open_loan_count > 0
+                                                ? formatMoney(
+                                                      borrower.outstanding,
+                                                  )
+                                                : '—'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">

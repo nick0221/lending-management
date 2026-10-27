@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\KycStatus;
+use App\Enums\LoanStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreBorrowerRequest;
 use App\Http\Requests\Admin\UpdateBorrowerKycRequest;
@@ -10,6 +11,7 @@ use App\Http\Requests\Admin\UpdateBorrowerRequest;
 use App\Models\ActivityLog;
 use App\Models\Borrower;
 use App\Models\Loan;
+use App\Models\LoanInstallment;
 use App\Models\User;
 use App\Services\ReportingService;
 use Illuminate\Http\RedirectResponse;
@@ -49,20 +51,40 @@ class BorrowerController extends Controller
             ]);
 
         $borrowers = Borrower::query()
-            ->with('user')
+            ->with(['user', 'loans.installments.allocations'])
             ->when($status, fn ($query) => $query->where('kyc_status', $status))
             ->when($search !== '', $applySearch)
             ->orderBy('name')
             ->paginate($this->perPage($request))
             ->withQueryString()
-            ->through(fn (Borrower $borrower): array => [
-                ...$this->toPayload($borrower),
-                'can' => [
-                    'view' => $actor->can('view', $borrower),
-                    'update' => $actor->can('update', $borrower),
-                    'delete' => $actor->can('delete', $borrower),
-                ],
-            ]);
+            ->through(function (Borrower $borrower) use ($actor): array {
+                $openLoans = $borrower->loans->filter(
+                    fn (Loan $loan): bool => in_array(
+                        $loan->status,
+                        [LoanStatus::Active, LoanStatus::Defaulted],
+                        true,
+                    ),
+                );
+
+                return [
+                    ...$this->toPayload($borrower),
+                    'loan_count' => $borrower->loans->count(),
+                    'open_loan_count' => $openLoans->count(),
+                    'outstanding' => number_format(round(
+                        $openLoans->sum(
+                            fn (Loan $loan): float => $loan->installments->sum(
+                                fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
+                            ),
+                        ),
+                        2,
+                    ), 2, '.', ''),
+                    'can' => [
+                        'view' => $actor->can('view', $borrower),
+                        'update' => $actor->can('update', $borrower),
+                        'delete' => $actor->can('delete', $borrower),
+                    ],
+                ];
+            });
 
         return Inertia::render('admin/borrowers/index', [
             'borrowers' => $borrowers,

@@ -26,6 +26,57 @@ test('the borrower list exposes the abilities for every row', function () {
         );
 });
 
+test('the borrower list reports each borrower portfolio', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create();
+
+    $openLoan = Loan::factory()
+        ->for($borrower)
+        ->withStatus(LoanStatus::Active)
+        ->create();
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $openLoan->id,
+        'sequence' => 1,
+        'principal_due' => 100,
+        'interest_due' => 20,
+        'fee_due' => 5,
+        'penalty_accrued' => 0,
+    ]);
+    LoanInstallment::factory()->create([
+        'loan_id' => $openLoan->id,
+        'sequence' => 2,
+        'principal_due' => 50,
+        'interest_due' => 10,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $closedLoan = Loan::factory()
+        ->for($borrower)
+        ->withStatus(LoanStatus::Closed)
+        ->create();
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $closedLoan->id,
+        'sequence' => 1,
+        'principal_due' => 500,
+        'interest_due' => 0,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 1)
+            ->where('borrowers.data.0.loan_count', 2)
+            ->where('borrowers.data.0.open_loan_count', 1)
+            ->where('borrowers.data.0.outstanding', '185.00')
+        );
+});
+
 test('the borrower list can be filtered by kyc status and exposes counts', function () {
     $admin = User::factory()->admin()->create();
     Borrower::factory()->create(['kyc_status' => KycStatus::Pending->value]);
