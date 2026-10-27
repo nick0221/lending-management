@@ -1,4 +1,14 @@
-import { format, parseISO } from 'date-fns';
+import {
+    endOfMonth,
+    endOfQuarter,
+    endOfYear,
+    format,
+    parseISO,
+    startOfMonth,
+    startOfQuarter,
+    startOfYear,
+    subMonths,
+} from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { CalendarDays } from 'lucide-react';
 import { useState } from 'react';
@@ -45,6 +55,36 @@ function rangeLabel(from: string | null, to: string | null): string {
     return 'Any date';
 }
 
+/**
+ * Common reporting periods. Each preset returns an inclusive date range.
+ */
+function presetRanges(): { label: string; range: DateRange }[] {
+    const today = new Date();
+    const lastMonth = subMonths(today, 1);
+
+    return [
+        {
+            label: 'This month',
+            range: { from: startOfMonth(today), to: endOfMonth(today) },
+        },
+        {
+            label: 'Last month',
+            range: {
+                from: startOfMonth(lastMonth),
+                to: endOfMonth(lastMonth),
+            },
+        },
+        {
+            label: 'This quarter',
+            range: { from: startOfQuarter(today), to: endOfQuarter(today) },
+        },
+        {
+            label: 'This year',
+            range: { from: startOfYear(today), to: endOfYear(today) },
+        },
+    ];
+}
+
 /** Shared from/to date filter backed by a range calendar in a popover. */
 export function DateRangePicker({
     from,
@@ -79,6 +119,12 @@ export function DateRangePicker({
         setOpen(false);
     };
 
+    const applyPreset = (range: DateRange) => {
+        setDraft(range);
+        onChange(toDateString(range.from), toDateString(range.to));
+        setOpen(false);
+    };
+
     return (
         <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
@@ -101,6 +147,21 @@ export function DateRangePicker({
                 align={align}
                 className="max-h-[calc(100vh-2rem)] w-auto max-w-[calc(100vw-2rem)] overflow-y-auto p-0"
             >
+                <div className="grid grid-cols-2 gap-1 border-b p-2 sm:grid-cols-4">
+                    {presetRanges().map((preset) => (
+                        <Button
+                            key={preset.label}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="justify-start font-normal sm:justify-center"
+                            onClick={() => applyPreset(preset.range)}
+                        >
+                            {preset.label}
+                        </Button>
+                    ))}
+                </div>
+
                 <Calendar
                     mode="range"
                     selected={draft}
