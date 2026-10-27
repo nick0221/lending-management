@@ -4,6 +4,7 @@ import {
     CheckCheck,
     FileText,
     Plus,
+    RotateCcw,
     Send,
     TriangleAlert,
 } from 'lucide-react';
@@ -36,13 +37,16 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Toggle } from '@/components/ui/toggle';
+import { formatDateOnly, formatMoney } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { show as showBorrower } from '@/routes/admin/borrowers';
 import {
     bulkApprove as bulkApproveLoans,
     calculator as loanCalculator,
     create as createLoan,
     index as loansIndex,
     remind as remindLoans,
+    show as showLoan,
 } from '@/routes/admin/loans';
 import type { LoanListItem, LoanStatusOption, Paginated } from '@/types';
 
@@ -309,11 +313,31 @@ export default function LoansIndex({
                                       : 'Originate the first loan to start building the portfolio.'
                             }
                             action={
-                                <Button asChild size="sm">
-                                    <Link href={createLoan()}>
-                                        <Plus /> New loan
-                                    </Link>
-                                </Button>
+                                search || currentStatus || overdueOnly ? (
+                                    <div className="flex flex-wrap items-center justify-center gap-2">
+                                        <Button
+                                            asChild
+                                            size="sm"
+                                            variant="outline"
+                                        >
+                                            <Link href={loansIndex()}>
+                                                <RotateCcw /> Clear filters
+                                            </Link>
+                                        </Button>
+
+                                        <Button asChild size="sm">
+                                            <Link href={createLoan()}>
+                                                <Plus /> New loan
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <Button asChild size="sm">
+                                        <Link href={createLoan()}>
+                                            <Plus /> New loan
+                                        </Link>
+                                    </Button>
+                                )
                             }
                         />
                     ) : (
@@ -341,37 +365,42 @@ export default function LoansIndex({
                                             />
                                         </TableHead>
                                     )}
+                                    <TableHead>Loan</TableHead>
                                     <TableHead>Borrower</TableHead>
                                     <TableHead>Product</TableHead>
-                                    <TableHead>
-                                        <SortableHeader
-                                            label="Principal"
-                                            column="principal"
-                                            currentSort={currentSort}
-                                            direction={currentDirection}
-                                            href={(direction) =>
-                                                withFilters({
-                                                    sort: 'principal',
-                                                    direction,
-                                                })
-                                            }
-                                        />
+                                    <TableHead className="text-right">
+                                        <div className="flex justify-end">
+                                            <SortableHeader
+                                                label="Principal"
+                                                column="principal"
+                                                currentSort={currentSort}
+                                                direction={currentDirection}
+                                                href={(direction) =>
+                                                    withFilters({
+                                                        sort: 'principal',
+                                                        direction,
+                                                    })
+                                                }
+                                            />
+                                        </div>
                                     </TableHead>
                                     <TableHead>Terms</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>
-                                        <SortableHeader
-                                            label="Arrears"
-                                            column="arrears"
-                                            currentSort={currentSort}
-                                            direction={currentDirection}
-                                            href={(direction) =>
-                                                withFilters({
-                                                    sort: 'arrears',
-                                                    direction,
-                                                })
-                                            }
-                                        />
+                                    <TableHead className="text-right">
+                                        <div className="flex justify-end">
+                                            <SortableHeader
+                                                label="Arrears"
+                                                column="arrears"
+                                                currentSort={currentSort}
+                                                direction={currentDirection}
+                                                href={(direction) =>
+                                                    withFilters({
+                                                        sort: 'arrears',
+                                                        direction,
+                                                    })
+                                                }
+                                            />
+                                        </div>
                                     </TableHead>
                                     <TableHead>
                                         <SortableHeader
@@ -428,14 +457,31 @@ export default function LoansIndex({
                                                 ) : null}
                                             </TableCell>
                                         )}
-                                        <TableCell className="font-medium">
-                                            {loan.borrower_name}
+                                        <TableCell>
+                                            <Link
+                                                href={showLoan(loan.id)}
+                                                className="font-medium whitespace-nowrap hover:underline"
+                                                prefetch
+                                            >
+                                                Loan #{loan.id}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link
+                                                href={showBorrower(
+                                                    loan.borrower_id,
+                                                )}
+                                                className="font-medium hover:underline"
+                                                prefetch
+                                            >
+                                                {loan.borrower_name}
+                                            </Link>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {loan.loan_product_name}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {Number(loan.principal).toFixed(2)}
+                                        <TableCell className="text-right text-muted-foreground tabular-nums">
+                                            {formatMoney(loan.principal)}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {loan.term_months} mo ·{' '}
@@ -446,13 +492,13 @@ export default function LoansIndex({
                                                 status={loan.status}
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-right">
                                             {loan.days_past_due > 0 ? (
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium text-destructive">
-                                                        {Number(
+                                                    <span className="font-medium text-destructive tabular-nums">
+                                                        {formatMoney(
                                                             loan.arrears,
-                                                        ).toFixed(2)}
+                                                        )}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
                                                         {loan.days_past_due} day
@@ -470,11 +516,7 @@ export default function LoansIndex({
                                             )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
-                                            {loan.applied_at
-                                                ? new Date(
-                                                      loan.applied_at,
-                                                  ).toLocaleDateString()
-                                                : '—'}
+                                            {formatDateOnly(loan.applied_at)}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">
