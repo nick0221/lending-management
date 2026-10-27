@@ -279,7 +279,12 @@ export default function ActivityIndex({
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>When</TableHead>
+                                <TableHead>
+                                    <span className="md:hidden">Activity</span>
+                                    <span className="hidden md:inline">
+                                        When
+                                    </span>
+                                </TableHead>
                                 <TableHead className="hidden md:table-cell">
                                     Actor
                                 </TableHead>

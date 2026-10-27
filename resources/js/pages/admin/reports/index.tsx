@@ -34,6 +34,7 @@ import {
 import { formatDateOnly, formatMoney, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { show as showBorrower } from '@/routes/admin/borrowers';
 import { show as showLoan } from '@/routes/admin/loans';
 import {
     download,
@@ -104,12 +105,14 @@ function SortableHead({
     sort,
     onSort,
     align = 'left',
+    className,
 }: {
     label: string;
     column: LoanSortKey;
     sort: LoanSort | null;
     onSort: (column: LoanSortKey) => void;
     align?: 'left' | 'right';
+    className?: string;
 }) {
     const activeSort = sort?.key === column ? sort : null;
     const Icon = !activeSort
@@ -127,6 +130,7 @@ function SortableHead({
                         : 'descending'
                     : 'none'
             }
+            className={className}
         >
             <button
                 type="button"
@@ -227,157 +231,222 @@ function LoanReportTable({
 
     return (
         <>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <SortableHead
-                            label="Loan"
-                            column="id"
-                            sort={sort}
-                            onSort={toggleSort}
-                        />
-                        <SortableHead
-                            label="Borrower"
-                            column="borrower"
-                            sort={sort}
-                            onSort={toggleSort}
-                        />
-                        <TableHead>Product</TableHead>
-                        <TableHead>Status</TableHead>
-                        <SortableHead
-                            label="Principal"
-                            column="principal"
-                            sort={sort}
-                            onSort={toggleSort}
-                            align="right"
-                        />
-                        <SortableHead
-                            label="Paid"
-                            column="paid"
-                            sort={sort}
-                            onSort={toggleSort}
-                            align="right"
-                        />
-                        <SortableHead
-                            label="Outstanding"
-                            column="outstanding"
-                            sort={sort}
-                            onSort={toggleSort}
-                            align="right"
-                        />
-                        <SortableHead
-                            label="Arrears"
-                            column="arrears"
-                            sort={sort}
-                            onSort={toggleSort}
-                            align="right"
-                        />
-                        <SortableHead
-                            label="DPD"
-                            column="days_past_due"
-                            sort={sort}
-                            onSort={toggleSort}
-                            align="right"
-                        />
-                    </TableRow>
-                </TableHeader>
+            {loans.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                    {emptyMessage}
+                </p>
+            ) : (
+                <>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <SortableHead
+                                    label="Loan"
+                                    column="id"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                />
+                                <SortableHead
+                                    label="Borrower"
+                                    column="borrower"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    className="hidden xl:table-cell"
+                                />
+                                <TableHead className="hidden xl:table-cell">
+                                    Product
+                                </TableHead>
+                                <TableHead className="hidden md:table-cell">
+                                    Status
+                                </TableHead>
+                                <SortableHead
+                                    label="Principal"
+                                    column="principal"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    align="right"
+                                    className="hidden xl:table-cell"
+                                />
+                                <SortableHead
+                                    label="Paid"
+                                    column="paid"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    align="right"
+                                    className="hidden xl:table-cell"
+                                />
+                                <SortableHead
+                                    label="Outstanding"
+                                    column="outstanding"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    align="right"
+                                />
+                                <SortableHead
+                                    label="Arrears"
+                                    column="arrears"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    align="right"
+                                />
+                                <SortableHead
+                                    label="DPD"
+                                    column="days_past_due"
+                                    sort={sort}
+                                    onSort={toggleSort}
+                                    align="right"
+                                    className="hidden md:table-cell"
+                                />
+                            </TableRow>
+                        </TableHeader>
 
-                <TableBody>
-                    {visibleLoans.map((loan) => (
-                        <TableRow key={loan.id}>
-                            <TableCell>
-                                <Link
-                                    href={showLoan(loan.id)}
-                                    className="font-medium hover:underline"
-                                    prefetch
-                                >
-                                    #{loan.id}
-                                </Link>
-                            </TableCell>
-                            <TableCell>{loan.borrower ?? '—'}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                                {loan.product ?? '—'}
-                            </TableCell>
-                            <TableCell>
-                                <LoanStatusBadge status={loan.status} />
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {formatMoney(loan.principal)}
-                            </TableCell>
-                            <TableCell className="text-right text-muted-foreground tabular-nums">
-                                {formatMoney(loan.paid)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                <span className="font-medium">
-                                    {formatMoney(loan.outstanding)}
-                                </span>
-                                {loan.outstanding_penalty > 0 && (
-                                    <span className="block text-xs text-muted-foreground">
-                                        incl.{' '}
-                                        {formatMoney(loan.outstanding_penalty)}{' '}
-                                        penalty
-                                    </span>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {loan.arrears > 0 ? (
-                                    <span className="font-medium text-destructive">
-                                        {formatMoney(loan.arrears)}
-                                    </span>
-                                ) : (
-                                    <span className="text-muted-foreground">
-                                        —
-                                    </span>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right text-muted-foreground tabular-nums">
-                                {loan.days_past_due > 0
-                                    ? loan.days_past_due
-                                    : '—'}
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                        <TableBody>
+                            {visibleLoans.map((loan) => (
+                                <TableRow key={loan.id}>
+                                    <TableCell>
+                                        <Link
+                                            href={showLoan(loan.id)}
+                                            className="font-medium hover:underline"
+                                            prefetch
+                                        >
+                                            #{loan.id}
+                                        </Link>
+                                        <div className="mt-0.5 xl:hidden">
+                                            <Link
+                                                href={showBorrower(
+                                                    loan.borrower_id,
+                                                )}
+                                                className="text-xs font-medium hover:underline"
+                                                prefetch
+                                            >
+                                                {loan.borrower ?? '—'}
+                                            </Link>
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                                            <LoanStatusBadge
+                                                status={loan.status}
+                                            />
+                                            {loan.product && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {loan.product}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="mt-0.5 hidden text-xs text-muted-foreground md:block xl:hidden">
+                                            {loan.product ?? '—'}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="hidden xl:table-cell">
+                                        <Link
+                                            href={showBorrower(
+                                                loan.borrower_id,
+                                            )}
+                                            className="hover:underline"
+                                            prefetch
+                                        >
+                                            {loan.borrower ?? '—'}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell className="hidden text-muted-foreground xl:table-cell">
+                                        {loan.product ?? '—'}
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">
+                                        <LoanStatusBadge status={loan.status} />
+                                    </TableCell>
+                                    <TableCell className="hidden text-right tabular-nums xl:table-cell">
+                                        {formatMoney(loan.principal)}
+                                    </TableCell>
+                                    <TableCell className="hidden text-right text-muted-foreground tabular-nums xl:table-cell">
+                                        {formatMoney(loan.paid)}
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums">
+                                        <span className="font-medium">
+                                            {formatMoney(loan.outstanding)}
+                                        </span>
+                                        {loan.outstanding_penalty > 0 && (
+                                            <span className="block text-xs text-muted-foreground">
+                                                incl.{' '}
+                                                {formatMoney(
+                                                    loan.outstanding_penalty,
+                                                )}{' '}
+                                                penalty
+                                            </span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums">
+                                        {loan.arrears > 0 ? (
+                                            <span className="font-medium text-destructive">
+                                                {formatMoney(loan.arrears)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-muted-foreground">
+                                                —
+                                            </span>
+                                        )}
+                                        {loan.days_past_due > 0 && (
+                                            <span className="block text-xs text-muted-foreground md:hidden">
+                                                {loan.days_past_due}d late
+                                            </span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
+                                        {loan.days_past_due > 0
+                                            ? loan.days_past_due
+                                            : '—'}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
 
-                    {loans.length === 0 && (
-                        <TableRow>
-                            <TableCell
-                                colSpan={9}
-                                className="py-8 text-center text-muted-foreground"
-                            >
-                                {emptyMessage}
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-
-                {loans.length > 0 && (
-                    <TableFooter>
-                        <TableRow>
-                            <TableCell colSpan={4}>Total</TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {formatMoney(totals.principal)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {formatMoney(totals.paid)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {formatMoney(totals.outstanding)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                                {formatMoney(totals.arrears)}
-                            </TableCell>
-                            <TableCell />
-                        </TableRow>
-                    </TableFooter>
-                )}
-            </Table>
-            <TableLoadMore
-                shown={visibleLoans.length}
-                total={loans.length}
-                onLoadMore={() =>
-                    setVisibleCount((count) => count + REPORT_ROWS_PER_PAGE)
-                }
-            />
+                        <TableFooter>
+                            <TableRow className="md:hidden">
+                                <TableCell>Total</TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.outstanding)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.arrears)}
+                                </TableCell>
+                            </TableRow>
+                            <TableRow className="hidden md:table-row xl:hidden">
+                                <TableCell colSpan={2}>Total</TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.outstanding)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.arrears)}
+                                </TableCell>
+                                <TableCell />
+                            </TableRow>
+                            <TableRow className="hidden xl:table-row">
+                                <TableCell colSpan={4}>Total</TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.principal)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.paid)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.outstanding)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                    {formatMoney(totals.arrears)}
+                                </TableCell>
+                                <TableCell />
+                            </TableRow>
+                        </TableFooter>
+                    </Table>
+                    <TableLoadMore
+                        shown={visibleLoans.length}
+                        total={loans.length}
+                        onLoadMore={() =>
+                            setVisibleCount(
+                                (count) => count + REPORT_ROWS_PER_PAGE,
+                            )
+                        }
+                    />
+                </>
+            )}
         </>
     );
 }

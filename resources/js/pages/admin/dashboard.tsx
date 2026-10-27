@@ -237,8 +237,12 @@ export default function AdminDashboard({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Borrower</TableHead>
-                                <TableHead>Due</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead className="hidden sm:table-cell">
+                                    Due
+                                </TableHead>
+                                <TableHead className="hidden sm:table-cell">
+                                    Status
+                                </TableHead>
                                 <TableHead className="text-right">
                                     Amount
                                 </TableHead>
@@ -271,13 +275,26 @@ export default function AdminDashboard({
                                                 Installment{' '}
                                                 {installment.sequence}
                                             </p>
+                                            <div className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={status.className}
+                                                >
+                                                    {status.label}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatDateOnly(
+                                                        installment.due_date,
+                                                    )}
+                                                </span>
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                                        <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
                                             {formatDateOnly(
                                                 installment.due_date,
                                             )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             <Badge
                                                 variant="outline"
                                                 className={status.className}
@@ -347,8 +364,12 @@ export default function AdminDashboard({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Borrower</TableHead>
-                                    <TableHead>Method</TableHead>
-                                    <TableHead>Date</TableHead>
+                                    <TableHead className="hidden sm:table-cell">
+                                        Method
+                                    </TableHead>
+                                    <TableHead className="hidden sm:table-cell">
+                                        Date
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Amount
                                     </TableHead>
@@ -367,11 +388,17 @@ export default function AdminDashboard({
                                                 {payment.borrower ??
                                                     `Loan #${payment.loan_id}`}
                                             </Link>
+                                            <p className="mt-1 text-xs text-muted-foreground sm:hidden">
+                                                {payment.method_label} ·{' '}
+                                                {formatDate(
+                                                    payment.payment_date,
+                                                )}
+                                            </p>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground sm:table-cell">
                                             {payment.method_label}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground sm:table-cell">
                                             {formatDate(payment.payment_date)}
                                         </TableCell>
                                         <TableCell className="text-right font-medium tabular-nums">
