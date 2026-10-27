@@ -13,16 +13,21 @@ use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\User;
+use App\Services\CsvExporter;
 use App\Services\ReportingService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BorrowerController extends Controller
 {
+    public function __construct(private readonly CsvExporter $csvExporter) {}
+
     /**
      * Display a listing of the borrowers.
      */
@@ -31,17 +36,10 @@ class BorrowerController extends Controller
         Gate::authorize('viewAny', Borrower::class);
 
         $actor = $request->user();
-        $status = KycStatus::tryFrom($request->string('kyc_status')->toString());
-        $search = trim($request->string('search')->toString());
+        $status = $this->statusFilter($request);
+        $search = $this->searchTerm($request);
 
-        $applySearch = fn ($query) => $query->whereAny(
-            ['name', 'email', 'phone'],
-            'like',
-            "%{$search}%",
-        );
-
-        $counts = Borrower::query()
-            ->when($search !== '', $applySearch)
+        $counts = $this->applyFilters(Borrower::query(), null, $search)
             ->selectRaw('kyc_status, count(*) as aggregate')
             ->groupBy('kyc_status')
             ->toBase()
@@ -50,10 +48,11 @@ class BorrowerController extends Controller
                 $row->kyc_status => (int) $row->aggregate,
             ]);
 
-        $borrowers = Borrower::query()
-            ->with(['user', 'loans.installments.allocations'])
-            ->when($status, fn ($query) => $query->where('kyc_status', $status))
-            ->when($search !== '', $applySearch)
+        $borrowers = $this->applyFilters(
+            Borrower::query()->with(['user', 'loans.installments.allocations']),
+            $status,
+            $search,
+        )
             ->orderBy('name')
             ->paginate($this->perPage($request))
             ->withQueryString()
@@ -100,6 +99,19 @@ class BorrowerController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    /**
+     * Stream the borrower register for the current filters as a CSV download.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        Gate::authorize('viewAny', Borrower::class);
+
+        return $this->csvExporter->stream(
+            'borrowers-'.now()->format('Y-m-d').'.csv',
+            $this->csvRows($this->statusFilter($request), $this->searchTerm($request)),
+        );
     }
 
     /**
@@ -258,6 +270,73 @@ class BorrowerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Borrower deleted.')]);
 
         return to_route('admin.borrowers.index');
+    }
+
+    /**
+     * Resolve the KYC status filter from the request.
+     */
+    private function statusFilter(Request $request): ?KycStatus
+    {
+        return KycStatus::tryFrom($request->string('kyc_status')->toString());
+    }
+
+    /**
+     * Read the trimmed search term from the request.
+     */
+    private function searchTerm(Request $request): string
+    {
+        return trim($request->string('search')->toString());
+    }
+
+    /**
+     * Apply the register filters to a borrower query.
+     */
+    private function applyFilters(Builder $query, ?KycStatus $status, string $search): Builder
+    {
+        return $query
+            ->when($status, fn (Builder $query) => $query->where('kyc_status', $status))
+            ->when(
+                $search !== '',
+                fn (Builder $query) => $query->whereAny(
+                    ['name', 'email', 'phone'],
+                    'like',
+                    "%{$search}%",
+                ),
+            );
+    }
+
+    /**
+     * Build the CSV rows lazily so a long register streams in chunks.
+     *
+     * @return \Generator<int, array<int, string|int|null>>
+     */
+    private function csvRows(?KycStatus $status, string $search): \Generator
+    {
+        yield [
+            'Name',
+            'Phone',
+            'Email',
+            'National ID',
+            'KYC status',
+            'Portal account',
+            'Joined',
+        ];
+
+        $borrowers = $this->applyFilters(Borrower::query()->with('user'), $status, $search)
+            ->orderBy('name')
+            ->lazy(500);
+
+        foreach ($borrowers as $borrower) {
+            yield [
+                $borrower->name,
+                $borrower->phone,
+                $borrower->email,
+                $borrower->national_id,
+                $borrower->kyc_status->label(),
+                $borrower->user?->email,
+                $borrower->created_at?->toDateString(),
+            ];
+        }
     }
 
     /**

@@ -77,6 +77,49 @@ test('the borrower list reports each borrower portfolio', function () {
         );
 });
 
+test('the borrower register can be exported as CSV with the current filters', function () {
+    $admin = User::factory()->admin()->create();
+    $linked = User::factory()->create(['email' => 'portal@example.com']);
+
+    Borrower::factory()
+        ->forUser($linked)
+        ->verified()
+        ->create([
+            'name' => 'Ada Lovelace',
+            'phone' => '+1-555-0100',
+            'email' => 'ada@example.com',
+            'national_id' => '111222333',
+        ]);
+
+    Borrower::factory()->create([
+        'name' => 'Grace Hopper',
+        'email' => 'grace@example.com',
+        'kyc_status' => KycStatus::Pending->value,
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.borrowers.export', [
+            'kyc_status' => KycStatus::Verified->value,
+        ]));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Name')
+        ->toContain('KYC status')
+        ->toContain('Ada Lovelace')
+        ->toContain('+1-555-0100')
+        ->toContain('ada@example.com')
+        ->toContain('111222333')
+        ->toContain('portal@example.com')
+        ->toContain('Verified')
+        ->not->toContain('Grace Hopper');
+});
+
 test('the borrower list can be filtered by kyc status and exposes counts', function () {
     $admin = User::factory()->admin()->create();
     Borrower::factory()->create(['kyc_status' => KycStatus::Pending->value]);

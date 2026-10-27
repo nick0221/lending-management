@@ -43,6 +43,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('borrowers/import/errors', [BorrowerImportController::class, 'downloadErrors'])->name('borrowers.imports.errors');
         Route::patch('borrowers/kyc-status', [BorrowerController::class, 'updateKycStatus'])
             ->name('borrowers.kyc-status');
+        Route::get('borrowers/export', [BorrowerController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('borrowers.export');
         Route::resource('borrowers', BorrowerController::class);
         Route::patch('loan-products/{loanProduct}/availability', [LoanProductController::class, 'toggleAvailability'])
             ->name('loan-products.availability');

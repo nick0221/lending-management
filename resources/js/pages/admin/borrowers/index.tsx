@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { BadgeCheck, Plus, RotateCcw, Upload, Users } from 'lucide-react';
+import {
+    BadgeCheck,
+    Download,
+    Plus,
+    RotateCcw,
+    Upload,
+    Users,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BorrowerRowActions } from '@/components/admin/borrower-row-actions';
 import { DataPagination } from '@/components/data-pagination';
@@ -29,6 +36,7 @@ import { formatMoney } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
+    exportMethod as exportBorrowers,
     index as borrowersIndex,
     kycStatus as updateBorrowerKyc,
     show as showBorrower,
@@ -109,6 +117,13 @@ export default function BorrowersIndex({
                 : undefined,
     });
 
+    const exportHref = exportBorrowers({
+        query: {
+            ...(search ? { search } : {}),
+            ...(currentKycStatus ? { kyc_status: currentKycStatus } : {}),
+        },
+    });
+
     return (
         <>
             <Head title="Borrowers" />
@@ -119,6 +134,12 @@ export default function BorrowersIndex({
                     description="Register and manage the people your organisation lends to."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
+                            <Button variant="outline" asChild>
+                                <a href={exportHref.url}>
+                                    <Download /> Export CSV
+                                </a>
+                            </Button>
+
                             <Button variant="outline" asChild>
                                 <Link href={importBorrowers()}>
                                     <Upload /> Import CSV
