@@ -33,6 +33,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
+import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     exportMethod as exportActivity,
     index as activityIndex,
@@ -597,3 +598,16 @@ export default function ActivityIndex({
         </>
     );
 }
+
+ActivityIndex.layout = {
+    breadcrumbs: [
+        {
+            title: 'Administration',
+            href: adminDashboard(),
+        },
+        {
+            title: 'Activity log',
+            href: activityIndex(),
+        },
+    ],
+};

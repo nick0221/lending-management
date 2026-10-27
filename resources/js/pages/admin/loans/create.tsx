@@ -1,7 +1,12 @@
 import { Head } from '@inertiajs/react';
 import { LoanForm } from '@/components/admin/loan-form';
 import { PageHeader } from '@/components/page-header';
-import { store } from '@/routes/admin/loans';
+import { dashboard as adminDashboard } from '@/routes/admin';
+import {
+    index as loansIndex,
+    create as createLoan,
+    store,
+} from '@/routes/admin/loans';
 import type { BorrowerOption, LoanProductOption } from '@/types';
 
 export default function CreateLoan({
@@ -43,3 +48,20 @@ export default function CreateLoan({
         </>
     );
 }
+
+CreateLoan.layout = {
+    breadcrumbs: [
+        {
+            title: 'Administration',
+            href: adminDashboard(),
+        },
+        {
+            title: 'Loans',
+            href: loansIndex(),
+        },
+        {
+            title: 'New loan',
+            href: createLoan(),
+        },
+    ],
+};
