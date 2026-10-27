@@ -338,8 +338,12 @@ class ReportingService
             'arrears' => round($open->sum('arrears'), 2),
             'next_due' => $upcoming[0] ?? null,
             'upcoming' => array_slice($upcoming, 0, 5),
+            'upcoming_count' => count($upcoming),
             'loans' => $rows->values()->all(),
             'payments' => $this->recentPayments($paymentLimit, $borrower->id)->all(),
+            'payment_count' => $loans->sum(
+                fn (Loan $loan): int => $loan->payments->whereNull('reversed_at')->count(),
+            ),
         ];
     }
 

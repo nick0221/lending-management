@@ -5,6 +5,7 @@ use App\Enums\LoanStatus;
 use App\Models\ActivityLog;
 use App\Models\Borrower;
 use App\Models\Loan;
+use App\Models\LoanInstallment;
 use App\Models\Payment;
 use App\Models\User;
 
@@ -154,9 +155,44 @@ test('the borrower detail page shows their loans, payments and abilities', funct
             ->where('summary.open_loan_count', 1)
             ->where('summary.loans.0.id', $loan->id)
             ->where('summary.payments.0.id', $payment->id)
+            ->where('summary.payment_count', 1)
+            ->where('summary.upcoming_count', 0)
             ->where('can.update', true)
             ->where('can.delete', true)
             ->where('can.viewActivity', false)
+        );
+});
+
+test('the borrower file reports totals beyond the visible windows', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $borrower = Borrower::factory()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'borrower_id' => $borrower->id,
+    ]);
+
+    LoanInstallment::factory()->count(7)->create(['loan_id' => $loan->id]);
+    Payment::factory()->count(12)->create(['loan_id' => $loan->id]);
+
+    foreach (range(1, 12) as $index) {
+        ActivityLog::create([
+            'user_id' => $superAdmin->id,
+            'event' => ActivityLog::EVENT_UPDATED,
+            'description' => "Borrower update {$index}.",
+            'subject_type' => Borrower::class,
+            'subject_id' => $borrower->id,
+        ]);
+    }
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('summary.upcoming', 5)
+            ->where('summary.upcoming_count', 7)
+            ->has('summary.payments', 10)
+            ->where('summary.payment_count', 12)
+            ->has('activity', 10)
+            ->where('activityCount', fn (int $count): bool => $count >= 12)
         );
 });
 
@@ -180,6 +216,7 @@ test('borrower activity is only exposed to super admins', function () {
         ->assertInertia(fn ($page) => $page
             ->where('can.viewActivity', false)
             ->has('activity', 0)
+            ->where('activityCount', 0)
         );
 
     $this->actingAs($superAdmin)
@@ -188,6 +225,7 @@ test('borrower activity is only exposed to super admins', function () {
         ->assertInertia(fn ($page) => $page
             ->where('can.viewActivity', true)
             ->has('activity')
+            ->where('activityCount', fn (int $count): bool => $count >= 2)
             ->where('activity.0.description', 'Borrower contact details updated.')
         );
 });

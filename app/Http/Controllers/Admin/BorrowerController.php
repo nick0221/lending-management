@@ -91,12 +91,12 @@ class BorrowerController extends Controller
         $borrower->load('user');
 
         $activity = [];
+        $activityCount = 0;
 
         if ($actor->can('viewAny', ActivityLog::class)) {
             $loanIds = $borrower->loans()->pluck('id');
 
-            $activity = ActivityLog::query()
-                ->with('user:id,name')
+            $activityQuery = ActivityLog::query()
                 ->where(function ($query) use ($borrower, $loanIds): void {
                     $query
                         ->where(fn ($query) => $query
@@ -105,7 +105,12 @@ class BorrowerController extends Controller
                         ->orWhere(fn ($query) => $query
                             ->where('subject_type', Loan::class)
                             ->whereIn('subject_id', $loanIds));
-                })
+                });
+
+            $activityCount = (clone $activityQuery)->count();
+
+            $activity = $activityQuery
+                ->with('user:id,name')
                 ->orderByDesc('id')
                 ->limit(10)
                 ->get()
@@ -124,6 +129,7 @@ class BorrowerController extends Controller
             'borrower' => $this->detailPayload($borrower),
             'summary' => $reportingService->borrowerSummary($borrower, 10),
             'activity' => $activity,
+            'activityCount' => $activityCount,
             'can' => [
                 'update' => $actor->can('update', $borrower),
                 'delete' => $actor->can('delete', $borrower),
