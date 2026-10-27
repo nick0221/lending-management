@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Filter, RotateCcw } from 'lucide-react';
+import { Download, Eye, Filter, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { DataPagination } from '@/components/data-pagination';
@@ -33,7 +33,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
-import { index as activityIndex } from '@/routes/admin/activity';
+import {
+    exportMethod as exportActivity,
+    index as activityIndex,
+} from '@/routes/admin/activity';
 import type {
     ActivityLogFilters,
     ActivityLogRow,
@@ -97,6 +100,12 @@ export default function ActivityIndex({
         return target.pathname + target.search;
     })();
 
+    const exportQuery = Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value !== null),
+    ) as Record<string, string | number>;
+
+    const exportHref = exportActivity({ query: exportQuery });
+
     const applyFilters = (formEvent: FormEvent<HTMLFormElement>) => {
         formEvent.preventDefault();
 
@@ -123,6 +132,13 @@ export default function ActivityIndex({
                 <PageHeader
                     title="Activity log"
                     description="Sign-ins and changes to accounts, borrowers, products and loans."
+                    actions={
+                        <Button variant="outline" asChild>
+                            <a href={exportHref.url}>
+                                <Download /> Export CSV
+                            </a>
+                        </Button>
+                    }
                 />
 
                 <SectionCard

@@ -245,3 +245,42 @@ test('the audit trail can be searched by actor and record id', function () {
             ->where('logs.data.0.subject_id', $borrower->id)
         );
 });
+
+test('the audit trail can be exported as CSV with the current filters', function () {
+    $superAdmin = User::factory()->superAdmin()->create([
+        'name' => 'Export Auditor',
+    ]);
+
+    $this->actingAs($superAdmin);
+
+    $borrower = Borrower::factory()->create(['name' => 'Export Before']);
+
+    $borrower->update(['name' => 'Export After']);
+
+    $response = $this->get(route('admin.activity.export', ['type' => 'Borrower', 'event' => 'updated']));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))
+        ->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Recorded at')
+        ->toContain('Description')
+        ->toContain('Export Auditor')
+        ->toContain('Name: Export Before -> Export After')
+        ->toContain("Borrower #{$borrower->id} updated")
+        ->not->toContain("Borrower #{$borrower->id} created");
+});
+
+test('the audit trail export follows the same permissions as the page', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('admin.activity.export'))
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.activity.export', ['user' => 999999]))
+        ->assertSessionHasErrors('user');
+});

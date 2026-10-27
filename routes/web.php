@@ -94,6 +94,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->middleware('throttle:reports')
             ->name('reports.download');
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+        Route::get('activity/export', [ActivityController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('activity.export');
         Route::get('system', [SystemStatusController::class, 'index'])->name('system.index');
 
         Route::middleware('role:super_admin')->group(function () {

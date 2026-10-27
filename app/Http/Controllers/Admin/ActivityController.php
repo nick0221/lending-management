@@ -10,6 +10,8 @@ use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\CsvExporter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -18,9 +20,12 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ActivityController extends Controller
 {
+    public function __construct(private readonly CsvExporter $csvExporter) {}
+
     /**
      * Models that may be filtered on, keyed by their short name.
      *
@@ -42,52 +47,12 @@ class ActivityController extends Controller
     {
         Gate::authorize('viewAny', ActivityLog::class);
 
-        $events = [
-            ActivityLog::EVENT_CREATED,
-            ActivityLog::EVENT_UPDATED,
-            ActivityLog::EVENT_DELETED,
-            ActivityLog::EVENT_LOGIN,
-            ActivityLog::EVENT_LOGOUT,
-            ActivityLog::EVENT_LOGIN_FAILED,
-        ];
-
-        $filters = $request->validate([
-            'search' => ['nullable', 'string', 'max:100'],
-            'event' => ['nullable', Rule::in($events)],
-            'type' => ['nullable', Rule::in(array_keys(self::SUBJECT_TYPES))],
-            'user' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-        ]);
-
+        $events = $this->events();
+        $filters = $this->validatedFilters($request);
         $search = trim($filters['search'] ?? '');
 
-        $logs = ActivityLog::query()
+        $logs = $this->filteredQuery($filters)
             ->with('user')
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($inner) use ($search): void {
-                    $inner->where('description', 'like', "%{$search}%")
-                        ->orWhere('event', 'like', "%{$search}%")
-                        ->orWhere('subject_type', 'like', "%{$search}%")
-                        ->orWhereHas('user', fn ($userQuery) => $userQuery->whereAny(
-                            ['name', 'email'],
-                            'like',
-                            "%{$search}%",
-                        ));
-
-                    if (ctype_digit($search)) {
-                        $inner->orWhere('subject_id', (int) $search);
-                    }
-                });
-            })
-            ->when($filters['event'] ?? null, fn ($query, string $event) => $query->where('event', $event))
-            ->when(
-                $filters['type'] ?? null,
-                fn ($query, string $type) => $query->where('subject_type', self::SUBJECT_TYPES[$type]),
-            )
-            ->when($filters['user'] ?? null, fn ($query, int $userId) => $query->where('user_id', $userId))
-            ->when($filters['from'] ?? null, fn ($query, string $date) => $query->whereDate('created_at', '>=', $date))
-            ->when($filters['to'] ?? null, fn ($query, string $date) => $query->whereDate('created_at', '<=', $date))
             ->orderByDesc('id')
             ->paginate($this->perPage($request, 25))
             ->withQueryString();
@@ -136,6 +101,134 @@ class ActivityController extends Controller
                 ])
                 ->all(),
         ]);
+    }
+
+    /**
+     * Stream the audit trail for the current filters as a CSV download.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        Gate::authorize('viewAny', ActivityLog::class);
+
+        return $this->csvExporter->stream(
+            'activity-'.now()->format('Y-m-d').'.csv',
+            $this->csvRows($this->validatedFilters($request)),
+        );
+    }
+
+    /**
+     * The event names supported by the audit filters.
+     *
+     * @return array<int, string>
+     */
+    private function events(): array
+    {
+        return [
+            ActivityLog::EVENT_CREATED,
+            ActivityLog::EVENT_UPDATED,
+            ActivityLog::EVENT_DELETED,
+            ActivityLog::EVENT_LOGIN,
+            ActivityLog::EVENT_LOGOUT,
+            ActivityLog::EVENT_LOGIN_FAILED,
+        ];
+    }
+
+    /**
+     * Validate the filters shared by the page and the CSV export.
+     *
+     * @return array<string, mixed>
+     */
+    private function validatedFilters(Request $request): array
+    {
+        return $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'event' => ['nullable', Rule::in($this->events())],
+            'type' => ['nullable', Rule::in(array_keys(self::SUBJECT_TYPES))],
+            'user' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+    }
+
+    /**
+     * Apply the validated filters to the audit trail query.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    private function filteredQuery(array $filters): Builder
+    {
+        $search = trim((string) ($filters['search'] ?? ''));
+
+        return ActivityLog::query()
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $inner) use ($search): void {
+                    $inner->where('description', 'like', "%{$search}%")
+                        ->orWhere('event', 'like', "%{$search}%")
+                        ->orWhere('subject_type', 'like', "%{$search}%")
+                        ->orWhereHas('user', fn ($userQuery) => $userQuery->whereAny(
+                            ['name', 'email'],
+                            'like',
+                            "%{$search}%",
+                        ));
+
+                    if (ctype_digit($search)) {
+                        $inner->orWhere('subject_id', (int) $search);
+                    }
+                });
+            })
+            ->when($filters['event'] ?? null, fn (Builder $query, string $event) => $query->where('event', $event))
+            ->when(
+                $filters['type'] ?? null,
+                fn (Builder $query, string $type) => $query->where('subject_type', self::SUBJECT_TYPES[$type]),
+            )
+            ->when($filters['user'] ?? null, fn (Builder $query, int $userId) => $query->where('user_id', $userId))
+            ->when($filters['from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '>=', $date))
+            ->when($filters['to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '<=', $date));
+    }
+
+    /**
+     * Build the CSV rows lazily so a long trail streams in chunks.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return \Generator<int, array<int, string|int|null>>
+     */
+    private function csvRows(array $filters): \Generator
+    {
+        yield [
+            'Recorded at',
+            'Event',
+            'Description',
+            'Record',
+            'Record ID',
+            'Actor',
+            'Actor email',
+            'IP address',
+            'Changes',
+        ];
+
+        foreach ($this->filteredQuery($filters)->with('user')->orderByDesc('id')->lazy(500) as $log) {
+            yield [
+                $log->created_at?->toDateTimeString(),
+                Str::headline($log->event),
+                $log->description,
+                $log->subject_type !== null ? class_basename($log->subject_type) : null,
+                $log->subject_id,
+                $log->user?->name,
+                $log->user?->email,
+                $log->ip_address,
+                $this->changeSummary($log),
+            ];
+        }
+    }
+
+    /**
+     * Compress the before and after values into one CSV column.
+     */
+    private function changeSummary(ActivityLog $log): string
+    {
+        return collect($this->changes($log))
+            ->map(fn (array $change): string => "{$change['key']}: {$change['old']} -> {$change['new']}")
+            ->implode('; ');
     }
 
     /**
