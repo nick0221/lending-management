@@ -58,6 +58,10 @@ class LoanController extends Controller
         $status = LoanStatus::tryFrom($request->string('status')->toString());
         $overdueOnly = $request->boolean('overdue');
         $search = trim($request->string('search')->toString());
+        $productId = $request->integer('product');
+        $productId = $productId > 0 && LoanProduct::whereKey($productId)->exists()
+            ? $productId
+            : null;
 
         $sort = $request->string('sort')->toString();
         $sort = in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null;
@@ -76,6 +80,7 @@ class LoanController extends Controller
 
         $statusCounts = Loan::query()
             ->when($overdueOnly, fn (Builder $query) => $query->overdue())
+            ->when($productId, fn (Builder $query) => $query->where('loan_product_id', $productId))
             ->when($search !== '', fn (Builder $query) => $applySearch($query))
             ->selectRaw('status, count(*) as aggregate')
             ->groupBy('status')
@@ -88,6 +93,7 @@ class LoanController extends Controller
             ->with(['borrower', 'loanProduct', 'installments.allocations'])
             ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
             ->when($overdueOnly, fn (Builder $query) => $query->overdue())
+            ->when($productId, fn (Builder $query) => $query->where('loan_product_id', $productId))
             ->when($search !== '', fn (Builder $query) => $applySearch($query))
             ->when($sort === null, fn (Builder $query) => $query->latest())
             ->when($sort === 'arrears', fn (Builder $query) => $query->orderByArrears($direction))
@@ -112,7 +118,16 @@ class LoanController extends Controller
         return Inertia::render('admin/loans/index', [
             'loans' => $loans,
             'statuses' => $this->statusOptions(),
+            'products' => LoanProduct::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (LoanProduct $product): array => [
+                    'value' => $product->id,
+                    'label' => $product->name,
+                ])
+                ->all(),
             'currentStatus' => $status?->value,
+            'currentProduct' => $productId,
             'overdueOnly' => $overdueOnly,
             'search' => $search,
             'currentSort' => $sort,

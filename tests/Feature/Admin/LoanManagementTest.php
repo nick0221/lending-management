@@ -62,6 +62,41 @@ test('the loan list can be filtered by status', function () {
         );
 });
 
+test('the loan list can be filtered by product', function () {
+    $admin = User::factory()->admin()->create();
+    $product = LoanProduct::factory()->create();
+    $otherProduct = LoanProduct::factory()->create();
+
+    Loan::factory()->forProduct($product)->create([
+        'principal' => 1111,
+    ]);
+    Loan::factory()->forProduct($otherProduct)->create([
+        'principal' => 2222,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['product' => $product->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/index')
+            ->has('loans.data', 1)
+            ->where('loans.data.0.principal', '1111.00')
+            ->where('currentProduct', $product->id)
+            ->where('counts.all', 1)
+            ->where('products', fn ($products): bool => $products->contains(
+                fn (array $option): bool => $option['value'] === $product->id,
+            ))
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['product' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 2)
+            ->where('currentProduct', null)
+        );
+});
+
 test('the loan list exposes per-status counts', function () {
     $admin = User::factory()->admin()->create();
     Loan::factory()->pending()->count(2)->create();

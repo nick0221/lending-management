@@ -26,6 +26,7 @@ import {
     destroy as destroyLoanProduct,
     edit as editLoanProduct,
 } from '@/routes/admin/loan-products';
+import { index as loansIndex } from '@/routes/admin/loans';
 import type { LoanProductListItem } from '@/types';
 
 /**
@@ -68,10 +69,24 @@ export function LoanProductCard({
                                 </Badge>
 
                                 <span className="text-xs text-muted-foreground">
-                                    {loanProduct.loans_count}{' '}
-                                    {loanProduct.loans_count === 1
-                                        ? 'loan'
-                                        : 'loans'}
+                                    {loanProduct.loans_count === 0 ? (
+                                        'No loans'
+                                    ) : (
+                                        <Link
+                                            href={loansIndex({
+                                                query: {
+                                                    product: loanProduct.id,
+                                                },
+                                            })}
+                                            className="hover:text-foreground hover:underline"
+                                            prefetch
+                                        >
+                                            {loanProduct.loans_count}{' '}
+                                            {loanProduct.loans_count === 1
+                                                ? 'loan'
+                                                : 'loans'}
+                                        </Link>
+                                    )}
                                 </span>
                             </div>
                         </div>

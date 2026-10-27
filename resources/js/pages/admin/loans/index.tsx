@@ -29,6 +29,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Table,
     TableBody,
     TableCell,
@@ -77,7 +84,9 @@ function isActionable(loan: LoanListItem): boolean {
 export default function LoansIndex({
     loans,
     statuses,
+    products,
     currentStatus,
+    currentProduct,
     overdueOnly,
     counts,
     search,
@@ -86,7 +95,9 @@ export default function LoansIndex({
 }: {
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
+    products: { value: number; label: string }[];
     currentStatus: string | null;
+    currentProduct: number | null;
     overdueOnly: boolean;
     counts: Record<string, number>;
     search: string;
@@ -172,20 +183,34 @@ export default function LoansIndex({
         overdue?: boolean;
         sort?: string;
         direction?: 'asc' | 'desc';
+        product?: number;
     }) => {
         const status = overrides.status ?? currentStatus ?? '';
         const overdue = overrides.overdue ?? overdueOnly;
         const sort = overrides.sort ?? currentSort ?? '';
         const direction = overrides.direction ?? currentDirection;
+        const product = overrides.product ?? currentProduct ?? 0;
 
         return loansIndex({
             query: {
                 ...(status ? { status } : {}),
+                ...(product ? { product } : {}),
                 ...(overdue ? { overdue: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(sort ? { sort, direction } : {}),
+                ...(loans.per_page !== 15 ? { per_page: loans.per_page } : {}),
             },
         });
+    };
+
+    const changeProduct = (value: string) => {
+        router.get(
+            withFilters({
+                product: value === 'all' ? 0 : Number(value),
+            }).url,
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
     };
 
     return (
@@ -219,6 +244,31 @@ export default function LoansIndex({
                         placeholder="Search borrower or loan #"
                         label="Search loans"
                     />
+
+                    <Select
+                        value={currentProduct ? String(currentProduct) : 'all'}
+                        onValueChange={changeProduct}
+                    >
+                        <SelectTrigger
+                            className="h-9 w-[180px]"
+                            aria-label="Filter loans by product"
+                        >
+                            <SelectValue placeholder="All products" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                            <SelectItem value="all">All products</SelectItem>
+
+                            {products.map((product) => (
+                                <SelectItem
+                                    key={product.value}
+                                    value={String(product.value)}
+                                >
+                                    {product.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
                     <Toggle
                         asChild
