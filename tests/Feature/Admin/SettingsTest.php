@@ -3,6 +3,7 @@
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Settings;
+use App\Services\Sms\SmsSender;
 
 test('super admins can open the settings page', function () {
     $superAdmin = User::factory()->superAdmin()->create();
@@ -272,6 +273,71 @@ test('settings values are validated', function () {
             'sms_http_timeout',
             'sms_http_connect_timeout',
         ]);
+});
+
+test('super admins can send a test SMS through the configured sender', function () {
+    $sent = new class implements SmsSender
+    {
+        /** @var array<int, array{to: string, message: string}> */
+        public array $messages = [];
+
+        public function send(string $to, string $message): void
+        {
+            $this->messages[] = ['to' => $to, 'message' => $message];
+        }
+    };
+
+    $this->app->instance(SmsSender::class, $sent);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->post(route('admin.settings.sms-test'), [
+            'phone' => '+63 917 000 0000',
+            'message' => 'Gateway check',
+        ])
+        ->assertRedirect();
+
+    expect($sent->messages)->toBe([
+        ['to' => '+63 917 000 0000', 'message' => 'Gateway check'],
+    ]);
+});
+
+test('a failing test SMS reports the gateway error', function () {
+    $this->app->instance(SmsSender::class, new class implements SmsSender
+    {
+        public function send(string $to, string $message): void
+        {
+            throw new RuntimeException('Gateway rejected the message.');
+        }
+    });
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->from(route('admin.settings.edit'))
+        ->post(route('admin.settings.sms-test'), [
+            'phone' => '+63 917 000 0000',
+            'message' => 'Gateway check',
+        ])
+        ->assertRedirect(route('admin.settings.edit'))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash): bool => $flash['toast']['type'] === 'error'
+            && str_contains($flash['toast']['message'], 'Gateway rejected the message.'));
+});
+
+test('test SMS messages require a phone number and message', function () {
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->from(route('admin.settings.edit'))
+        ->post(route('admin.settings.sms-test'), [
+            'phone' => '',
+            'message' => '',
+        ])
+        ->assertSessionHasErrors(['phone', 'message']);
+});
+
+test('admins cannot send test SMS messages', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.settings.sms-test'), [
+            'phone' => '+63 917 000 0000',
+            'message' => 'Gateway check',
+        ])
+        ->assertForbidden();
 });
 
 test('new loan products inherit the configured penalty and grace defaults', function () {

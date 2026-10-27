@@ -99,6 +99,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::middleware('role:super_admin')->group(function () {
             Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
             Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+            Route::post('settings/sms-test', [SettingsController::class, 'sendTestSms'])
+                ->middleware('throttle:reminders')
+                ->name('settings.sms-test');
         });
     });
 

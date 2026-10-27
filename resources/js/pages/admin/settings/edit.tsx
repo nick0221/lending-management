@@ -1,5 +1,6 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Loader2, Save } from 'lucide-react';
+import { Form, Head, Link, useForm } from '@inertiajs/react';
+import { Loader2, Save, Send } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
 import { FormSummary } from '@/components/admin/form-summary';
 import { SummaryRow } from '@/components/admin/summary-row';
@@ -18,7 +19,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { dashboard as adminDashboard } from '@/routes/admin';
-import { edit as editSettings, update } from '@/routes/admin/settings';
+import {
+    edit as editSettings,
+    smsTest as sendTestSms,
+    update,
+} from '@/routes/admin/settings';
 import type { AppSettings } from '@/types';
 
 export default function EditSettings({ settings }: { settings: AppSettings }) {
@@ -60,6 +65,26 @@ export default function EditSettings({ settings }: { settings: AppSettings }) {
     });
     const [smsToken, setSmsToken] = useState('');
     const [clearSmsToken, setClearSmsToken] = useState(false);
+
+    const testSms = useForm({
+        phone: '',
+        message: `Test message from ${settings.organisation_name}.`,
+    });
+
+    const submitTestSms = () => {
+        testSms.post(sendTestSms().url, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => testSms.reset('phone'),
+        });
+    };
+
+    const handleTestSmsKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
+            event.preventDefault();
+            submitTestSms();
+        }
+    };
 
     const updateSms = (key: keyof typeof sms, value: string) => {
         setSms((current) => ({ ...current, [key]: value }));
@@ -699,6 +724,100 @@ export default function EditSettings({ settings }: { settings: AppSettings }) {
                                                     />
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </SectionCard>
+
+                                <SectionCard
+                                    title="Test SMS"
+                                    description="Send a one-off message with the saved gateway settings before relying on reminders. Changes above apply after you save."
+                                    contentClassName="p-4"
+                                >
+                                    <div
+                                        className="grid gap-4"
+                                        onKeyDown={handleTestSmsKeyDown}
+                                    >
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="test_sms_phone">
+                                                Phone number
+                                            </Label>
+
+                                            <Input
+                                                id="test_sms_phone"
+                                                value={testSms.data.phone}
+                                                onChange={(event) =>
+                                                    testSms.setData(
+                                                        'phone',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                inputMode="tel"
+                                                autoComplete="tel"
+                                                maxLength={32}
+                                                placeholder="+63 917 000 0000"
+                                            />
+
+                                            <InputError
+                                                message={testSms.errors.phone}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="test_sms_message">
+                                                Message
+                                            </Label>
+
+                                            <textarea
+                                                id="test_sms_message"
+                                                value={testSms.data.message}
+                                                onChange={(event) =>
+                                                    testSms.setData(
+                                                        'message',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                rows={3}
+                                                maxLength={320}
+                                                className="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                            />
+
+                                            <p className="text-xs text-muted-foreground">
+                                                {testSms.data.message.length}
+                                                /320 characters.
+                                            </p>
+
+                                            <InputError
+                                                message={testSms.errors.message}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                Uses the saved driver and
+                                                gateway configuration.
+                                            </p>
+
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={submitTestSms}
+                                                disabled={
+                                                    testSms.processing ||
+                                                    testSms.data.phone.trim() ===
+                                                        '' ||
+                                                    testSms.data.message.trim() ===
+                                                        ''
+                                                }
+                                            >
+                                                {testSms.processing ? (
+                                                    <Loader2 className="animate-spin" />
+                                                ) : (
+                                                    <Send />
+                                                )}
+                                                {testSms.processing
+                                                    ? 'Sending…'
+                                                    : 'Send test SMS'}
+                                            </Button>
                                         </div>
                                     </div>
                                 </SectionCard>

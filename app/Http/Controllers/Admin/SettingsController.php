@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SendTestSmsRequest;
 use App\Http\Requests\Admin\UpdateSettingsRequest;
 use App\Services\Settings;
+use App\Services\Sms\SmsSender;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class SettingsController extends Controller
 {
@@ -76,5 +80,40 @@ class SettingsController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Settings updated.')]);
 
         return to_route('admin.settings.edit');
+    }
+
+    /**
+     * Send a one-off message through the configured SMS gateway.
+     */
+    public function sendTestSms(
+        SendTestSmsRequest $request,
+        Settings $settings,
+        SmsSender $sms,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        try {
+            $sms->send($validated['phone'], $validated['message']);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('Test SMS failed: :error', [
+                    'error' => Str::limit($exception->getMessage(), 300),
+                ]),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $settings->smsConfig()['driver'] === 'log'
+                ? __('Test message written to the application log. No SMS was delivered.')
+                : __('Test SMS sent to :phone.', ['phone' => $validated['phone']]),
+        ]);
+
+        return back();
     }
 }
