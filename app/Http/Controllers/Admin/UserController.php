@@ -237,6 +237,7 @@ class UserController extends Controller
             'role' => $user->role->value,
             'role_label' => $user->role->label(),
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
             'created_at' => $user->created_at?->toIso8601String(),
         ];
     }

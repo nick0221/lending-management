@@ -17,8 +17,25 @@ test('the user list exposes the abilities for every row', function () {
             ->component('admin/users/index')
             ->has('users.data', 1)
             ->where('users.data.0.role', Role::SuperAdmin->value)
+            ->where('users.data.0.two_factor_enabled', false)
             ->where('users.data.0.can.update', true)
             ->where('users.data.0.can.delete', false)
+        );
+});
+
+test('the user list reports whether two-factor authentication is enabled', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $user = User::factory()->create([
+        'two_factor_confirmed_at' => now(),
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['search' => $user->email]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $user->id)
+            ->where('users.data.0.two_factor_enabled', true)
         );
 });
 

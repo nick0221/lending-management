@@ -5,6 +5,7 @@ import {
     Plus,
     RotateCcw,
     ShieldCheck,
+    ShieldOff,
     Users,
 } from 'lucide-react';
 import { UserRowActions } from '@/components/admin/user-row-actions';
@@ -29,6 +30,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import {
     create as createUser,
+    edit as editUser,
     index as usersIndex,
 } from '@/routes/admin/users';
 import type { AdminUserListItem, Paginated, Role, RoleOption } from '@/types';
@@ -63,7 +65,7 @@ export default function UsersIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Users"
-                    description="Manage accounts and their access levels."
+                    description="Manage accounts, access levels and two-factor status."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" asChild>
@@ -149,6 +151,7 @@ export default function UsersIndex({
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>2FA</TableHead>
                                     <TableHead>Joined</TableHead>
                                     <TableHead className="text-right">
                                         Actions
@@ -160,7 +163,17 @@ export default function UsersIndex({
                                 {users.data.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">
-                                            {user.name}
+                                            {user.can.update ? (
+                                                <Link
+                                                    href={editUser(user.id)}
+                                                    className="hover:underline"
+                                                    prefetch
+                                                >
+                                                    {user.name}
+                                                </Link>
+                                            ) : (
+                                                user.name
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {user.email}
@@ -184,6 +197,25 @@ export default function UsersIndex({
                                                 >
                                                     <Clock />
                                                     Pending
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.two_factor_enabled ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400"
+                                                >
+                                                    <ShieldCheck />
+                                                    On
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    <ShieldOff />
+                                                    Off
                                                 </Badge>
                                             )}
                                         </TableCell>

@@ -29,6 +29,7 @@ export type AdminUser = {
     role: Role;
     role_label: string;
     email_verified_at: string | null;
+    two_factor_enabled: boolean;
     created_at: string | null;
 };
 
