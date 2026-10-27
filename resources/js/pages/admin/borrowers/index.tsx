@@ -307,11 +307,17 @@ export default function BorrowersIndex({
                                         />
                                     </TableHead>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Phone</TableHead>
-                                    <TableHead>National ID</TableHead>
+                                    <TableHead className="hidden xl:table-cell">
+                                        Phone
+                                    </TableHead>
+                                    <TableHead className="hidden xl:table-cell">
+                                        National ID
+                                    </TableHead>
                                     <TableHead>KYC</TableHead>
-                                    <TableHead>Loans</TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="hidden md:table-cell">
+                                        Loans
+                                    </TableHead>
+                                    <TableHead className="hidden text-right md:table-cell">
                                         Outstanding
                                     </TableHead>
                                     <TableHead className="text-right">
@@ -354,15 +360,18 @@ export default function BorrowersIndex({
                                                 {borrower.name}
                                             </Link>
                                             {borrower.email && (
-                                                <div className="text-xs text-muted-foreground">
+                                                <div className="hidden truncate text-xs text-muted-foreground sm:block">
                                                     {borrower.email}
                                                 </div>
                                             )}
+                                            <div className="text-xs text-muted-foreground xl:hidden">
+                                                {borrower.phone}
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {borrower.phone}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {borrower.national_id ?? '—'}
                                         </TableCell>
                                         <TableCell>
@@ -370,7 +379,7 @@ export default function BorrowersIndex({
                                                 status={borrower.kyc_status}
                                             />
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground md:table-cell">
                                             {borrower.open_loan_count > 0 ? (
                                                 <>
                                                     <span className="text-foreground tabular-nums">
@@ -389,7 +398,7 @@ export default function BorrowersIndex({
                                                 </div>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right tabular-nums">
+                                        <TableCell className="hidden text-right tabular-nums md:table-cell">
                                             {borrower.open_loan_count > 0
                                                 ? formatMoney(
                                                       borrower.outstanding,

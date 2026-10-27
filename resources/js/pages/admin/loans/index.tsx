@@ -424,8 +424,10 @@ export default function LoansIndex({
                                         </TableHead>
                                     )}
                                     <TableHead>Loan</TableHead>
-                                    <TableHead>Borrower</TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="hidden lg:table-cell">
+                                        Borrower
+                                    </TableHead>
+                                    <TableHead className="hidden text-right lg:table-cell">
                                         <div className="flex justify-end">
                                             <SortableHeader
                                                 label="Principal"
@@ -444,9 +446,13 @@ export default function LoansIndex({
                                     <TableHead className="text-right">
                                         Outstanding
                                     </TableHead>
-                                    <TableHead>Terms</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">
+                                    <TableHead className="hidden xl:table-cell">
+                                        Terms
+                                    </TableHead>
+                                    <TableHead className="hidden md:table-cell">
+                                        Status
+                                    </TableHead>
+                                    <TableHead className="hidden text-right lg:table-cell">
                                         <div className="flex justify-end">
                                             <SortableHeader
                                                 label="Arrears"
@@ -462,7 +468,7 @@ export default function LoansIndex({
                                             />
                                         </div>
                                     </TableHead>
-                                    <TableHead>
+                                    <TableHead className="hidden xl:table-cell">
                                         <SortableHeader
                                             label="Applied"
                                             column="applied_at"
@@ -528,8 +534,33 @@ export default function LoansIndex({
                                             <div className="text-xs text-muted-foreground">
                                                 {loan.loan_product_name}
                                             </div>
+                                            <Link
+                                                href={showBorrower(
+                                                    loan.borrower_id,
+                                                )}
+                                                className="text-xs font-medium hover:underline lg:hidden"
+                                                prefetch
+                                            >
+                                                {loan.borrower_name}
+                                            </Link>
+                                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 lg:hidden">
+                                                <span className="md:hidden">
+                                                    <LoanStatusBadge
+                                                        status={loan.status}
+                                                    />
+                                                </span>
+                                                {loan.days_past_due > 0 && (
+                                                    <span className="text-xs font-medium text-destructive">
+                                                        {formatMoney(
+                                                            loan.arrears,
+                                                        )}{' '}
+                                                        · {loan.days_past_due}d
+                                                        late
+                                                    </span>
+                                                )}
+                                            </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden lg:table-cell">
                                             <Link
                                                 href={showBorrower(
                                                     loan.borrower_id,
@@ -540,45 +571,48 @@ export default function LoansIndex({
                                                 {loan.borrower_name}
                                             </Link>
                                         </TableCell>
-                                        <TableCell className="text-right text-muted-foreground tabular-nums">
+                                        <TableCell className="hidden text-right text-muted-foreground tabular-nums lg:table-cell">
                                             {formatMoney(loan.principal)}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
                                             {formatMoney(loan.outstanding)}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {loan.term_months} mo ·{' '}
                                             {loan.repayment_frequency_label}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             <LoanStatusBadge
                                                 status={loan.status}
                                             />
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            {loan.days_past_due > 0 ? (
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-destructive tabular-nums">
-                                                        {formatMoney(
-                                                            loan.arrears,
-                                                        )}
+                                        <TableCell className="hidden lg:table-cell">
+                                            <div className="text-right">
+                                                {loan.days_past_due > 0 ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-destructive tabular-nums">
+                                                            {formatMoney(
+                                                                loan.arrears,
+                                                            )}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {loan.days_past_due}{' '}
+                                                            day
+                                                            {loan.days_past_due ===
+                                                            1
+                                                                ? ''
+                                                                : 's'}{' '}
+                                                            late
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        —
                                                     </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {loan.days_past_due} day
-                                                        {loan.days_past_due ===
-                                                        1
-                                                            ? ''
-                                                            : 's'}{' '}
-                                                        late
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    —
-                                                </span>
-                                            )}
+                                                )}
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {formatDateOnly(loan.applied_at)}
                                         </TableCell>
                                         <TableCell>

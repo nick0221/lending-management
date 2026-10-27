@@ -280,10 +280,18 @@ export default function ActivityIndex({
                         <TableHeader>
                             <TableRow>
                                 <TableHead>When</TableHead>
-                                <TableHead>Actor</TableHead>
-                                <TableHead>Event</TableHead>
-                                <TableHead>Record</TableHead>
-                                <TableHead>Description</TableHead>
+                                <TableHead className="hidden md:table-cell">
+                                    Actor
+                                </TableHead>
+                                <TableHead className="hidden md:table-cell">
+                                    Event
+                                </TableHead>
+                                <TableHead className="hidden md:table-cell">
+                                    Record
+                                </TableHead>
+                                <TableHead className="hidden md:table-cell">
+                                    Description
+                                </TableHead>
                                 <TableHead className="w-16">
                                     <span className="sr-only">Actions</span>
                                 </TableHead>
@@ -293,7 +301,7 @@ export default function ActivityIndex({
                         <TableBody>
                             {logs.data.map((log) => (
                                 <TableRow key={log.id}>
-                                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                                    <TableCell className="whitespace-nowrap text-muted-foreground md:whitespace-normal">
                                         <span
                                             title={formatDateTime(
                                                 log.created_at,
@@ -301,9 +309,46 @@ export default function ActivityIndex({
                                         >
                                             {formatRelativeTime(log.created_at)}
                                         </span>
+
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                                            <Badge
+                                                variant="secondary"
+                                                className={
+                                                    toneByEvent[log.event] ??
+                                                    'bg-muted text-muted-foreground'
+                                                }
+                                            >
+                                                {log.event_label}
+                                            </Badge>
+
+                                            <span className="text-xs">
+                                                {log.user_name ?? 'System'}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-1 text-xs md:hidden">
+                                            {log.subject_url ? (
+                                                <Link
+                                                    href={log.subject_url}
+                                                    prefetch
+                                                    className="font-medium text-foreground hover:underline"
+                                                >
+                                                    {log.subject_type} #
+                                                    {log.subject_id}
+                                                </Link>
+                                            ) : log.subject_type ? (
+                                                `${log.subject_type} #${log.subject_id}`
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </div>
+
+                                        <p className="mt-1 max-w-md whitespace-normal text-foreground md:hidden">
+                                            {log.description}
+                                        </p>
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell className="hidden md:table-cell">
                                         {log.user_name ? (
                                             <div>
                                                 <p className="font-medium">
@@ -320,7 +365,7 @@ export default function ActivityIndex({
                                         )}
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell className="hidden md:table-cell">
                                         <Badge
                                             variant="secondary"
                                             className={
@@ -332,7 +377,7 @@ export default function ActivityIndex({
                                         </Badge>
                                     </TableCell>
 
-                                    <TableCell className="text-muted-foreground">
+                                    <TableCell className="hidden text-muted-foreground md:table-cell">
                                         {log.subject_url ? (
                                             <Link
                                                 href={log.subject_url}
@@ -349,7 +394,7 @@ export default function ActivityIndex({
                                         )}
                                     </TableCell>
 
-                                    <TableCell>
+                                    <TableCell className="hidden md:table-cell">
                                         <p className="max-w-md">
                                             {log.description}
                                         </p>

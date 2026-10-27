@@ -153,11 +153,19 @@ export default function UsersIndex({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
+                                    <TableHead className="hidden lg:table-cell">
+                                        Email
+                                    </TableHead>
                                     <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>2FA</TableHead>
-                                    <TableHead>Joined</TableHead>
+                                    <TableHead className="hidden lg:table-cell">
+                                        Status
+                                    </TableHead>
+                                    <TableHead className="hidden md:table-cell">
+                                        2FA
+                                    </TableHead>
+                                    <TableHead className="hidden xl:table-cell">
+                                        Joined
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -179,14 +187,24 @@ export default function UsersIndex({
                                             ) : (
                                                 user.name
                                             )}
+                                            {user.email && (
+                                                <div className="hidden text-xs text-muted-foreground sm:block lg:hidden">
+                                                    {user.email}
+                                                </div>
+                                            )}
+                                            <div className="mt-1 text-xs text-muted-foreground md:hidden">
+                                                {user.two_factor_enabled
+                                                    ? '2FA on'
+                                                    : '2FA off'}
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
+                                        <TableCell className="hidden text-muted-foreground lg:table-cell">
                                             {user.email}
                                         </TableCell>
                                         <TableCell>
                                             <RoleBadge role={user.role} />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden lg:table-cell">
                                             {user.email_verified_at ? (
                                                 <Badge
                                                     variant="outline"
@@ -205,7 +223,7 @@ export default function UsersIndex({
                                                 </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             {user.two_factor_enabled ? (
                                                 <Badge
                                                     variant="outline"
@@ -224,7 +242,7 @@ export default function UsersIndex({
                                                 </Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                                        <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
                                             {formatDate(user.created_at)}
                                         </TableCell>
                                         <TableCell>
