@@ -533,8 +533,10 @@ export type BorrowerSummary = {
     arrears: number;
     next_due: UpcomingInstallment | null;
     upcoming: UpcomingInstallment[];
+    upcoming_count: number;
     loans: ReportLoanRow[];
     payments: RecentPayment[];
+    payment_count: number;
 };
 
 export type ActivityLogChange = {

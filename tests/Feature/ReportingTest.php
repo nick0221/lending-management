@@ -419,6 +419,40 @@ test('the borrower dashboard summarises the linked account', function () {
             ->has('summary.upcoming', 1)
             ->has('summary.loans', 1)
             ->has('summary.payments', 0)
+            ->where('summary.upcoming_count', 1)
+            ->where('summary.payment_count', 0)
+        );
+});
+
+test('the borrower dashboard reports how much of a long schedule it shows', function () {
+    $this->travelTo('2026-06-01');
+
+    $user = User::factory()->create();
+    $borrower = Borrower::factory()->forUser($user)->verified()->create();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'borrower_id' => $borrower->id,
+    ]);
+
+    foreach (range(1, 7) as $sequence) {
+        $loan->installments()->create([
+            'sequence' => $sequence,
+            'due_date' => "2026-06-0{$sequence}",
+            'principal_due' => 100,
+            'interest_due' => 10,
+            'fee_due' => 0,
+            'balance' => 0,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->has('summary.upcoming', 5)
+            ->where('summary.upcoming_count', 7)
+            ->where('summary.next_due.due_date', '2026-06-01')
         );
 });
 
