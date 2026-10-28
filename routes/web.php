@@ -13,9 +13,20 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController as BorrowerDashboardController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', function (Request $request) {
+    $user = $request->user();
+
+    if ($user === null) {
+        return redirect()->route('login');
+    }
+
+    return redirect()->route(
+        $user->canAccessAdminPanel() ? 'admin.dashboard' : 'dashboard'
+    );
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [BorrowerDashboardController::class, 'index'])->name('dashboard');
