@@ -213,7 +213,9 @@ export default function Dashboard({
                                                     </TableCell>
 
                                                     <TableCell className="text-right font-medium tabular-nums">
-                                                        {formatMoney(row.amount)}
+                                                        {formatMoney(
+                                                            row.amount,
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}

@@ -397,10 +397,6 @@ export function LoanForm({
                                 <InputError message={errors.notes} />
                             </div>
                         </SectionCard>
-
-                        <Button asChild variant="ghost">
-                            <Link href={loansIndex()}>Cancel</Link>
-                        </Button>
                     </div>
 
                     <SectionCard
@@ -558,7 +554,7 @@ export function LoanForm({
                             when the loan is approved.
                         </p>
 
-                        <div className="border-t pt-4">
+                        <div className="space-y-2 border-t pt-4">
                             <Button
                                 type="submit"
                                 disabled={processing}
@@ -566,6 +562,14 @@ export function LoanForm({
                                 data-test="loan-submit-button"
                             >
                                 {processing ? 'Creating…' : submitLabel}
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                asChild
+                            >
+                                <Link href={loansIndex()}>Cancel</Link>
                             </Button>
                         </div>
                     </SectionCard>
