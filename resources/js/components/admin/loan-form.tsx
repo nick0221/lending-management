@@ -1,6 +1,7 @@
 import { Form, Link, useHttp } from '@inertiajs/react';
 import { CircleHelp, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { BorrowerPicker } from '@/components/admin/borrower-picker';
 import { SummaryRow } from '@/components/admin/summary-row';
 import InputError from '@/components/input-error';
 import { SectionCard } from '@/components/section-card';
@@ -219,30 +220,13 @@ export function LoanForm({
                             <div className="grid gap-2">
                                 <Label htmlFor="borrower_id">Borrower</Label>
 
-                                <Select
+                                <BorrowerPicker
+                                    id="borrower_id"
                                     value={borrowerId}
-                                    onValueChange={setBorrowerId}
-                                >
-                                    <SelectTrigger
-                                        id="borrower_id"
-                                        className="w-full"
-                                    >
-                                        <SelectValue placeholder="Select a borrower">
-                                            {selectedBorrower?.label}
-                                        </SelectValue>
-                                    </SelectTrigger>
-
-                                    <SelectContent>
-                                        {borrowers.map((option) => (
-                                            <SelectItem
-                                                key={option.value}
-                                                value={String(option.value)}
-                                            >
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onChange={setBorrowerId}
+                                    options={borrowers}
+                                    invalid={Boolean(errors.borrower_id)}
+                                />
 
                                 <input
                                     type="hidden"

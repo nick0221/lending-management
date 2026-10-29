@@ -183,7 +183,9 @@ export type LoanEventType =
     | 'penalty_accrued'
     | 'restructured';
 
-export type BorrowerOption = SelectOption<number>;
+export type BorrowerOption = SelectOption<number> & {
+    phone: string | null;
+};
 
 export type LoanProductOption = SelectOption<number> & {
     interest_rate: string;

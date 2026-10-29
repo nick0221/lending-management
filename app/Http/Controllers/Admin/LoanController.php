@@ -1199,18 +1199,20 @@ class LoanController extends Controller
     }
 
     /**
-     * Map the borrowers to select options.
+     * Map the borrowers to picker options, with the phone number so staff can
+     * tell namesakes apart.
      *
-     * @return array<int, array{value: int, label: string}>
+     * @return array<int, array{value: int, label: string, phone: string|null}>
      */
     private function borrowerOptions(): array
     {
         return Borrower::query()
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'phone'])
             ->map(fn (Borrower $borrower): array => [
                 'value' => $borrower->id,
                 'label' => $borrower->name,
+                'phone' => $borrower->phone,
             ])
             ->all();
     }

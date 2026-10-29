@@ -77,6 +77,25 @@ test('the loan form preselects a borrower from the query string', function () {
         );
 });
 
+test('the loan form offers borrowers with their phone numbers', function () {
+    $admin = User::factory()->admin()->create();
+
+    Borrower::factory()->create([
+        'name' => 'Ana Cruz',
+        'phone' => '09171234567',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/create')
+            ->has('borrowers', 1)
+            ->where('borrowers.0.label', 'Ana Cruz')
+            ->where('borrowers.0.phone', '09171234567')
+        );
+});
+
 test('the loan form preselects calculator terms within the product limits', function () {
     $admin = User::factory()->admin()->create();
     $product = LoanProduct::factory()->create([
