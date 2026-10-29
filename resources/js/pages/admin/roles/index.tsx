@@ -59,7 +59,7 @@ export default function RoleMatrixPage({
                         title={group.title}
                         contentClassName="p-0"
                     >
-                        <Table>
+                        <Table containerClassName="hidden md:block">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="min-w-64">
@@ -120,6 +120,42 @@ export default function RoleMatrixPage({
                                 ))}
                             </TableBody>
                         </Table>
+
+                        <ul className="divide-y md:hidden">
+                            {group.abilities.map((ability) => (
+                                <li
+                                    key={ability.label}
+                                    className="space-y-3 p-4"
+                                >
+                                    <div>
+                                        <p className="font-medium">
+                                            {ability.label}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {ability.description}
+                                        </p>
+                                    </div>
+
+                                    <ul className="flex flex-wrap gap-2">
+                                        {roles.map((role) => (
+                                            <li
+                                                key={role.value}
+                                                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs"
+                                            >
+                                                <PermissionCell
+                                                    allowed={
+                                                        ability.roles[
+                                                            role.value
+                                                        ]
+                                                    }
+                                                />
+                                                <RoleBadge role={role.value} />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </li>
+                            ))}
+                        </ul>
                     </SectionCard>
                 ))}
 
