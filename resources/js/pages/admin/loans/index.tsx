@@ -254,7 +254,7 @@ export default function LoansIndex({
                         onValueChange={changeProduct}
                     >
                         <SelectTrigger
-                            className="h-9 w-[180px]"
+                            className="h-9 min-w-0 flex-1 sm:w-[180px] sm:flex-none"
                             aria-label="Filter loans by product"
                         >
                             <SelectValue placeholder="All products">
@@ -282,7 +282,7 @@ export default function LoansIndex({
                         asChild
                         variant="outline"
                         pressed={overdueOnly}
-                        className="ml-auto h-9 gap-2 px-3"
+                        className="ml-auto h-9 shrink-0 gap-2 px-3"
                     >
                         <Link
                             href={withFilters({ overdue: !overdueOnly })}

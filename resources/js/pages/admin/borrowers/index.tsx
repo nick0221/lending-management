@@ -313,7 +313,9 @@ export default function BorrowersIndex({
                                     <TableHead className="hidden xl:table-cell">
                                         National ID
                                     </TableHead>
-                                    <TableHead>KYC</TableHead>
+                                    <TableHead className="hidden sm:table-cell">
+                                        KYC
+                                    </TableHead>
                                     <TableHead className="hidden md:table-cell">
                                         Loans
                                     </TableHead>
@@ -367,6 +369,11 @@ export default function BorrowersIndex({
                                             <div className="text-xs text-muted-foreground xl:hidden">
                                                 {borrower.phone}
                                             </div>
+                                            <div className="mt-1 sm:hidden">
+                                                <KycBadge
+                                                    status={borrower.kyc_status}
+                                                />
+                                            </div>
                                         </TableCell>
                                         <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {borrower.phone}
@@ -374,7 +381,7 @@ export default function BorrowersIndex({
                                         <TableCell className="hidden text-muted-foreground xl:table-cell">
                                             {borrower.national_id ?? '—'}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             <KycBadge
                                                 status={borrower.kyc_status}
                                             />

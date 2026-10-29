@@ -35,16 +35,19 @@ export default function StatCard({
     const card = (
         <Card
             className={cn(
-                'h-full',
+                'h-full gap-4 py-4 sm:gap-6 sm:py-6',
                 href &&
                     'transition-colors hover:border-primary/40 hover:bg-accent/30',
             )}
         >
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 px-4 sm:px-6">
                 <div className="space-y-1">
                     <CardDescription>{title}</CardDescription>
                     <CardTitle
-                        className={cn('text-2xl tabular-nums', tones[tone])}
+                        className={cn(
+                            'text-xl tabular-nums sm:text-2xl',
+                            tones[tone],
+                        )}
                     >
                         {value}
                     </CardTitle>
@@ -56,7 +59,7 @@ export default function StatCard({
             </CardHeader>
 
             {hint && (
-                <CardContent className="pt-0 text-xs text-muted-foreground">
+                <CardContent className="px-4 pt-0 text-xs text-muted-foreground sm:px-6">
                     {hint}
                 </CardContent>
             )}
