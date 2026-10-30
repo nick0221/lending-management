@@ -203,15 +203,19 @@ export default function ShowBorrower({
                                     <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Loan</TableHead>
-                                            <TableHead>Product</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden md:table-cell">
+                                                Product
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Status
+                                            </TableHead>
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Principal
                                             </TableHead>
                                             <TableHead className="text-right">
                                                 Outstanding
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Arrears
                                             </TableHead>
                                             <TableHead className="text-right">
@@ -236,16 +240,45 @@ export default function ShowBorrower({
                                                             ? `Disbursed ${formatDateOnly(loan.disbursed_at)}`
                                                             : 'Not disbursed'}
                                                     </div>
+
+                                                    <div className="mt-1 flex flex-col gap-0.5 text-xs md:hidden">
+                                                        <span className="text-muted-foreground">
+                                                            {loan.product ??
+                                                                '—'}
+                                                        </span>
+                                                        <LoanStatusBadge
+                                                            status={loan.status}
+                                                        />
+                                                        <span className="flex flex-wrap gap-x-3 text-muted-foreground">
+                                                            <span>
+                                                                Principal{' '}
+                                                                <span className="text-foreground tabular-nums">
+                                                                    {formatMoney(
+                                                                        loan.principal,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                            {loan.arrears >
+                                                                0 && (
+                                                                <span className="font-medium text-destructive">
+                                                                    Arrears{' '}
+                                                                    {formatMoney(
+                                                                        loan.arrears,
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {loan.product ?? '—'}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     <LoanStatusBadge
                                                         status={loan.status}
                                                     />
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums">
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                     {formatMoney(
                                                         loan.principal,
                                                     )}
@@ -255,7 +288,7 @@ export default function ShowBorrower({
                                                         loan.outstanding,
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right tabular-nums">
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                     {loan.arrears > 0 ? (
                                                         <span className="font-medium text-destructive">
                                                             {formatMoney(
@@ -307,7 +340,9 @@ export default function ShowBorrower({
                                             <TableRow>
                                                 <TableHead>Due</TableHead>
                                                 <TableHead>Loan</TableHead>
-                                                <TableHead>Status</TableHead>
+                                                <TableHead className="hidden md:table-cell">
+                                                    Status
+                                                </TableHead>
                                                 <TableHead className="text-right">
                                                     Amount
                                                 </TableHead>
@@ -341,8 +376,20 @@ export default function ShowBorrower({
                                                                     installment.sequence
                                                                 }
                                                             </div>
+                                                            <div className="mt-0.5 text-xs md:hidden">
+                                                                {installment.days_past_due >
+                                                                0 ? (
+                                                                    <span className="font-medium text-destructive">
+                                                                        {`${installment.days_past_due}d overdue`}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground">
+                                                                        Scheduled
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </TableCell>
-                                                        <TableCell>
+                                                        <TableCell className="hidden md:table-cell">
                                                             {installment.days_past_due >
                                                             0 ? (
                                                                 <span className="text-sm font-medium text-destructive">
@@ -393,12 +440,16 @@ export default function ShowBorrower({
                                         <TableHeader className="sticky top-0 z-10 bg-muted">
                                             <TableRow>
                                                 <TableHead>Date</TableHead>
-                                                <TableHead>Loan</TableHead>
+                                                <TableHead className="hidden md:table-cell">
+                                                    Loan
+                                                </TableHead>
                                                 <TableHead className="text-right">
                                                     Amount
                                                 </TableHead>
-                                                <TableHead>Method</TableHead>
-                                                <TableHead>
+                                                <TableHead className="hidden md:table-cell">
+                                                    Method
+                                                </TableHead>
+                                                <TableHead className="hidden md:table-cell">
                                                     Recorded by
                                                 </TableHead>
                                                 <TableHead className="w-12">
@@ -416,8 +467,38 @@ export default function ShowBorrower({
                                                         {formatDateOnly(
                                                             payment.payment_date,
                                                         )}
+
+                                                        <div className="mt-1 flex flex-col gap-0.5 text-xs md:hidden">
+                                                            <Link
+                                                                href={showLoan(
+                                                                    payment.loan_id,
+                                                                )}
+                                                                className="font-medium text-foreground hover:underline"
+                                                                prefetch
+                                                            >
+                                                                Loan #
+                                                                {
+                                                                    payment.loan_id
+                                                                }
+                                                            </Link>
+
+                                                            <span>
+                                                                {
+                                                                    payment.method_label
+                                                                }
+                                                            </span>
+
+                                                            {payment.recorded_by && (
+                                                                <span>
+                                                                    by{' '}
+                                                                    {
+                                                                        payment.recorded_by
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="hidden md:table-cell">
                                                         <Link
                                                             href={showLoan(
                                                                 payment.loan_id,
@@ -441,10 +522,10 @@ export default function ShowBorrower({
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
                                                         {payment.method_label}
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
                                                         {payment.recorded_by ??
                                                             '—'}
                                                     </TableCell>

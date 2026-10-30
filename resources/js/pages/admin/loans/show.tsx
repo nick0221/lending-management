@@ -7,7 +7,7 @@ import {
     Undo2,
     X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
 import { PaymentReceiptSheet } from '@/components/admin/payment-receipt-sheet';
@@ -199,6 +199,21 @@ function LoanTimeline({ events }: { events: LoanEvent[] }) {
             ))}
         </ol>
     );
+}
+
+/** Where a payment was applied, or why it was not. */
+function allocationLabel(payment: Payment): string {
+    if (payment.reversed_at) {
+        return 'Released';
+    }
+
+    if (payment.allocations.length === 0) {
+        return 'Unallocated';
+    }
+
+    return payment.allocations
+        .map((allocation) => `#${allocation.installment_sequence ?? '—'}`)
+        .join(', ');
 }
 
 export default function ShowLoan({
@@ -638,19 +653,19 @@ export default function ShowLoan({
                                         <TableRow>
                                             <TableHead>#</TableHead>
                                             <TableHead>Due date</TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Principal
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Interest
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Fee
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Penalty
                                             </TableHead>
-                                            <TableHead className="text-right">
+                                            <TableHead className="hidden text-right md:table-cell">
                                                 Paid
                                             </TableHead>
                                             <TableHead className="text-right">
@@ -661,88 +676,157 @@ export default function ShowLoan({
 
                                     <TableBody>
                                         {installments.map((installment) => (
-                                            <TableRow
+                                            <Fragment
                                                 key={installment.sequence}
                                             >
-                                                <TableCell className="text-muted-foreground tabular-nums">
-                                                    {installment.sequence}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        {formatDateOnly(
-                                                            installment.due_date,
-                                                        )}
+                                                <TableRow>
+                                                    <TableCell className="text-muted-foreground tabular-nums">
+                                                        {installment.sequence}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            {formatDateOnly(
+                                                                installment.due_date,
+                                                            )}
 
-                                                        {installment.overdue && (
-                                                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                                                                {
-                                                                    installment.days_past_due
-                                                                }{' '}
-                                                                d late
-                                                            </span>
+                                                            {installment.overdue && (
+                                                                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                                                                    {
+                                                                        installment.days_past_due
+                                                                    }{' '}
+                                                                    d late
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            installment.principal_due,
                                                         )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {formatMoney(
-                                                        installment.principal_due,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {formatMoney(
-                                                        installment.interest_due,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {formatMoney(
-                                                        installment.fee_due,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {formatMoney(
-                                                        installment.penalty_accrued,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {formatMoney(
-                                                        installment.paid,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right text-muted-foreground tabular-nums">
-                                                    {formatMoney(
-                                                        installment.outstanding,
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            installment.interest_due,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            installment.fee_due,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            installment.penalty_accrued,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            installment.paid,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-muted-foreground tabular-nums">
+                                                        {formatMoney(
+                                                            installment.outstanding,
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+
+                                                <TableRow className="border-0 hover:bg-transparent md:hidden">
+                                                    <TableCell
+                                                        colSpan={3}
+                                                        className="pt-0 text-xs text-muted-foreground"
+                                                    >
+                                                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                                            <span>
+                                                                Principal{' '}
+                                                                <span className="text-foreground tabular-nums">
+                                                                    {formatMoney(
+                                                                        installment.principal_due,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+
+                                                            <span>
+                                                                Interest{' '}
+                                                                <span className="text-foreground tabular-nums">
+                                                                    {formatMoney(
+                                                                        installment.interest_due,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+
+                                                            {Number(
+                                                                installment.fee_due,
+                                                            ) > 0 && (
+                                                                <span>
+                                                                    Fee{' '}
+                                                                    <span className="text-foreground tabular-nums">
+                                                                        {formatMoney(
+                                                                            installment.fee_due,
+                                                                        )}
+                                                                    </span>
+                                                                </span>
+                                                            )}
+
+                                                            {Number(
+                                                                installment.penalty_accrued,
+                                                            ) > 0 && (
+                                                                <span>
+                                                                    Penalty{' '}
+                                                                    <span className="text-foreground tabular-nums">
+                                                                        {formatMoney(
+                                                                            installment.penalty_accrued,
+                                                                        )}
+                                                                    </span>
+                                                                </span>
+                                                            )}
+
+                                                            <span>
+                                                                Paid{' '}
+                                                                <span className="text-foreground tabular-nums">
+                                                                    {formatMoney(
+                                                                        installment.paid,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </Fragment>
                                         ))}
                                     </TableBody>
 
                                     <TableFooter>
                                         <TableRow>
                                             <TableCell colSpan={2}>
-                                                Total payable
+                                                <span className="hidden md:inline">
+                                                    Total payable
+                                                </span>
+                                                <span className="md:hidden">
+                                                    Outstanding
+                                                </span>
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                 {formatMoney(
                                                     scheduleTotals.principal,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                 {formatMoney(
                                                     scheduleTotals.interest,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                 {formatMoney(
                                                     scheduleTotals.fee,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                 {formatMoney(
                                                     scheduleTotals.penalty,
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right tabular-nums">
+                                            <TableCell className="hidden text-right tabular-nums md:table-cell">
                                                 {formatMoney(
                                                     scheduleTotals.paid,
                                                 )}
@@ -919,10 +1003,18 @@ export default function ShowLoan({
                                             <TableHead className="text-right">
                                                 Amount
                                             </TableHead>
-                                            <TableHead>Method</TableHead>
-                                            <TableHead>Reference</TableHead>
-                                            <TableHead>Recorded by</TableHead>
-                                            <TableHead>Allocated to</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Method
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Reference
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Recorded by
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Allocated to
+                                            </TableHead>
                                             <TableHead className="text-right">
                                                 Actions
                                             </TableHead>
@@ -943,6 +1035,52 @@ export default function ShowLoan({
                                                     {formatDate(
                                                         payment.payment_date,
                                                     )}
+
+                                                    <div className="mt-1 flex flex-col gap-0.5 text-xs md:hidden">
+                                                        <span>
+                                                            {
+                                                                payment.method_label
+                                                            }
+                                                        </span>
+
+                                                        {payment.reference && (
+                                                            <span className="text-foreground">
+                                                                {
+                                                                    payment.reference
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {payment.notes && (
+                                                            <span>
+                                                                {payment.notes}
+                                                            </span>
+                                                        )}
+
+                                                        {payment.reversal_reason && (
+                                                            <span className="text-red-700 dark:text-red-300">
+                                                                Reversed:{' '}
+                                                                {
+                                                                    payment.reversal_reason
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {payment.recorded_by && (
+                                                            <span>
+                                                                by{' '}
+                                                                {
+                                                                    payment.recorded_by
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        <span>
+                                                            {allocationLabel(
+                                                                payment,
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex flex-col items-end gap-1">
@@ -968,10 +1106,10 @@ export default function ShowLoan({
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {payment.method_label}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     {payment.reference ?? '—'}
                                                     {payment.notes && (
                                                         <div className="text-xs text-muted-foreground">
@@ -987,26 +1125,11 @@ export default function ShowLoan({
                                                         </div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {payment.recorded_by ?? '—'}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
-                                                    {payment.reversed_at
-                                                        ? 'Released'
-                                                        : payment.allocations
-                                                                .length === 0
-                                                          ? 'Unallocated'
-                                                          : payment.allocations
-                                                                .map(
-                                                                    (
-                                                                        allocation,
-                                                                    ) =>
-                                                                        `#${
-                                                                            allocation.installment_sequence ??
-                                                                            '—'
-                                                                        }`,
-                                                                )
-                                                                .join(', ')}
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                    {allocationLabel(payment)}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
@@ -1080,9 +1203,15 @@ export default function ShowLoan({
                                             <TableHead className="text-right">
                                                 Amount
                                             </TableHead>
-                                            <TableHead>Method</TableHead>
-                                            <TableHead>Reference</TableHead>
-                                            <TableHead>Recorded by</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Method
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Reference
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Recorded by
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
 
@@ -1093,20 +1222,45 @@ export default function ShowLoan({
                                                     {formatDate(
                                                         disbursement.disbursed_at,
                                                     )}
+
+                                                    <div className="mt-1 flex flex-col gap-0.5 text-xs md:hidden">
+                                                        <span>
+                                                            {
+                                                                disbursement.method_label
+                                                            }
+                                                        </span>
+
+                                                        {disbursement.reference && (
+                                                            <span className="text-foreground">
+                                                                {
+                                                                    disbursement.reference
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {disbursement.recorded_by && (
+                                                            <span>
+                                                                by{' '}
+                                                                {
+                                                                    disbursement.recorded_by
+                                                                }
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium tabular-nums">
                                                     {formatMoney(
                                                         disbursement.amount,
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {disbursement.method_label}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     {disbursement.reference ??
                                                         '—'}
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {disbursement.recorded_by ??
                                                         '—'}
                                                 </TableCell>
@@ -1136,9 +1290,13 @@ export default function ShowLoan({
                                     <TableHeader className="sticky top-0 z-10 bg-muted">
                                         <TableRow>
                                             <TableHead>Type</TableHead>
-                                            <TableHead>Channel</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Channel
+                                            </TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Sent</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Sent
+                                            </TableHead>
                                             <TableHead className="text-right">
                                                 Actions
                                             </TableHead>
@@ -1154,8 +1312,23 @@ export default function ShowLoan({
                                                             notification.type_label
                                                         }
                                                     </Badge>
+
+                                                    <div className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground md:hidden">
+                                                        <span>
+                                                            {
+                                                                notification.channel_label
+                                                            }
+                                                        </span>
+                                                        <span>
+                                                            {notification.sent_at
+                                                                ? formatDateTime(
+                                                                      notification.sent_at,
+                                                                  )
+                                                                : 'Not sent'}
+                                                        </span>
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {notification.channel_label}
                                                 </TableCell>
                                                 <TableCell>
@@ -1178,7 +1351,7 @@ export default function ShowLoan({
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
                                                     {notification.sent_at
                                                         ? formatDateTime(
                                                               notification.sent_at,
