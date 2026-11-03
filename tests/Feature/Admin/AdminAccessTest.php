@@ -14,6 +14,7 @@ test('guests are redirected to the login page from the admin panel', function (s
     'loan products create' => 'admin.loan-products.create',
     'loans index' => 'admin.loans.index',
     'loans create' => 'admin.loans.create',
+    'collections index' => 'admin.collections.index',
     'reports index' => 'admin.reports.index',
 ]);
 
@@ -31,6 +32,7 @@ test('regular users are forbidden from the admin panel', function (string $route
     'loan products create' => 'admin.loan-products.create',
     'loans index' => 'admin.loans.index',
     'loans create' => 'admin.loans.create',
+    'collections index' => 'admin.collections.index',
     'reports index' => 'admin.reports.index',
 ]);
 
@@ -48,6 +50,7 @@ test('admins can access the admin panel', function (string $route) {
     'loan products create' => 'admin.loan-products.create',
     'loans index' => 'admin.loans.index',
     'loans create' => 'admin.loans.create',
+    'collections index' => 'admin.collections.index',
     'reports index' => 'admin.reports.index',
 ]);
 
@@ -65,5 +68,6 @@ test('super admins can access the admin panel', function (string $route) {
     'loan products create' => 'admin.loan-products.create',
     'loans index' => 'admin.loans.index',
     'loans create' => 'admin.loans.create',
+    'collections index' => 'admin.collections.index',
     'reports index' => 'admin.reports.index',
 ]);

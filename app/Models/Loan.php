@@ -161,7 +161,9 @@ class Loan extends Model
      */
     public function collectionContacts(): HasMany
     {
-        return $this->hasMany(CollectionContact::class)->latest('contacted_at');
+        return $this->hasMany(CollectionContact::class)
+            ->latest('contacted_at')
+            ->latest('id');
     }
 
     /**

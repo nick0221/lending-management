@@ -6,6 +6,7 @@ import {
     HandCoins,
     Landmark,
     LayoutGrid,
+    PhoneCall,
     ScrollText,
     Server,
     Settings,
@@ -30,6 +31,7 @@ import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminActivity } from '@/routes/admin/activity';
 import { index as adminBorrowers } from '@/routes/admin/borrowers';
+import { index as adminCollections } from '@/routes/admin/collections';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
 import { index as adminReports } from '@/routes/admin/reports';
@@ -71,6 +73,11 @@ const adminNavItems: NavItem[] = [
         title: 'Loans',
         href: adminLoans(),
         icon: Wallet,
+    },
+    {
+        title: 'Collections',
+        href: adminCollections(),
+        icon: PhoneCall,
     },
     {
         title: 'Reports',

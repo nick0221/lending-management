@@ -390,6 +390,47 @@ export type CollectionPromise = {
     contacted_at: string | null;
 };
 
+export type CollectionQueueRow = {
+    id: number;
+    borrower_id: number;
+    borrower_name: string;
+    borrower_phone: string;
+    loan_product_name: string;
+    status: LoanStatus;
+    status_label: string;
+    days_past_due: number;
+    outstanding: string;
+    arrears: string;
+    collection_officer_id: number | null;
+    collection_officer: string | null;
+    last_contact: {
+        channel_label: string;
+        outcome: CollectionOutcome;
+        outcome_label: string;
+        contacted_at: string | null;
+    } | null;
+    promise: {
+        amount: string | null;
+        promised_at: string | null;
+        days_until: number | null;
+        missed: boolean;
+    } | null;
+    next_follow_up: string | null;
+    follow_up_overdue: boolean;
+    can: {
+        view: boolean;
+        assign: boolean;
+        log_contact: boolean;
+    };
+};
+
+export type CollectionQueueSummary = {
+    loans: number;
+    arrears: string;
+    promised: number;
+    unassigned: number;
+};
+
 export type PaymentReceipt = {
     id: number;
     number: string;

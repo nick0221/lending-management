@@ -5,13 +5,13 @@ namespace App\Models;
 use App\Enums\CollectionChannel;
 use App\Enums\CollectionOutcome;
 use App\Models\Concerns\AuditsActivity;
+use Carbon\CarbonImmutable;
 use Database\Factories\CollectionContactFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -19,13 +19,13 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property CollectionChannel $channel
  * @property CollectionOutcome $outcome
- * @property Carbon $contacted_at
+ * @property CarbonImmutable $contacted_at
  * @property string|null $notes
  * @property string|null $promised_amount
- * @property Carbon|null $promised_at
- * @property Carbon|null $follow_up_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $promised_at
+ * @property CarbonImmutable|null $follow_up_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 #[Fillable([
     'loan_id',

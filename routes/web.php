@@ -101,6 +101,10 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->middleware('throttle:reports')
             ->name('loans.statement.download');
 
+        Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
+        Route::patch('collections/{loan}/officer', [CollectionController::class, 'assignOfficer'])
+            ->name('collections.officer');
+
         Route::post('loans/{loan}/notifications/{notificationLog}/resend', [LoanController::class, 'resendNotification'])
             ->middleware('throttle:reminders')
             ->name('loans.notifications.resend');

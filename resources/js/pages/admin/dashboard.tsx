@@ -31,11 +31,8 @@ import {
 } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { create as createBorrower } from '@/routes/admin/borrowers';
-import {
-    create as createLoan,
-    index as adminLoans,
-    show as showLoan,
-} from '@/routes/admin/loans';
+import { index as adminCollections } from '@/routes/admin/collections';
+import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminUsers } from '@/routes/admin/users';
 import type {
@@ -105,7 +102,7 @@ export default function AdminDashboard({
     const portfolioReport = reportsIndex({ query: { tab: 'portfolio' } });
     const collectionsReport = reportsIndex({ query: { tab: 'collections' } });
     const agingReport = reportsIndex({ query: { tab: 'aging' } });
-    const overdueLoans = adminLoans({ query: { overdue: '1' } });
+    const collectionsQueue = adminCollections();
 
     const attentionRows = [
         ...collections.overdue_installments,
@@ -177,7 +174,7 @@ export default function AdminDashboard({
                         hint={`${summary.defaulted_loans} defaulted`}
                         icon={AlertTriangle}
                         tone={summary.arrears > 0 ? 'danger' : 'default'}
-                        href={overdueLoans}
+                        href={collectionsQueue}
                     />
                 </section>
 
@@ -209,7 +206,7 @@ export default function AdminDashboard({
                                 : 's'
                         }`}
                         tone={collections.overdue > 0 ? 'danger' : 'default'}
-                        href={overdueLoans}
+                        href={collectionsQueue}
                     />
                     <StatCard
                         title="Portfolio at risk"
@@ -227,8 +224,8 @@ export default function AdminDashboard({
                     description="Overdue installments first, then what is due within the next week."
                     actions={
                         <Button size="sm" variant="outline" asChild>
-                            <Link href={overdueLoans} prefetch>
-                                View overdue loans <ArrowRight />
+                            <Link href={collectionsQueue} prefetch>
+                                Work the queue <ArrowRight />
                             </Link>
                         </Button>
                     }
