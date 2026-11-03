@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string $penalty_rate
  * @property int $grace_period_days
  * @property int $days_past_due
+ * @property int|null $collection_officer_id
  * @property LoanStatus $status
  * @property Carbon|null $applied_at
  * @property Carbon|null $approved_at
@@ -50,6 +51,7 @@ use Illuminate\Support\Carbon;
     'penalty_rate',
     'grace_period_days',
     'days_past_due',
+    'collection_officer_id',
     'status',
     'applied_at',
     'approved_at',
@@ -144,6 +146,22 @@ class Loan extends Model
     public function notificationLogs(): HasMany
     {
         return $this->hasMany(NotificationLog::class);
+    }
+
+    /**
+     * Get the staff member responsible for collecting the loan.
+     */
+    public function collectionOfficer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'collection_officer_id');
+    }
+
+    /**
+     * Get the collection contacts logged against the loan, newest first.
+     */
+    public function collectionContacts(): HasMany
+    {
+        return $this->hasMany(CollectionContact::class)->latest('contacted_at');
     }
 
     /**

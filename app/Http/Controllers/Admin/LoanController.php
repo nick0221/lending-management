@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\CollectionChannel;
+use App\Enums\CollectionOutcome;
 use App\Enums\DisbursementMethod;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
@@ -16,6 +18,7 @@ use App\Http\Requests\Admin\ReversePaymentRequest;
 use App\Http\Requests\Admin\SendLoanRemindersRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\Borrower;
+use App\Models\CollectionContact;
 use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanEvent;
@@ -285,6 +288,8 @@ class LoanController extends Controller
             'payments.allocations.installment',
             'events.user',
             'notificationLogs',
+            'collectionOfficer',
+            'collectionContacts.user',
         ]);
 
         $actor = $request->user();
@@ -321,12 +326,18 @@ class LoanController extends Controller
             'notifications' => $this->notificationPayload($loan, $actor),
             'disbursementMethods' => $this->disbursementMethodOptions(),
             'paymentMethods' => $this->paymentMethodOptions(),
+            'collectionContacts' => $this->collectionContactPayload($loan),
+            'collectionPromise' => $this->collectionPromisePayload($loan),
+            'collectionOfficer' => $loan->collectionOfficer?->name,
+            'collectionChannels' => $this->enumOptions(CollectionChannel::cases()),
+            'collectionOutcomes' => $this->enumOptions(CollectionOutcome::cases()),
             'currentTab' => $currentTab,
             'can' => [
                 'approve' => $actor->can('approve', $loan),
                 'reject' => $actor->can('reject', $loan),
                 'disburse' => $actor->can('disburse', $loan),
                 'pay' => $actor->can('recordPayment', $loan),
+                'log_contact' => $actor->can('logContact', $loan),
                 'default' => $actor->can('markDefaulted', $loan),
                 'write_off' => $actor->can('writeOff', $loan),
                 'restructure' => $actor->can('restructure', $loan),
@@ -1143,6 +1154,71 @@ class LoanController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Transform the collection contacts into the payload shared with the client.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectionContactPayload(Loan $loan): array
+    {
+        return $loan->collectionContacts
+            ->map(fn (CollectionContact $contact): array => [
+                'id' => $contact->id,
+                'channel' => $contact->channel->value,
+                'channel_label' => $contact->channel->label(),
+                'outcome' => $contact->outcome->value,
+                'outcome_label' => $contact->outcome->label(),
+                'contacted_at' => $contact->contacted_at?->toIso8601String(),
+                'notes' => $contact->notes,
+                'promised_amount' => $contact->promised_amount,
+                'promised_at' => $contact->promised_at?->toDateString(),
+                'follow_up_at' => $contact->follow_up_at?->toDateString(),
+                'recorded_by' => $contact->user?->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Describe the newest promise to pay that is still ahead.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function collectionPromisePayload(Loan $loan): ?array
+    {
+        $promise = $loan->collectionContacts
+            ->first(fn (CollectionContact $contact): bool => $contact->isOpenPromise());
+
+        if ($promise === null) {
+            return null;
+        }
+
+        return [
+            'amount' => $promise->promised_amount,
+            'promised_at' => $promise->promised_at?->toDateString(),
+            'days_until' => (int) today()->diffInDays($promise->promised_at, false),
+            'recorded_by' => $promise->user?->name,
+            'contacted_at' => $promise->contacted_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Map enum cases to select options.
+     *
+     * @param  array<int, CollectionChannel|CollectionOutcome>  $cases
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function enumOptions(array $cases): array
+    {
+        return array_map(
+            fn (CollectionChannel|CollectionOutcome $case): array => [
+                'value' => $case->value,
+                'label' => $case->label(),
+            ],
+            $cases,
+        );
     }
 
     /**

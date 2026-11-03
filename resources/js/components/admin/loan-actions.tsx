@@ -6,6 +6,7 @@ import {
     Download,
     Mail,
     MoreHorizontal,
+    PhoneCall,
     Printer,
     Trash2,
     Wrench,
@@ -57,6 +58,7 @@ export function LoanActions({
     can,
     disbursementMethods,
     paymentMethods,
+    onLogContact,
 }: {
     loan: Loan;
     outstanding: string;
@@ -65,12 +67,14 @@ export function LoanActions({
     can: LoanAbilities;
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
+    onLogContact: () => void;
 }) {
     const [restructureOpen, setRestructureOpen] = useState(false);
     const [statementOpen, setStatementOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
     const hasSecondaryActions =
+        can.log_contact ||
         can.restructure ||
         can.statement ||
         can.download_statement ||
@@ -145,6 +149,19 @@ export function LoanActions({
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent align="end" className="w-52">
+                            {can.log_contact && (
+                                <>
+                                    <DropdownMenuItem
+                                        onSelect={() => onLogContact()}
+                                        data-test="log-contact-button"
+                                    >
+                                        <PhoneCall /> Log contact
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
+
                             {can.restructure && (
                                 <DropdownMenuItem
                                     onSelect={() => setRestructureOpen(true)}

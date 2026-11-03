@@ -83,6 +83,24 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the user can log a collection contact on the loan.
+     */
+    public function logContact(User $user, Loan $loan): bool
+    {
+        return $user->canAccessAdminPanel()
+            && in_array($loan->status, [LoanStatus::Active, LoanStatus::Defaulted], true);
+    }
+
+    /**
+     * Determine whether the user can assign a collection officer to the loan.
+     */
+    public function assignOfficer(User $user, Loan $loan): bool
+    {
+        return $user->canAccessAdminPanel()
+            && in_array($loan->status, [LoanStatus::Active, LoanStatus::Defaulted], true);
+    }
+
+    /**
      * Determine whether the user can reverse a payment on the loan.
      */
     public function reversePayment(User $user, Loan $loan, Payment $payment): bool

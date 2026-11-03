@@ -102,6 +102,8 @@ class RoleMatrix
                     $this->ability('Reject pending loans', 'Decline a pending application.', 'reject', [new Loan(['status' => LoanStatus::Pending])]),
                     $this->ability('Disburse loans', 'Release funds against an approved loan.', 'disburse', [new Loan(['status' => LoanStatus::Approved])]),
                     $this->ability('Record payments', 'Apply money to the oldest installments first.', 'recordPayment', [new Loan(['status' => LoanStatus::Active])]),
+                    $this->ability('Log collection contacts', 'Record calls, promises to pay and follow-up dates on a loan.', 'logContact', [new Loan(['status' => LoanStatus::Active])]),
+                    $this->ability('Assign collection officers', 'Put a loan in a collector\'s queue.', 'assignOfficer', [new Loan(['status' => LoanStatus::Active])]),
                     $this->ability('Reverse payments', 'Release a payment and restore the outstanding balance.', 'reversePayment', [$this->loan(LoanStatus::Active, 1), $this->payment(1, 20)]),
                     $this->ability('Mark defaulted', 'Flag an active loan as defaulted.', 'markDefaulted', [new Loan(['status' => LoanStatus::Active])]),
                     $this->ability('Restructure loans', 'Re-amortise the outstanding principal.', 'restructure', [new Loan(['status' => LoanStatus::Active])]),

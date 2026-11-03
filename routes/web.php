@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\BorrowerController;
 use App\Http\Controllers\Admin\BorrowerImportController;
+use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
@@ -88,6 +89,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
             Route::get('loans/{loan}/statement/preview', [LoanController::class, 'previewStatement'])->name('loans.statement.preview');
         });
+
+        Route::post('loans/{loan}/collections', [CollectionController::class, 'store'])
+            ->name('loans.collections.store');
 
         Route::get('loans/{loan}/statement/print', [LoanController::class, 'printStatement'])
             ->middleware('throttle:reports')

@@ -169,6 +169,20 @@ export type PaymentMethod =
 
 export type PaymentMethodOption = SelectOption<PaymentMethod>;
 
+export type CollectionChannel = 'call' | 'sms' | 'email' | 'visit' | 'other';
+
+export type CollectionChannelOption = SelectOption<CollectionChannel>;
+
+export type CollectionOutcome =
+    | 'promised'
+    | 'contacted'
+    | 'no_answer'
+    | 'refused'
+    | 'paid'
+    | 'other';
+
+export type CollectionOutcomeOption = SelectOption<CollectionOutcome>;
+
 export type LoanEventType =
     | 'created'
     | 'approved'
@@ -262,6 +276,7 @@ export type LoanAbilities = {
     reject: boolean;
     disburse: boolean;
     pay: boolean;
+    log_contact: boolean;
     default: boolean;
     write_off: boolean;
     restructure: boolean;
@@ -351,6 +366,28 @@ export type PaymentFilters = {
     method: PaymentMethod | null;
     from: string | null;
     to: string | null;
+};
+
+export type CollectionContact = {
+    id: number;
+    channel: CollectionChannel;
+    channel_label: string;
+    outcome: CollectionOutcome;
+    outcome_label: string;
+    contacted_at: string | null;
+    notes: string | null;
+    promised_amount: string | null;
+    promised_at: string | null;
+    follow_up_at: string | null;
+    recorded_by: string | null;
+};
+
+export type CollectionPromise = {
+    amount: string | null;
+    promised_at: string;
+    days_until: number;
+    recorded_by: string | null;
+    contacted_at: string | null;
 };
 
 export type PaymentReceipt = {

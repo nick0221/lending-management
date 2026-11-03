@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     MoreHorizontal,
+    PhoneCall,
     ReceiptText,
     Send,
     Undo2,
@@ -10,6 +11,7 @@ import {
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LoanActions } from '@/components/admin/loan-actions';
+import { LogCollectionContactDialog } from '@/components/admin/log-collection-contact-dialog';
 import { PaymentReceiptSheet } from '@/components/admin/payment-receipt-sheet';
 import { ReversePaymentDialog } from '@/components/admin/reverse-payment-dialog';
 import { LoanStatusBadge } from '@/components/loan-status-badge';
@@ -55,6 +57,10 @@ import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import { resend as resendLoanNotification } from '@/routes/admin/loans/notifications';
 import type {
+    CollectionChannelOption,
+    CollectionContact,
+    CollectionOutcomeOption,
+    CollectionPromise,
     Disbursement,
     DisbursementMethodOption,
     Loan,
@@ -201,6 +207,17 @@ function LoanTimeline({ events }: { events: LoanEvent[] }) {
     );
 }
 
+/** The viewer's local calendar date in the `Y-m-d` shape the API returns. */
+function localToday(): string {
+    const now = new Date();
+
+    return [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+}
+
 /** Where a payment was applied, or why it was not. */
 function allocationLabel(payment: Payment): string {
     if (payment.reversed_at) {
@@ -227,6 +244,11 @@ export default function ShowLoan({
     totals,
     events,
     notifications,
+    collectionContacts,
+    collectionPromise,
+    collectionOfficer,
+    collectionChannels,
+    collectionOutcomes,
     disbursementMethods,
     paymentMethods,
     currentTab,
@@ -242,6 +264,11 @@ export default function ShowLoan({
     totals: PaymentTotals;
     events: LoanEvent[];
     notifications: NotificationLogEntry[];
+    collectionContacts: CollectionContact[];
+    collectionPromise: CollectionPromise | null;
+    collectionOfficer: string | null;
+    collectionChannels: CollectionChannelOption[];
+    collectionOutcomes: CollectionOutcomeOption[];
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
     currentTab: LoanTab;
@@ -250,6 +277,7 @@ export default function ShowLoan({
     const [tab, setTab] = useState<LoanTab>(currentTab);
     const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
     const [reversePayment, setReversePayment] = useState<Payment | null>(null);
+    const [contactOpen, setContactOpen] = useState(false);
     const [resendingNotificationId, setResendingNotificationId] = useState<
         number | null
     >(null);
@@ -350,6 +378,14 @@ export default function ShowLoan({
         (installment) => Number(installment.outstanding) > 0,
     );
 
+    const today = localToday();
+    const nextFollowUp =
+        collectionContacts
+            .map((contact) => contact.follow_up_at)
+            .filter((date): date is string => date !== null && date >= today)
+            .sort()[0] ?? null;
+    const recentContacts = collectionContacts.slice(0, 5);
+
     return (
         <>
             <Head title={`Loan #${loan.id}`} />
@@ -374,6 +410,7 @@ export default function ShowLoan({
                                 can={can}
                                 disbursementMethods={disbursementMethods}
                                 paymentMethods={paymentMethods}
+                                onLogContact={() => setContactOpen(true)}
                             />
                         }
                     />
@@ -634,6 +671,159 @@ export default function ShowLoan({
                                     </div>
                                 </div>
                             )}
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Collections"
+                            description="Contact history, promises to pay and the next follow-up."
+                            actions={
+                                can.log_contact && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setContactOpen(true)}
+                                    >
+                                        <PhoneCall /> Log contact
+                                    </Button>
+                                )
+                            }
+                            contentClassName="p-6"
+                        >
+                            <div className="space-y-5">
+                                <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+                                    <DetailField
+                                        label="Collection officer"
+                                        value={
+                                            collectionOfficer ?? 'Unassigned'
+                                        }
+                                    />
+                                    <DetailField
+                                        label="Last contact"
+                                        value={
+                                            collectionContacts[0]
+                                                ? `${collectionContacts[0].channel_label} · ${formatDateTime(collectionContacts[0].contacted_at)}`
+                                                : 'No contact logged'
+                                        }
+                                    />
+                                    <DetailField
+                                        label="Next follow-up"
+                                        value={
+                                            nextFollowUp
+                                                ? formatDateOnly(nextFollowUp)
+                                                : '—'
+                                        }
+                                    />
+                                </dl>
+
+                                {collectionPromise && (
+                                    <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+                                        <p className="font-medium">
+                                            Promised{' '}
+                                            {formatMoney(
+                                                collectionPromise.amount,
+                                            )}{' '}
+                                            by{' '}
+                                            {formatDateOnly(
+                                                collectionPromise.promised_at,
+                                            )}
+                                        </p>
+
+                                        <p className="text-muted-foreground">
+                                            {collectionPromise.days_until === 0
+                                                ? 'Due today'
+                                                : collectionPromise.days_until ===
+                                                    1
+                                                  ? 'Due tomorrow'
+                                                  : `${collectionPromise.days_until} days to go`}
+                                            {collectionPromise.recorded_by
+                                                ? ` · logged by ${collectionPromise.recorded_by}`
+                                                : ''}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {recentContacts.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        {can.log_contact
+                                            ? 'No contact logged yet. Record the first call, message or visit.'
+                                            : 'No contact has been logged against this loan.'}
+                                    </p>
+                                ) : (
+                                    <>
+                                        <ul className="divide-y rounded-lg border">
+                                            {recentContacts.map((contact) => (
+                                                <li
+                                                    key={contact.id}
+                                                    className="px-4 py-3"
+                                                >
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Badge variant="outline">
+                                                            {
+                                                                contact.channel_label
+                                                            }
+                                                        </Badge>
+                                                        <span className="text-sm font-medium">
+                                                            {
+                                                                contact.outcome_label
+                                                            }
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {formatDateTime(
+                                                                contact.contacted_at,
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    {contact.promised_at && (
+                                                        <p className="mt-1 text-sm">
+                                                            Promised{' '}
+                                                            {formatMoney(
+                                                                contact.promised_amount,
+                                                            )}{' '}
+                                                            by{' '}
+                                                            {formatDateOnly(
+                                                                contact.promised_at,
+                                                            )}
+                                                        </p>
+                                                    )}
+
+                                                    {contact.follow_up_at && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Follow up{' '}
+                                                            {formatDateOnly(
+                                                                contact.follow_up_at,
+                                                            )}
+                                                        </p>
+                                                    )}
+
+                                                    {contact.notes && (
+                                                        <p className="mt-1 text-sm whitespace-pre-line">
+                                                            {contact.notes}
+                                                        </p>
+                                                    )}
+
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        by{' '}
+                                                        {contact.recorded_by ??
+                                                            'System'}
+                                                    </p>
+                                                </li>
+                                            ))}
+                                        </ul>
+
+                                        {collectionContacts.length >
+                                            recentContacts.length && (
+                                            <p className="text-xs text-muted-foreground">
+                                                Showing the{' '}
+                                                {recentContacts.length} most
+                                                recent of{' '}
+                                                {collectionContacts.length}{' '}
+                                                contacts.
+                                            </p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </SectionCard>
                     </TabsContent>
 
@@ -1420,6 +1610,15 @@ export default function ShowLoan({
                         setReversePayment(null);
                     }
                 }}
+            />
+
+            <LogCollectionContactDialog
+                loan={loan}
+                open={contactOpen}
+                onOpenChange={setContactOpen}
+                channels={collectionChannels}
+                outcomes={collectionOutcomes}
+                outstanding={totals.outstanding}
             />
         </>
     );
