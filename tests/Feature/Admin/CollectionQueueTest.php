@@ -343,3 +343,42 @@ test('the collections queue exports the filtered work list as a CSV', function (
 
     expect(array_filter(explode("\n", trim($content))))->toHaveCount(2);
 });
+test('the dashboard reports the overdue loans assigned to the signed-in officer', function () {
+    $officer = User::factory()->admin()->create();
+    $otherOfficer = User::factory()->admin()->create();
+
+    $mine = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $officer->id,
+        'days_past_due' => 12,
+    ]);
+    overdueInstallment($mine, '100.00', 12);
+
+    $theirs = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $otherOfficer->id,
+        'days_past_due' => 8,
+    ]);
+    overdueInstallment($theirs, '250.00', 8);
+
+    Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $officer->id,
+        'days_past_due' => 0,
+    ]);
+
+    Loan::factory()->withStatus(LoanStatus::Closed)->create([
+        'collection_officer_id' => $officer->id,
+        'days_past_due' => 15,
+    ]);
+
+    $this->actingAs($officer)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/dashboard')
+            ->where('myQueue', 1)
+        );
+
+    $this->actingAs($otherOfficer)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('myQueue', 1));
+});

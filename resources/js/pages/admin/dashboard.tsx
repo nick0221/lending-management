@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowRight,
@@ -8,6 +8,7 @@ import {
     Landmark,
     Plus,
     UserPlus,
+    Users,
     Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
@@ -91,6 +92,7 @@ export default function AdminDashboard({
     aging,
     risk,
     recentPayments,
+    myQueue,
 }: {
     stats: Stats;
     summary: PortfolioSummary;
@@ -98,7 +100,9 @@ export default function AdminDashboard({
     aging: AgingBuckets;
     risk: PortfolioRisk;
     recentPayments: RecentPayment[];
+    myQueue: number;
 }) {
+    const { auth } = usePage().props;
     const portfolioReport = reportsIndex({ query: { tab: 'portfolio' } });
     const collectionsReport = reportsIndex({ query: { tab: 'collections' } });
     const agingReport = reportsIndex({ query: { tab: 'aging' } });
@@ -223,11 +227,29 @@ export default function AdminDashboard({
                     title="Needs attention"
                     description="Overdue installments first, then what is due within the next week."
                     actions={
-                        <Button size="sm" variant="outline" asChild>
-                            <Link href={collectionsQueue} prefetch>
-                                Work the queue <ArrowRight />
-                            </Link>
-                        </Button>
+                        <>
+                            {myQueue > 0 && (
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={adminCollections({
+                                            query: { officer: auth.user.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Users /> My queue
+                                        <Badge variant="secondary">
+                                            {myQueue}
+                                        </Badge>
+                                    </Link>
+                                </Button>
+                            )}
+
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={collectionsQueue} prefetch>
+                                    Work the queue <ArrowRight />
+                                </Link>
+                            </Button>
+                        </>
                     }
                 >
                     <Table>

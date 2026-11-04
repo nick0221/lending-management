@@ -1,10 +1,11 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Download,
     HandCoins,
     PhoneCall,
     RotateCcw,
     TriangleAlert,
+    UserRound,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Toggle } from '@/components/ui/toggle';
 import { formatDateOnly, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -93,6 +95,8 @@ export default function CollectionsIndex({
     );
     const [selected, setSelected] = useState<number[]>([]);
     const [bulkOfficer, setBulkOfficer] = useState('');
+    const { auth } = usePage().props;
+    const isMyQueue = currentOfficer === auth.user.id;
 
     useEffect(() => {
         setSelected((current) =>
@@ -367,6 +371,24 @@ export default function CollectionsIndex({
                             ))}
                         </SelectContent>
                     </Select>
+
+                    <Toggle
+                        asChild
+                        variant="outline"
+                        pressed={isMyQueue}
+                        className="h-9 shrink-0 gap-2 px-3"
+                    >
+                        <Link
+                            href={withFilters({
+                                officer: isMyQueue ? null : auth.user.id,
+                            })}
+                            preserveScroll
+                            prefetch
+                        >
+                            <UserRound />
+                            My queue
+                        </Link>
+                    </Toggle>
                 </div>
 
                 <FilterTabs
@@ -461,9 +483,11 @@ export default function CollectionsIndex({
                             icon={PhoneCall}
                             title="Nothing to collect"
                             description={
-                                hasFilters
-                                    ? 'No overdue loans match these filters. Try another officer, aging bucket or tab.'
-                                    : 'No loan is overdue right now. New arrears appear here after the nightly overdue check.'
+                                isMyQueue
+                                    ? 'No overdue loans are assigned to you right now. Switch off My queue to see the whole overdue book.'
+                                    : hasFilters
+                                      ? 'No overdue loans match these filters. Try another officer, aging bucket or tab.'
+                                      : 'No loan is overdue right now. New arrears appear here after the nightly overdue check.'
                             }
                             action={
                                 hasFilters && (

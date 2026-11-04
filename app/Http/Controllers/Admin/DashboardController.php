@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\LoanStatus;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\Loan;
 use App\Models\User;
 use App\Services\ReportingService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +20,7 @@ class DashboardController extends Controller
     /**
      * Show the administration overview.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
         Gate::authorize('viewAny', User::class);
 
@@ -28,7 +31,20 @@ class DashboardController extends Controller
             'aging' => $this->reporting->agingBuckets(),
             'risk' => $this->reporting->portfolioAtRisk(),
             'recentPayments' => $this->reporting->recentPayments(5),
+            'myQueue' => $this->assignedOverdueLoans($request->user()->id),
         ]);
+    }
+
+    /**
+     * Count the overdue loans currently assigned to the signed-in officer.
+     */
+    private function assignedOverdueLoans(int $officerId): int
+    {
+        return Loan::query()
+            ->whereIn('status', [LoanStatus::Active, LoanStatus::Defaulted])
+            ->where('days_past_due', '>', 0)
+            ->where('collection_officer_id', $officerId)
+            ->count();
     }
 
     /**
