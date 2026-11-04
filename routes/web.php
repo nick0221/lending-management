@@ -33,6 +33,9 @@ Route::get('/', function (Request $request) {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [BorrowerDashboardController::class, 'index'])->name('dashboard');
     Route::get('loans/{loan}', [BorrowerLoanController::class, 'show'])->name('loans.show');
+    Route::get('loans/{loan}/statement', [BorrowerLoanController::class, 'statement'])
+        ->middleware('throttle:reports')
+        ->name('loans.statement');
 });
 
 Route::middleware(['auth', 'verified', 'role:super_admin,admin'])

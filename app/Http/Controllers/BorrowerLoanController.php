@@ -6,6 +6,7 @@ use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\LoanPaymentAllocation;
 use App\Models\Payment;
+use App\Services\LoanStatementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +39,19 @@ class BorrowerLoanController extends Controller
             'installments' => $installments,
             'payments' => $this->paymentPayload($loan->payments),
         ]);
+    }
+
+    /**
+     * Show the borrower a printable statement of their own loan.
+     */
+    public function statement(Loan $loan, LoanStatementService $statementService): Response
+    {
+        Gate::authorize('viewOwn', $loan);
+
+        return Inertia::render(
+            'loans/statement',
+            $statementService->build($loan),
+        );
     }
 
     /**

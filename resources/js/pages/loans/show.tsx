@@ -4,6 +4,7 @@ import {
     ArrowLeft,
     CalendarClock,
     Landmark,
+    Printer,
     Wallet,
 } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { formatDate, formatDateOnly, formatMoney } from '@/lib/format';
 import { dashboard } from '@/routes';
+import { statement as loanStatement } from '@/routes/loans';
 import type {
     BorrowerLoanTotals,
     Loan,
@@ -87,6 +89,16 @@ export default function ShowMyLoan({
                     actions={
                         <>
                             <LoanStatusBadge status={loan.status} />
+
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={loanStatement.url(loan.id)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Printer /> Statement
+                                </a>
+                            </Button>
 
                             <Button variant="outline" asChild>
                                 <Link href={dashboard()} prefetch>

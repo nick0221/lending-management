@@ -126,3 +126,66 @@ test('guests are sent to the login page from a loan', function () {
     $this->get(route('loans.show', $loan))
         ->assertRedirect(route('login'));
 });
+
+test('a borrower can print a statement for their own loan', function () {
+    [$user, $borrower] = borrowerAccount();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->for($borrower)->create([
+        'principal' => 10000,
+    ]);
+
+    LoanInstallment::factory()->for($loan)->create([
+        'sequence' => 1,
+        'due_date' => today()->subDays(5)->toDateString(),
+        'principal_due' => 1000,
+        'interest_due' => 100,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '400.00',
+        'payment_date' => today(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('loans.statement', $loan))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('loans/statement')
+            ->where('loan.id', $loan->id)
+            ->where('borrower.name', $borrower->name)
+            ->has('installments', 1)
+            ->where('installments.0.outstanding', '1100.00')
+            ->has('payments', 1)
+            ->where('payments.0.amount', '400.00')
+            ->where('payments.0.can_reverse', false)
+            ->where('totals.payable', '1100.00')
+            ->where('totals.paid', '400.00')
+            ->where('totals.outstanding', '1100.00')
+            ->where('totals.arrears', '1100.00')
+        );
+});
+
+test('a borrower cannot print another borrower statement', function () {
+    [$user] = borrowerAccount();
+
+    $otherBorrower = Borrower::factory()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->for($otherBorrower)->create();
+
+    $this->actingAs($user)
+        ->get(route('loans.statement', $loan))
+        ->assertForbidden();
+});
+
+test('staff and unlinked accounts cannot print the borrower statement', function () {
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('loans.statement', $loan))
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('loans.statement', $loan))
+        ->assertForbidden();
+});
