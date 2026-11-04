@@ -35,6 +35,7 @@ import {
 import { formatDateOnly, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as adminLoans, show as showLoan } from '@/routes/admin/loans';
 import {
     exportMethod as exportPayments,
@@ -429,7 +430,15 @@ export default function PaymentsIndex({
                                             </Link>
 
                                             <div className="text-sm">
-                                                {payment.borrower_name}
+                                                <Link
+                                                    href={showBorrower(
+                                                        payment.borrower_id,
+                                                    )}
+                                                    className="underline-offset-4 hover:underline"
+                                                    prefetch
+                                                >
+                                                    {payment.borrower_name}
+                                                </Link>
                                             </div>
 
                                             <div className="text-xs text-muted-foreground">

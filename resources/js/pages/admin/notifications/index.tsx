@@ -36,6 +36,7 @@ import {
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { show as showBorrower } from '@/routes/admin/borrowers';
 import { show as showLoan } from '@/routes/admin/loans';
 import { resend as resendNotification } from '@/routes/admin/loans/notifications';
 import {
@@ -385,7 +386,20 @@ export default function NotificationsIndex({
                                         <TableCell>
                                             {log.borrower_name ? (
                                                 <div className="font-medium">
-                                                    {log.borrower_name}
+                                                    {log.borrower_id !==
+                                                    null ? (
+                                                        <Link
+                                                            href={showBorrower(
+                                                                log.borrower_id,
+                                                            )}
+                                                            className="underline-offset-4 hover:underline"
+                                                            prefetch
+                                                        >
+                                                            {log.borrower_name}
+                                                        </Link>
+                                                    ) : (
+                                                        log.borrower_name
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="text-muted-foreground">

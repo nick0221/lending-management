@@ -46,6 +46,7 @@ import {
     officer as assignCollectionOfficer,
 } from '@/routes/admin/collections';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import type {
     CollectionChannelOption,
@@ -616,7 +617,15 @@ export default function CollectionsIndex({
                                             </Link>
 
                                             <div className="text-sm">
-                                                {loan.borrower_name}
+                                                <Link
+                                                    href={showBorrower(
+                                                        loan.borrower_id,
+                                                    )}
+                                                    className="underline-offset-4 hover:underline"
+                                                    prefetch
+                                                >
+                                                    {loan.borrower_name}
+                                                </Link>
                                             </div>
 
                                             <div className="text-xs text-muted-foreground">
