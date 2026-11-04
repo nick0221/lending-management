@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -28,7 +28,7 @@ class ReportController extends Controller
     public function index(Request $request): Response
     {
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears'], true)
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products'], true)
             ? $currentTab
             : 'portfolio';
 
@@ -40,6 +40,7 @@ class ReportController extends Controller
             'risk' => $this->reporting->portfolioAtRisk(),
             'collections' => $this->reporting->collections(),
             'loans' => $this->reporting->loanRows()->values()->all(),
+            'products' => $this->reporting->productPerformance()->all(),
             'currentTab' => $currentTab,
             'filters' => $filters,
         ]);
@@ -77,6 +78,7 @@ class ReportController extends Controller
             'loans' => $this->exportLoans(),
             'collections' => $this->exportCollections(),
             'arrears' => $this->exportArrears(),
+            'products' => $this->exportProducts(),
         };
     }
 
@@ -174,6 +176,37 @@ class ReportController extends Controller
             ->values();
 
         return $this->exportLoanRows('arrears-report.csv', $loans);
+    }
+
+    /**
+     * Export per-product lending and collection performance.
+     */
+    private function exportProducts(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = $this->reporting->productPerformance()
+            ->map(fn (array $product): array => [
+                $product['product'],
+                $product['loans'],
+                $product['open_loans'],
+                $money($product['disbursed']),
+                $money($product['collected']),
+                $money($product['outstanding']),
+                $money($product['arrears']),
+                number_format($product['collection_rate'], 2, '.', '').'%',
+            ]);
+
+        return $this->csv('product-performance.csv', [
+            'Product',
+            'Loans',
+            'Open loans',
+            'Principal disbursed',
+            'Collected',
+            'Outstanding',
+            'Arrears',
+            'Collection rate',
+        ], $rows);
     }
 
     /**

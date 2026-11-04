@@ -577,6 +577,7 @@ export type ReportLoanRow = {
     id: number;
     borrower_id: number;
     borrower: string | null;
+    product_id: number | null;
     product: string | null;
     principal: number;
     status: LoanStatus;
@@ -592,6 +593,18 @@ export type ReportLoanRow = {
     arrears: number;
     days_past_due: number;
     aging: AgingBuckets;
+};
+
+export type ProductPerformance = {
+    product_id: number | null;
+    product: string | null;
+    loans: number;
+    open_loans: number;
+    disbursed: number;
+    collected: number;
+    outstanding: number;
+    arrears: number;
+    collection_rate: number;
 };
 
 export type RecentPayment = {

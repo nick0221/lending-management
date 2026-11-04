@@ -82,6 +82,42 @@ class ReportingService
     }
 
     /**
+     * Per-product lending and collection performance.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function productPerformance(): Collection
+    {
+        return $this->loanRows()
+            ->groupBy('product_id')
+            ->map(function (Collection $rows): array {
+                $open = $rows->where('is_open', true);
+                $disbursed = round(
+                    $rows->filter(fn (array $loan): bool => $loan['disbursed_at'] !== null)
+                        ->sum('principal'),
+                    2,
+                );
+                $collected = round($rows->sum('paid'), 2);
+
+                return [
+                    'product_id' => $rows->first()['product_id'],
+                    'product' => $rows->first()['product'],
+                    'loans' => $rows->count(),
+                    'open_loans' => $open->count(),
+                    'disbursed' => $disbursed,
+                    'collected' => $collected,
+                    'outstanding' => round($open->sum('outstanding'), 2),
+                    'arrears' => round($open->sum('arrears'), 2),
+                    'collection_rate' => $disbursed > 0
+                        ? round($collected / $disbursed * 100, 2)
+                        : 0.0,
+                ];
+            })
+            ->sortByDesc('disbursed')
+            ->values();
+    }
+
+    /**
      * Headline portfolio figures.
      *
      * @return array<string, int|float>
@@ -395,6 +431,7 @@ class ReportingService
             'id' => $loan->id,
             'borrower_id' => $loan->borrower_id,
             'borrower' => $loan->borrower?->name,
+            'product_id' => $loan->loan_product_id,
             'product' => $loan->loanProduct?->name,
             'principal' => round((float) $loan->principal, 2),
             'status' => $loan->status->value,

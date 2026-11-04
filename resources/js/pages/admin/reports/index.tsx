@@ -46,6 +46,7 @@ import type {
     Collections,
     PortfolioRisk,
     PortfolioSummary,
+    ProductPerformance,
     ReportFilters,
     ReportLoanRow,
 } from '@/types';
@@ -62,7 +63,12 @@ const agingRows: {
     { key: 'days_over_90', label: 'Over 90 days', barClass: 'bg-red-700' },
 ];
 
-type ReportsTab = 'portfolio' | 'aging' | 'collections' | 'arrears';
+type ReportsTab =
+    | 'portfolio'
+    | 'aging'
+    | 'collections'
+    | 'arrears'
+    | 'products';
 
 const REPORT_ROWS_PER_PAGE = 50;
 
@@ -457,6 +463,7 @@ export default function ReportsIndex({
     risk,
     collections,
     loans,
+    products,
     currentTab,
     filters,
 }: {
@@ -465,6 +472,7 @@ export default function ReportsIndex({
     risk: PortfolioRisk;
     collections: Collections;
     loans: ReportLoanRow[];
+    products: ProductPerformance[];
     currentTab: ReportsTab;
     filters: ReportFilters;
 }) {
@@ -580,6 +588,30 @@ export default function ReportsIndex({
         0,
     );
 
+    const productTotals = products.reduce(
+        (totals, product) => ({
+            loans: totals.loans + product.loans,
+            open_loans: totals.open_loans + product.open_loans,
+            disbursed: totals.disbursed + product.disbursed,
+            collected: totals.collected + product.collected,
+            outstanding: totals.outstanding + product.outstanding,
+            arrears: totals.arrears + product.arrears,
+        }),
+        {
+            loans: 0,
+            open_loans: 0,
+            disbursed: 0,
+            collected: 0,
+            outstanding: 0,
+            arrears: 0,
+        },
+    );
+
+    const overallCollectionRate =
+        productTotals.disbursed > 0
+            ? (productTotals.collected / productTotals.disbursed) * 100
+            : 0;
+
     const exportMenu = (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -635,6 +667,18 @@ export default function ReportsIndex({
                         }
                     >
                         Collections
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
+                                { report: 'products' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Product performance
                     </a>
                 </DropdownMenuItem>
             </DropdownMenuContent>
@@ -719,6 +763,14 @@ export default function ReportsIndex({
                             count: arrearsLoans.length,
                             href: reportsIndex({
                                 query: { tab: 'arrears', ...periodQuery },
+                            }),
+                        },
+                        {
+                            value: 'products',
+                            label: 'Products',
+                            count: products.length,
+                            href: reportsIndex({
+                                query: { tab: 'products', ...periodQuery },
                             }),
                         },
                     ]}
@@ -1043,6 +1095,166 @@ export default function ReportsIndex({
                                 loans={arrearsLoans}
                                 emptyMessage="No loans in arrears."
                             />
+                        </SectionCard>
+                    </>
+                )}
+                {currentTab === 'products' && (
+                    <>
+                        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <StatCard
+                                title="Principal disbursed"
+                                value={formatMoney(productTotals.disbursed)}
+                                hint={`${productTotals.loans} loans across ${products.length} products`}
+                            />
+                            <StatCard
+                                title="Collected"
+                                value={formatMoney(productTotals.collected)}
+                                hint="Against disbursed principal"
+                                tone="success"
+                            />
+                            <StatCard
+                                title="Outstanding"
+                                value={formatMoney(productTotals.outstanding)}
+                                hint={`${productTotals.open_loans} open loans`}
+                            />
+                            <StatCard
+                                title="Collection rate"
+                                value={formatPercent(overallCollectionRate)}
+                                hint="Collected ÷ disbursed"
+                                tone={
+                                    overallCollectionRate >= 100
+                                        ? 'success'
+                                        : 'default'
+                                }
+                            />
+                        </section>
+
+                        <SectionCard
+                            title="Product performance"
+                            description="Lending and collection by loan product. The date filter narrows the cohort by application date."
+                        >
+                            {products.length === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No loans fall in this period.
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Product</TableHead>
+                                                <TableHead className="text-right">
+                                                    Loans
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Open
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Disbursed
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Collected
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Outstanding
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Arrears
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Rate
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {products.map((product) => (
+                                                <TableRow
+                                                    key={
+                                                        product.product_id ??
+                                                        'unassigned'
+                                                    }
+                                                >
+                                                    <TableCell className="font-medium">
+                                                        {product.product ??
+                                                            'Unassigned'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {product.loans}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {product.open_loans}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            product.disbursed,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            product.collected,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            product.outstanding,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            product.arrears,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatPercent(
+                                                            product.collection_rate,
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell className="font-medium">
+                                                    All products
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {productTotals.loans}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {productTotals.open_loans}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        productTotals.disbursed,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        productTotals.collected,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        productTotals.outstanding,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        productTotals.arrears,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatPercent(
+                                                        overallCollectionRate,
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </div>
+                            )}
                         </SectionCard>
                     </>
                 )}
