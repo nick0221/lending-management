@@ -44,6 +44,7 @@ import {
 import type {
     AgingBuckets,
     Collections,
+    OfficerPerformance,
     PortfolioRisk,
     PortfolioSummary,
     ProductPerformance,
@@ -68,7 +69,8 @@ type ReportsTab =
     | 'aging'
     | 'collections'
     | 'arrears'
-    | 'products';
+    | 'products'
+    | 'officers';
 
 const REPORT_ROWS_PER_PAGE = 50;
 
@@ -464,6 +466,7 @@ export default function ReportsIndex({
     collections,
     loans,
     products,
+    officers,
     currentTab,
     filters,
 }: {
@@ -473,6 +476,7 @@ export default function ReportsIndex({
     collections: Collections;
     loans: ReportLoanRow[];
     products: ProductPerformance[];
+    officers: OfficerPerformance[];
     currentTab: ReportsTab;
     filters: ReportFilters;
 }) {
@@ -612,6 +616,23 @@ export default function ReportsIndex({
             ? (productTotals.collected / productTotals.disbursed) * 100
             : 0;
 
+    const officerTotals = officers.reduce(
+        (totals, officer) => ({
+            contacts: totals.contacts + officer.contacts,
+            promises: totals.promises + officer.promises,
+            promised_amount: totals.promised_amount + officer.promised_amount,
+            paid: totals.paid + officer.paid,
+            no_answer: totals.no_answer + officer.no_answer,
+        }),
+        {
+            contacts: 0,
+            promises: 0,
+            promised_amount: 0,
+            paid: 0,
+            no_answer: 0,
+        },
+    );
+
     const exportMenu = (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -679,6 +700,18 @@ export default function ReportsIndex({
                         }
                     >
                         Product performance
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
+                                { report: 'officers' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Officer performance
                     </a>
                 </DropdownMenuItem>
             </DropdownMenuContent>
@@ -771,6 +804,14 @@ export default function ReportsIndex({
                             count: products.length,
                             href: reportsIndex({
                                 query: { tab: 'products', ...periodQuery },
+                            }),
+                        },
+                        {
+                            value: 'officers',
+                            label: 'Officers',
+                            count: officers.length,
+                            href: reportsIndex({
+                                query: { tab: 'officers', ...periodQuery },
                             }),
                         },
                     ]}
@@ -1249,6 +1290,147 @@ export default function ReportsIndex({
                                                     {formatPercent(
                                                         overallCollectionRate,
                                                     )}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </div>
+                            )}
+                        </SectionCard>
+                    </>
+                )}
+                {currentTab === 'officers' && (
+                    <>
+                        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <StatCard
+                                title="Contacts logged"
+                                value={String(officerTotals.contacts)}
+                                hint={`${officers.length} ${
+                                    officers.length === 1
+                                        ? 'officer'
+                                        : 'officers'
+                                } working the book`}
+                            />
+                            <StatCard
+                                title="Promises"
+                                value={String(officerTotals.promises)}
+                                hint={formatMoney(
+                                    officerTotals.promised_amount,
+                                )}
+                            />
+                            <StatCard
+                                title="Paid outcomes"
+                                value={String(officerTotals.paid)}
+                                hint="Contacts marked paid"
+                                tone="success"
+                            />
+                            <StatCard
+                                title="No answer"
+                                value={String(officerTotals.no_answer)}
+                                hint="Unreachable attempts"
+                                tone={
+                                    officerTotals.no_answer > 0
+                                        ? 'warning'
+                                        : 'default'
+                                }
+                            />
+                        </section>
+
+                        <SectionCard
+                            title="Officer performance"
+                            description="Collection contacts grouped by the officer who logged them. The date filter narrows by contact date, not loan application date."
+                        >
+                            {officers.length === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No collection contacts fall in this period.
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Officer</TableHead>
+                                                <TableHead className="text-right">
+                                                    Contacts
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Loans
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Promises
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Promised
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Paid
+                                                </TableHead>
+                                                <TableHead className="hidden text-right lg:table-cell">
+                                                    No answer
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {officers.map((officer) => (
+                                                <TableRow
+                                                    key={
+                                                        officer.user_id ??
+                                                        'unassigned'
+                                                    }
+                                                >
+                                                    <TableCell className="font-medium">
+                                                        {officer.officer ??
+                                                            'Unassigned'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {officer.contacts}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {officer.loans}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {officer.promises}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            officer.promised_amount,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {officer.paid}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                                                        {officer.no_answer}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell className="font-medium">
+                                                    All officers
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {officerTotals.contacts}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    —
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {officerTotals.promises}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        officerTotals.promised_amount,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {officerTotals.paid}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                                                    {officerTotals.no_answer}
                                                 </TableCell>
                                             </TableRow>
                                         </TableFooter>

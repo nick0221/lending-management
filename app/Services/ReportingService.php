@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
 use App\Models\Borrower;
+use App\Models\CollectionContact;
 use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
@@ -79,6 +81,53 @@ class ReportingService
             ->orderBy('id')
             ->get()
             ->map(fn (Loan $loan): array => $this->loanRow($loan));
+    }
+
+    /**
+     * Collection activity and promises grouped by the officer who logged it.
+     *
+     * The period narrows contacts by the date they were logged, not by the
+     * loan application date used by the rest of the reports.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function officerPerformance(): Collection
+    {
+        return CollectionContact::query()
+            ->with('user:id,name')
+            ->when(
+                $this->from !== null,
+                fn ($query) => $query->whereDate('contacted_at', '>=', $this->from->toDateString()),
+            )
+            ->when(
+                $this->to !== null,
+                fn ($query) => $query->whereDate('contacted_at', '<=', $this->to->toDateString()),
+            )
+            ->orderBy('contacted_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function (Collection $contacts): array {
+                $promises = $contacts->filter(
+                    fn (CollectionContact $contact): bool => $contact->outcome->isPromise(),
+                );
+
+                return [
+                    'user_id' => $contacts->first()->user_id,
+                    'officer' => $contacts->first()->user?->name,
+                    'contacts' => $contacts->count(),
+                    'loans' => $contacts->pluck('loan_id')->unique()->count(),
+                    'promises' => $promises->count(),
+                    'promised_amount' => round((float) $promises->sum('promised_amount'), 2),
+                    'paid' => $contacts
+                        ->filter(fn (CollectionContact $contact): bool => $contact->outcome === CollectionOutcome::Paid)
+                        ->count(),
+                    'no_answer' => $contacts
+                        ->filter(fn (CollectionContact $contact): bool => $contact->outcome === CollectionOutcome::NoAnswer)
+                        ->count(),
+                ];
+            })
+            ->sortByDesc('contacts')
+            ->values();
     }
 
     /**

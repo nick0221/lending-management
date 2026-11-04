@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
+use App\Models\CollectionContact;
 use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Models\Payment;
@@ -21,6 +23,7 @@ test('the reports page defaults to the portfolio tab', function () {
             ->has('collections')
             ->has('loans')
             ->has('products')
+            ->has('officers')
         );
 });
 
@@ -31,7 +34,7 @@ test('the reports page selects the requested tab', function (string $tab) {
         ->get(route('admin.reports.index', ['tab' => $tab]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('currentTab', $tab));
-})->with(['aging', 'collections', 'arrears', 'products']);
+})->with(['aging', 'collections', 'arrears', 'products', 'officers']);
 
 test('the reports page falls back to the portfolio tab for an unknown tab', function () {
     $admin = User::factory()->admin()->create();
@@ -125,4 +128,63 @@ test('product performance can be downloaded as a CSV', function () {
         ->toContain('Product')
         ->toContain('Collection rate')
         ->toContain('Salary Advance');
+});
+
+test('officer performance groups collection contacts by officer', function () {
+    $admin = User::factory()->admin()->create();
+    $officer = User::factory()->admin()->create(['name' => 'Officer One']);
+    $loan = Loan::factory()->create();
+
+    CollectionContact::factory()->create([
+        'user_id' => $officer->id,
+        'loan_id' => $loan->id,
+        'outcome' => CollectionOutcome::Contacted->value,
+    ]);
+
+    CollectionContact::factory()->promised('2500.00')->create([
+        'user_id' => $officer->id,
+        'loan_id' => $loan->id,
+    ]);
+
+    CollectionContact::factory()->create([
+        'user_id' => $officer->id,
+        'loan_id' => $loan->id,
+        'outcome' => CollectionOutcome::NoAnswer->value,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['tab' => 'officers']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/reports/index')
+            ->where('currentTab', 'officers')
+            ->has('officers', 1)
+            ->where('officers.0.officer', 'Officer One')
+            ->where('officers.0.contacts', 3)
+            ->where('officers.0.loans', 1)
+            ->where('officers.0.promises', 1)
+            ->where('officers.0.promised_amount', 2500)
+            ->where('officers.0.no_answer', 1)
+        );
+});
+
+test('officer performance can be downloaded as a CSV', function () {
+    $admin = User::factory()->admin()->create();
+    $officer = User::factory()->admin()->create(['name' => 'Officer One']);
+
+    CollectionContact::factory()->promised('2500.00')->create([
+        'user_id' => $officer->id,
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reports.download', ['report' => 'officers']));
+
+    $response->assertOk();
+
+    $csv = $response->streamedContent();
+
+    expect($csv)
+        ->toContain('Officer')
+        ->toContain('Promised amount')
+        ->toContain('Officer One');
 });

@@ -607,6 +607,17 @@ export type ProductPerformance = {
     collection_rate: number;
 };
 
+export type OfficerPerformance = {
+    user_id: number | null;
+    officer: string | null;
+    contacts: number;
+    loans: number;
+    promises: number;
+    promised_amount: number;
+    paid: number;
+    no_answer: number;
+};
+
 export type RecentPayment = {
     id: number;
     loan_id: number;

@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -28,7 +28,7 @@ class ReportController extends Controller
     public function index(Request $request): Response
     {
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products'], true)
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers'], true)
             ? $currentTab
             : 'portfolio';
 
@@ -41,6 +41,7 @@ class ReportController extends Controller
             'collections' => $this->reporting->collections(),
             'loans' => $this->reporting->loanRows()->values()->all(),
             'products' => $this->reporting->productPerformance()->all(),
+            'officers' => $this->reporting->officerPerformance()->all(),
             'currentTab' => $currentTab,
             'filters' => $filters,
         ]);
@@ -79,6 +80,7 @@ class ReportController extends Controller
             'collections' => $this->exportCollections(),
             'arrears' => $this->exportArrears(),
             'products' => $this->exportProducts(),
+            'officers' => $this->exportOfficers(),
         };
     }
 
@@ -206,6 +208,35 @@ class ReportController extends Controller
             'Outstanding',
             'Arrears',
             'Collection rate',
+        ], $rows);
+    }
+
+    /**
+     * Export collection activity grouped by officer.
+     */
+    private function exportOfficers(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = $this->reporting->officerPerformance()
+            ->map(fn (array $officer): array => [
+                $officer['officer'] ?? 'Unassigned',
+                $officer['contacts'],
+                $officer['loans'],
+                $officer['promises'],
+                $money($officer['promised_amount']),
+                $officer['paid'],
+                $officer['no_answer'],
+            ]);
+
+        return $this->csv('officer-performance.csv', [
+            'Officer',
+            'Contacts',
+            'Loans',
+            'Promises',
+            'Promised amount',
+            'Paid outcomes',
+            'No answer',
         ], $rows);
     }
 
