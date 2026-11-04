@@ -642,6 +642,15 @@ export type OfficerPerformance = {
     no_answer: number;
 };
 
+export type PaymentMethodPerformance = {
+    method: PaymentMethod;
+    method_label: string;
+    completed_count: number;
+    completed_amount: number;
+    reversed_count: number;
+    reversed_amount: number;
+};
+
 export type RecentPayment = {
     id: number;
     loan_id: number;

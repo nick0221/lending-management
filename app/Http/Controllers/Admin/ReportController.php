@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -43,6 +43,7 @@ class ReportController extends Controller
             'loans' => $this->reporting->loanRows()->values()->all(),
             'products' => $this->reporting->productPerformance()->all(),
             'officers' => $this->reporting->officerPerformance()->all(),
+            'payment_methods' => $this->reporting->paymentMethodPerformance()->all(),
             'currentTab' => $currentTab,
             'filters' => $filters,
         ]);
@@ -82,6 +83,7 @@ class ReportController extends Controller
             'arrears' => $this->exportArrears(),
             'products' => $this->exportProducts(),
             'officers' => $this->exportOfficers(),
+            'payments' => $this->exportPayments(),
         };
     }
 
@@ -238,6 +240,31 @@ class ReportController extends Controller
             'Promised amount',
             'Paid outcomes',
             'No answer',
+        ], $rows);
+    }
+
+    /**
+     * Export payments received per method for the report period.
+     */
+    private function exportPayments(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = $this->reporting->paymentMethodPerformance()
+            ->map(fn (array $method): array => [
+                $method['method_label'],
+                $method['completed_count'],
+                $money($method['completed_amount']),
+                $method['reversed_count'],
+                $money($method['reversed_amount']),
+            ]);
+
+        return $this->csv('payment-methods.csv', [
+            'Method',
+            'Completed payments',
+            'Completed amount',
+            'Reversed payments',
+            'Reversed amount',
         ], $rows);
     }
 

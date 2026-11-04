@@ -2,6 +2,7 @@
 
 use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
+use App\Enums\PaymentMethod;
 use App\Models\CollectionContact;
 use App\Models\Loan;
 use App\Models\LoanProduct;
@@ -25,6 +26,7 @@ test('the reports page defaults to the portfolio tab', function () {
             ->has('loans')
             ->has('products')
             ->has('officers')
+            ->has('payment_methods')
         );
 });
 
@@ -268,4 +270,105 @@ test('officer performance can be downloaded as a CSV', function () {
         ->toContain('Officer')
         ->toContain('Promised amount')
         ->toContain('Officer One');
+});
+
+test('payment methods report completed and reversed totals for the period', function () {
+    $this->travelTo('2026-11-15 10:00:00');
+
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->create();
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '500.00',
+        'method' => PaymentMethod::Cash->value,
+        'payment_date' => '2026-11-03',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '250.00',
+        'method' => PaymentMethod::Cash->value,
+        'payment_date' => '2026-11-04',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '900.00',
+        'method' => PaymentMethod::BankTransfer->value,
+        'payment_date' => '2026-11-05',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '125.00',
+        'method' => PaymentMethod::BankTransfer->value,
+        'payment_date' => '2026-11-06',
+        'reversed_at' => now(),
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '700.00',
+        'method' => PaymentMethod::MobileMoney->value,
+        'payment_date' => '2026-08-01',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', [
+            'tab' => 'collections',
+            'from' => '2026-11-01',
+            'to' => '2026-11-30',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payment_methods', 2)
+            ->where('payment_methods.0.method_label', 'Bank Transfer')
+            ->where('payment_methods.0.completed_count', 1)
+            ->where('payment_methods.0.completed_amount', 900)
+            ->where('payment_methods.0.reversed_count', 1)
+            ->where('payment_methods.0.reversed_amount', 125)
+            ->where('payment_methods.1.method_label', 'Cash')
+            ->where('payment_methods.1.completed_count', 2)
+            ->where('payment_methods.1.completed_amount', 750)
+        );
+});
+
+test('the payment methods report can be downloaded as a CSV', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->create();
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '400.00',
+        'method' => PaymentMethod::Cash->value,
+        'payment_date' => '2026-11-03',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '90.00',
+        'method' => PaymentMethod::Cash->value,
+        'payment_date' => '2026-11-04',
+        'reversed_at' => now(),
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '600.00',
+        'method' => PaymentMethod::MobileMoney->value,
+        'payment_date' => '2026-11-05',
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reports.download', [
+            'report' => 'payments',
+            'from' => '2026-11-01',
+            'to' => '2026-11-30',
+        ]));
+
+    $response->assertOk();
+
+    $csv = $response->streamedContent();
+
+    expect($csv)
+        ->toContain('Method')
+        ->toContain('Completed amount')
+        ->toContain('Mobile Money')
+        ->toContain('600.00')
+        ->toContain('Cash')
+        ->toContain('400.00')
+        ->toContain('90.00');
 });

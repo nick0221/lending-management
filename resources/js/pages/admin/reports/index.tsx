@@ -46,6 +46,7 @@ import type {
     Collections,
     CollectionsTrendPoint,
     OfficerPerformance,
+    PaymentMethodPerformance,
     PortfolioRisk,
     PortfolioSummary,
     ProductPerformance,
@@ -469,6 +470,7 @@ export default function ReportsIndex({
     loans,
     products,
     officers,
+    payment_methods: paymentMethods,
     currentTab,
     filters,
 }: {
@@ -480,6 +482,7 @@ export default function ReportsIndex({
     loans: ReportLoanRow[];
     products: ProductPerformance[];
     officers: OfficerPerformance[];
+    payment_methods: PaymentMethodPerformance[];
     currentTab: ReportsTab;
     filters: ReportFilters;
 }) {
@@ -654,6 +657,21 @@ export default function ReportsIndex({
         },
     );
 
+    const paymentMethodTotals = paymentMethods.reduce(
+        (totals, method) => ({
+            completed_count: totals.completed_count + method.completed_count,
+            completed_amount: totals.completed_amount + method.completed_amount,
+            reversed_count: totals.reversed_count + method.reversed_count,
+            reversed_amount: totals.reversed_amount + method.reversed_amount,
+        }),
+        {
+            completed_count: 0,
+            completed_amount: 0,
+            reversed_count: 0,
+            reversed_amount: 0,
+        },
+    );
+
     const exportMenu = (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -709,6 +727,18 @@ export default function ReportsIndex({
                         }
                     >
                         Collections
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
+                                { report: 'payments' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Payment methods
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -1132,6 +1162,106 @@ export default function ReportsIndex({
                                         </TableFooter>
                                     </Table>
                                 </>
+                            )}
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Payments by method"
+                            description={`Completed and reversed payments grouped by method ${
+                                periodLabel
+                                    ? 'in this period'
+                                    : 'across all recorded payments'
+                            }.`}
+                        >
+                            {paymentMethods.length === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No payments were recorded in this period.
+                                </p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Method</TableHead>
+                                            <TableHead className="hidden text-right sm:table-cell">
+                                                Payments
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Completed
+                                            </TableHead>
+                                            <TableHead className="hidden text-right md:table-cell">
+                                                Share
+                                            </TableHead>
+                                            <TableHead className="hidden text-right lg:table-cell">
+                                                Reversed
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {paymentMethods.map((method) => (
+                                            <TableRow key={method.method}>
+                                                <TableCell className="font-medium">
+                                                    {method.method_label}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {method.completed_count}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        method.completed_amount,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
+                                                    {formatPercent(
+                                                        paymentMethodTotals.completed_amount >
+                                                            0
+                                                            ? (method.completed_amount /
+                                                                  paymentMethodTotals.completed_amount) *
+                                                                  100
+                                                            : 0,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right text-muted-foreground tabular-nums lg:table-cell">
+                                                    {method.reversed_count === 0
+                                                        ? '—'
+                                                        : `${method.reversed_count} · ${formatMoney(
+                                                              method.reversed_amount,
+                                                          )}`}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+
+                                    <TableFooter>
+                                        <TableRow>
+                                            <TableCell>Total</TableCell>
+                                            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                {
+                                                    paymentMethodTotals.completed_count
+                                                }
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {formatMoney(
+                                                    paymentMethodTotals.completed_amount,
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
+                                                {paymentMethodTotals.completed_amount >
+                                                0
+                                                    ? '100.00%'
+                                                    : '0.00%'}
+                                            </TableCell>
+                                            <TableCell className="hidden text-right text-muted-foreground tabular-nums lg:table-cell">
+                                                {paymentMethodTotals.reversed_count ===
+                                                0
+                                                    ? '—'
+                                                    : `${paymentMethodTotals.reversed_count} · ${formatMoney(
+                                                          paymentMethodTotals.reversed_amount,
+                                                      )}`}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableFooter>
+                                </Table>
                             )}
                         </SectionCard>
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
+use App\Enums\PaymentMethod;
 use App\Models\Borrower;
 use App\Models\CollectionContact;
 use App\Models\Disbursement;
@@ -184,6 +185,44 @@ class ReportingService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Payments received per method inside the report period.
+     *
+     * The period narrows payments by the date they were received rather than
+     * the loan application date used by the rest of the reports.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function paymentMethodPerformance(): Collection
+    {
+        return Payment::query()
+            ->when(
+                $this->from !== null,
+                fn ($query) => $query->whereDate('payment_date', '>=', $this->from->toDateString()),
+            )
+            ->when(
+                $this->to !== null,
+                fn ($query) => $query->whereDate('payment_date', '<=', $this->to->toDateString()),
+            )
+            ->get(['amount', 'method', 'reversed_at'])
+            ->groupBy(fn (Payment $payment): string => $payment->method->value)
+            ->map(function (Collection $payments, string $method): array {
+                $completed = $payments->whereNull('reversed_at');
+                $reversed = $payments->whereNotNull('reversed_at');
+
+                return [
+                    'method' => $method,
+                    'method_label' => PaymentMethod::from($method)->label(),
+                    'completed_count' => $completed->count(),
+                    'completed_amount' => round((float) $completed->sum('amount'), 2),
+                    'reversed_count' => $reversed->count(),
+                    'reversed_amount' => round((float) $reversed->sum('amount'), 2),
+                ];
+            })
+            ->sortByDesc('completed_amount')
+            ->values();
     }
 
     /**
