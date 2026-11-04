@@ -355,3 +355,54 @@ test('nobody can delete their own account from the admin panel', function () {
 
     expect($superAdmin->fresh())->not->toBeNull();
 });
+
+test('the user register exports a CSV with the current role and search filters', function () {
+    $superAdmin = User::factory()->superAdmin()->create(['name' => 'Root Operator']);
+
+    User::factory()->admin()->create([
+        'name' => 'Ada Admin',
+        'email' => 'ada@example.com',
+    ]);
+
+    User::factory()->withTwoFactor()->create([
+        'name' => 'Grace User',
+        'email' => 'grace@example.com',
+    ]);
+
+    $response = $this->actingAs($superAdmin)
+        ->get(route('admin.users.export', ['role' => Role::User->value]));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Name')
+        ->toContain('Email status')
+        ->toContain('Two-factor')
+        ->toContain('Grace User')
+        ->toContain('grace@example.com')
+        ->toContain('Verified')
+        ->toContain('On')
+        ->not->toContain('Ada Admin')
+        ->not->toContain('Root Operator');
+
+    $searched = $this->actingAs($superAdmin)
+        ->get(route('admin.users.export', ['search' => 'Ada Admin']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($searched)
+        ->toContain('Ada Admin')
+        ->not->toContain('Grace User');
+});
+
+test('users without admin access cannot export the user register', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('admin.users.export'))
+        ->assertForbidden();
+});

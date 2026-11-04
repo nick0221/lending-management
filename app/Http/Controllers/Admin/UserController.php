@@ -7,15 +7,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Services\CsvExporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly CsvExporter $csvExporter) {}
+
     /**
      * Display a listing of the users.
      */
@@ -71,6 +75,22 @@ class UserController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    /**
+     * Stream the user register for the current filters as a CSV download.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        Gate::authorize('viewAny', User::class);
+
+        $search = trim($request->string('search')->toString());
+        $role = Role::tryFrom($request->string('role')->toString());
+
+        return $this->csvExporter->stream(
+            'users-'.now()->format('Y-m-d').'.csv',
+            $this->csvRows($role, $search),
+        );
     }
 
     /**
@@ -221,6 +241,47 @@ class UserController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('User deleted.')]);
 
         return to_route('admin.users.index');
+    }
+
+    /**
+     * Build the CSV rows lazily so a long register streams in chunks.
+     *
+     * @return \Generator<int, array<int, string|null>>
+     */
+    private function csvRows(?Role $role, string $search): \Generator
+    {
+        yield [
+            'Name',
+            'Email',
+            'Role',
+            'Email status',
+            'Two-factor',
+            'Joined',
+        ];
+
+        $users = User::query()
+            ->when($role, fn ($query) => $query->where('role', $role))
+            ->when(
+                $search !== '',
+                fn ($query) => $query->whereAny(
+                    ['name', 'email'],
+                    'like',
+                    "%{$search}%",
+                ),
+            )
+            ->orderBy('name')
+            ->lazy(500);
+
+        foreach ($users as $user) {
+            yield [
+                $user->name,
+                $user->email,
+                $user->role->label(),
+                $user->hasVerifiedEmail() ? 'Verified' : 'Pending',
+                $user->two_factor_confirmed_at !== null ? 'On' : 'Off',
+                $user->created_at?->toDateString(),
+            ];
+        }
     }
 
     /**

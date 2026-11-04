@@ -56,6 +56,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::post('users/{user}/password-reset', [UserController::class, 'sendPasswordReset'])
             ->middleware('throttle:reminders')
             ->name('users.password-reset');
+        Route::get('users/export', [UserController::class, 'export'])->name('users.export');
         Route::resource('users', UserController::class)->except('show');
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');

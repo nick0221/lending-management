@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     BadgeCheck,
     Clock,
+    Download,
     Plus,
     RotateCcw,
     ShieldCheck,
@@ -31,6 +32,7 @@ import { index as rolesIndex } from '@/routes/admin/roles';
 import {
     create as createUser,
     edit as editUser,
+    exportMethod as exportUsers,
     index as usersIndex,
 } from '@/routes/admin/users';
 import type { AdminUserListItem, Paginated, Role, RoleOption } from '@/types';
@@ -63,6 +65,13 @@ export default function UsersIndex({
 
     const isFiltered = search !== '' || currentRole !== null;
 
+    const exportHref = exportUsers({
+        query: {
+            ...(currentRole ? { role: currentRole } : {}),
+            ...(search ? { search } : {}),
+        },
+    });
+
     return (
         <>
             <Head title="Users" />
@@ -73,6 +82,13 @@ export default function UsersIndex({
                     description="Manage accounts, access levels and two-factor status."
                     actions={
                         <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" asChild>
+                                <a href={exportHref.url}>
+                                    <Download />
+                                    Export CSV
+                                </a>
+                            </Button>
+
                             <Button variant="outline" asChild>
                                 <Link href={rolesIndex()} prefetch>
                                     <ShieldCheck />
