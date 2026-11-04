@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Bell,
     CalendarClock,
     Info,
     Landmark,
@@ -29,6 +30,7 @@ import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminLoans, show as showLoan } from '@/routes/admin/loans';
 import { show as showMyLoan } from '@/routes/loans';
+import { edit as editNotifications } from '@/routes/notifications';
 import type { BorrowerSummary } from '@/types';
 
 export default function Dashboard({
@@ -39,6 +41,8 @@ export default function Dashboard({
     const { auth } = usePage().props;
     const canAccessAdmin =
         auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
+    const loanUrl = (loanId: number) =>
+        canAccessAdmin ? showLoan(loanId) : showMyLoan(loanId);
 
     const hiddenUpcoming = summary
         ? summary.upcoming_count - summary.upcoming.length
@@ -69,6 +73,14 @@ export default function Dashboard({
                                 <KycBadge
                                     status={summary.borrower.kyc_status}
                                 />
+                            )}
+
+                            {summary && (
+                                <Button variant="outline" asChild>
+                                    <Link href={editNotifications()} prefetch>
+                                        <Bell /> Notifications
+                                    </Link>
+                                </Button>
                             )}
 
                             {canAccessAdmin && (
@@ -131,6 +143,17 @@ export default function Dashboard({
                                         : 'Nothing scheduled'
                                 }
                                 icon={CalendarClock}
+                                tone={
+                                    summary.next_due &&
+                                    summary.next_due.days_past_due > 0
+                                        ? 'danger'
+                                        : 'default'
+                                }
+                                href={
+                                    summary.next_due
+                                        ? loanUrl(summary.next_due.loan_id)
+                                        : undefined
+                                }
                             />
                             <StatCard
                                 title="Loans"
@@ -201,15 +224,29 @@ export default function Dashboard({
                                                         </div>
 
                                                         <p className="mt-0.5 text-xs text-muted-foreground md:hidden">
-                                                            #{row.loan_id} ·
-                                                            installment{' '}
+                                                            <Link
+                                                                href={loanUrl(
+                                                                    row.loan_id,
+                                                                )}
+                                                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                                                            >
+                                                                #{row.loan_id}
+                                                            </Link>{' '}
+                                                            · installment{' '}
                                                             {row.sequence}
                                                         </p>
                                                     </TableCell>
 
                                                     <TableCell className="hidden text-muted-foreground md:table-cell">
-                                                        #{row.loan_id} ·
-                                                        installment{' '}
+                                                        <Link
+                                                            href={loanUrl(
+                                                                row.loan_id,
+                                                            )}
+                                                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                                                        >
+                                                            #{row.loan_id}
+                                                        </Link>{' '}
+                                                        · installment{' '}
                                                         {row.sequence}
                                                     </TableCell>
 
@@ -268,12 +305,29 @@ export default function Dashboard({
                                                         </span>
 
                                                         <p className="mt-0.5 text-xs text-muted-foreground md:hidden">
-                                                            #{payment.loan_id}
+                                                            <Link
+                                                                href={loanUrl(
+                                                                    payment.loan_id,
+                                                                )}
+                                                                className="font-medium text-foreground underline-offset-4 hover:underline"
+                                                            >
+                                                                #
+                                                                {
+                                                                    payment.loan_id
+                                                                }
+                                                            </Link>
                                                         </p>
                                                     </TableCell>
 
                                                     <TableCell className="hidden md:table-cell">
-                                                        #{payment.loan_id}
+                                                        <Link
+                                                            href={loanUrl(
+                                                                payment.loan_id,
+                                                            )}
+                                                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                                                        >
+                                                            #{payment.loan_id}
+                                                        </Link>
                                                     </TableCell>
 
                                                     <TableCell className="text-right font-medium tabular-nums">
