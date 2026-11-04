@@ -2,10 +2,19 @@ import { router, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     FileBarChart,
+    HandCoins,
+    Landmark,
+    LayoutGrid,
     Loader2,
+    PhoneCall,
     Receipt,
+    ScrollText,
     Search,
+    Server,
+    Settings,
+    ShieldCheck,
     User,
+    Users,
     Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -20,10 +29,19 @@ import {
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
 import { formatDateOnly, formatMoney } from '@/lib/format';
-import { search as searchRoute } from '@/routes/admin';
+import {
+    dashboard as adminDashboard,
+    search as searchRoute,
+} from '@/routes/admin';
+import { index as activityIndex } from '@/routes/admin/activity';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
+import { index as collectionsIndex } from '@/routes/admin/collections';
+import { index as loanProductsIndex } from '@/routes/admin/loan-products';
 import { index as loansIndex } from '@/routes/admin/loans';
 import { index as reportsIndex } from '@/routes/admin/reports';
+import { edit as settingsEdit } from '@/routes/admin/settings';
+import { index as systemIndex } from '@/routes/admin/system';
+import { index as usersIndex } from '@/routes/admin/users';
 import type { GlobalSearchResults } from '@/types';
 
 const EMPTY_RESULTS: GlobalSearchResults = {
@@ -42,6 +60,74 @@ export function GlobalSearch() {
     const [loading, setLoading] = useState(false);
     const canSearch =
         auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
+    const isSuperAdmin = auth.user?.role === 'super_admin';
+
+    const pages = [
+        {
+            value: 'go-overview',
+            label: 'Overview',
+            url: adminDashboard().url,
+            icon: ShieldCheck,
+        },
+        {
+            value: 'go-users',
+            label: 'Users',
+            url: usersIndex().url,
+            icon: Users,
+        },
+        {
+            value: 'go-borrowers',
+            label: 'Borrowers',
+            url: borrowersIndex().url,
+            icon: HandCoins,
+        },
+        {
+            value: 'go-loan-products',
+            label: 'Loan products',
+            url: loanProductsIndex().url,
+            icon: Landmark,
+        },
+        {
+            value: 'go-loans',
+            label: 'Loans',
+            url: loansIndex().url,
+            icon: Wallet,
+        },
+        {
+            value: 'go-collections',
+            label: 'Collections',
+            url: collectionsIndex().url,
+            icon: PhoneCall,
+        },
+        {
+            value: 'go-reports',
+            label: 'Reports',
+            url: reportsIndex().url,
+            icon: FileBarChart,
+        },
+        ...(isSuperAdmin
+            ? [
+                  {
+                      value: 'go-activity',
+                      label: 'Activity log',
+                      url: activityIndex().url,
+                      icon: ScrollText,
+                  },
+                  {
+                      value: 'go-system',
+                      label: 'System status',
+                      url: systemIndex().url,
+                      icon: Server,
+                  },
+                  {
+                      value: 'go-settings',
+                      label: 'Settings',
+                      url: settingsEdit().url,
+                      icon: Settings,
+                  },
+              ]
+            : []),
+    ];
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -191,27 +277,16 @@ export function GlobalSearch() {
                     {query.trim() === '' && (
                         <>
                             <CommandGroup heading="Go to">
-                                <CommandItem
-                                    value="go-borrowers"
-                                    onSelect={() => go(borrowersIndex().url)}
-                                >
-                                    <User /> Borrowers
-                                    <ArrowRight className="ml-auto opacity-50" />
-                                </CommandItem>
-                                <CommandItem
-                                    value="go-loans"
-                                    onSelect={() => go(loansIndex().url)}
-                                >
-                                    <Wallet /> Loans
-                                    <ArrowRight className="ml-auto opacity-50" />
-                                </CommandItem>
-                                <CommandItem
-                                    value="go-reports"
-                                    onSelect={() => go(reportsIndex().url)}
-                                >
-                                    <FileBarChart /> Reports
-                                    <ArrowRight className="ml-auto opacity-50" />
-                                </CommandItem>
+                                {pages.map((page) => (
+                                    <CommandItem
+                                        key={page.value}
+                                        value={page.value}
+                                        onSelect={() => go(page.url)}
+                                    >
+                                        <page.icon /> {page.label}
+                                        <ArrowRight className="ml-auto opacity-50" />
+                                    </CommandItem>
+                                ))}
                             </CommandGroup>
                             <CommandSeparator />
                         </>
