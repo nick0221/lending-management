@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\NotificationLog;
 use App\Services\Settings;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -36,6 +38,7 @@ class SystemStatusController extends Controller
             ],
             'database' => $this->databaseStatus(),
             'queue' => $this->queueStatus(),
+            'failed_jobs' => $this->failedJobs(),
             'scheduled' => $this->scheduledCommands(),
             'mail' => [
                 'mailer' => config('mail.default'),
@@ -45,6 +48,64 @@ class SystemStatusController extends Controller
             'sms' => $this->smsStatus(),
             'storage' => $this->storageStatus(),
         ]);
+    }
+
+    /**
+     * Retry one failed job from the queue backlog.
+     */
+    public function retryFailedJob(Request $request, string $uuid): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        $exitCode = Artisan::call('queue:retry', ['id' => [$uuid]]);
+
+        Inertia::flash('toast', $exitCode === 0
+            ? ['type' => 'success', 'message' => __('Failed job queued for retry.')]
+            : ['type' => 'warning', 'message' => __('The failed job could not be retried.')]);
+
+        return back();
+    }
+
+    /**
+     * Remove one failed job without retrying it.
+     */
+    public function forgetFailedJob(Request $request, string $uuid): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        $exitCode = Artisan::call('queue:forget', ['id' => $uuid]);
+
+        Inertia::flash('toast', $exitCode === 0
+            ? ['type' => 'success', 'message' => __('Failed job removed.')]
+            : ['type' => 'warning', 'message' => __('The failed job could not be found.')]);
+
+        return back();
+    }
+
+    /**
+     * List the most recent failed jobs and a short reason for each.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function failedJobs(): array
+    {
+        return DB::table('failed_jobs')
+            ->latest('failed_at')
+            ->limit(20)
+            ->get()
+            ->map(function (object $job): array {
+                $payload = json_decode((string) $job->payload, true);
+                $exception = (string) $job->exception;
+
+                return [
+                    'uuid' => $job->uuid,
+                    'name' => $payload['displayName'] ?? $payload['job'] ?? 'Unknown job',
+                    'queue' => $job->queue,
+                    'failed_at' => Carbon::parse($job->failed_at)->toIso8601String(),
+                    'exception' => Str::limit(Str::before($exception, "\n"), 180),
+                ];
+            })
+            ->all();
     }
 
     /**

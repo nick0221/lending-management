@@ -125,6 +125,10 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->middleware('throttle:reports')
             ->name('activity.export');
         Route::get('system', [SystemStatusController::class, 'index'])->name('system.index');
+        Route::post('system/failed-jobs/{uuid}/retry', [SystemStatusController::class, 'retryFailedJob'])
+            ->name('system.failed-jobs.retry');
+        Route::delete('system/failed-jobs/{uuid}', [SystemStatusController::class, 'forgetFailedJob'])
+            ->name('system.failed-jobs.destroy');
 
         Route::middleware('role:super_admin')->group(function () {
             Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');

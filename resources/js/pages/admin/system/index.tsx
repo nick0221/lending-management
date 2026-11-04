@@ -1,9 +1,18 @@
-import { Head, Link } from '@inertiajs/react';
-import { Check, Copy, RefreshCw } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Check, Copy, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { SectionCard } from '@/components/section-card';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -18,6 +27,10 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as systemIndex } from '@/routes/admin/system';
+import {
+    destroy as forgetFailedJob,
+    retry as retryFailedJob,
+} from '@/routes/admin/system/failed-jobs';
 
 type StatusTone = 'ok' | 'warn' | 'bad';
 
@@ -33,10 +46,19 @@ type ScheduledCommand = {
     next_run_at: string;
 };
 
+type FailedJob = {
+    uuid: string;
+    name: string;
+    queue: string;
+    failed_at: string;
+    exception: string;
+};
+
 export default function SystemStatus({
     app,
     database,
     queue,
+    failed_jobs: failedJobs,
     scheduled,
     mail,
     sms,
@@ -66,6 +88,7 @@ export default function SystemStatus({
         oldest_pending_at: string | null;
     };
     scheduled: ScheduledCommand[];
+    failed_jobs: FailedJob[];
     mail: {
         mailer: string;
         from_address: string | null;
@@ -277,6 +300,70 @@ export default function SystemStatus({
                                 }
                             />
                         </div>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Failed jobs"
+                        description="The most recent jobs the queue gave up on. Retry requeues the job; forget removes it without retrying."
+                        className="lg:col-span-2"
+                    >
+                        {failedJobs.length === 0 ? (
+                            <p className="p-4 text-sm text-muted-foreground">
+                                No failed jobs. The queue is clear.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Job</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Queue
+                                            </TableHead>
+                                            <TableHead>Failed</TableHead>
+                                            <TableHead className="hidden lg:table-cell">
+                                                Reason
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {failedJobs.map((job) => (
+                                            <TableRow key={job.uuid}>
+                                                <TableCell className="max-w-56 font-mono text-xs break-all">
+                                                    {job.name}
+                                                </TableCell>
+                                                <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                    {job.queue}
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    <span
+                                                        title={formatDateTime(
+                                                            job.failed_at,
+                                                        )}
+                                                    >
+                                                        {formatRelativeTime(
+                                                            job.failed_at,
+                                                        )}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="hidden max-w-md text-xs break-words text-muted-foreground lg:table-cell">
+                                                    {job.exception}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <FailedJobActions
+                                                        job={job}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </SectionCard>
 
                     <SectionCard
@@ -509,6 +596,57 @@ export default function SystemStatus({
                 </div>
             </div>
         </>
+    );
+}
+
+function FailedJobActions({ job }: { job: FailedJob }) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
+    const retry = () => {
+        router.post(retryFailedJob.url(job.uuid), {}, { preserveScroll: true });
+    };
+
+    const forget = () => {
+        router.delete(forgetFailedJob.url(job.uuid), {
+            preserveScroll: true,
+            onFinish: () => setConfirmOpen(false),
+        });
+    };
+
+    return (
+        <div className="flex items-center justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={retry}>
+                <RotateCcw /> Retry
+            </Button>
+
+            <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmOpen(true)}
+                aria-label={`Forget failed job ${job.name}`}
+            >
+                <Trash2 />
+            </Button>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Forget this job?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The job will be removed from the failed queue
+                            without being retried. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <Button variant="destructive" onClick={forget}>
+                            Forget
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
     );
 }
 
