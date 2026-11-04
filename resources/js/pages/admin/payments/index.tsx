@@ -33,6 +33,7 @@ import {
     exportMethod as exportPayments,
     index as paymentsIndex,
 } from '@/routes/admin/payments';
+import { receipt as paymentReceipt } from '@/routes/admin/loans/payments';
 import type {
     Paginated,
     PaymentMethod,
@@ -425,7 +426,27 @@ export default function PaymentsIndex({
                                         </TableCell>
 
                                         <TableCell>
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    asChild
+                                                >
+                                                    <a
+                                                        href={
+                                                            paymentReceipt({
+                                                                loan: payment.loan_id,
+                                                                payment:
+                                                                    payment.id,
+                                                            }).url
+                                                        }
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        Receipt
+                                                    </a>
+                                                </Button>
+
                                                 <Button
                                                     size="sm"
                                                     variant="outline"

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
-use App\Models\Loan;
 use App\Models\Payment;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,7 +29,7 @@ class PaymentController extends Controller
      */
     public function index(Request $request): Response
     {
-        Gate::authorize('viewAny', Loan::class);
+        Gate::authorize('viewAny', Payment::class);
 
         $filters = $this->filters($request);
         $base = $this->baseQuery($filters);
@@ -82,7 +81,7 @@ class PaymentController extends Controller
      */
     public function export(Request $request): StreamedResponse
     {
-        Gate::authorize('viewAny', Loan::class);
+        Gate::authorize('viewAny', Payment::class);
 
         $filters = $this->filters($request);
 
