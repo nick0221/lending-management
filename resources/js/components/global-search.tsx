@@ -3,6 +3,7 @@ import {
     ArrowRight,
     FileBarChart,
     Loader2,
+    Receipt,
     Search,
     User,
     Wallet,
@@ -18,7 +19,7 @@ import {
     CommandSeparator,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { formatMoney } from '@/lib/format';
+import { formatDateOnly, formatMoney } from '@/lib/format';
 import { search as searchRoute } from '@/routes/admin';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import { index as loansIndex } from '@/routes/admin/loans';
@@ -29,9 +30,10 @@ const EMPTY_RESULTS: GlobalSearchResults = {
     query: '',
     borrowers: [],
     loans: [],
+    payments: [],
 };
 
-/** Global borrower and loan search, opened with Ctrl/⌘ K. */
+/** Global borrower, loan and payment search, opened with Ctrl/⌘ K. */
 export function GlobalSearch() {
     const { auth } = usePage().props;
     const [open, setOpen] = useState(false);
@@ -129,7 +131,10 @@ export function GlobalSearch() {
         }
     };
 
-    const hasResults = results.borrowers.length > 0 || results.loans.length > 0;
+    const hasResults =
+        results.borrowers.length > 0 ||
+        results.loans.length > 0 ||
+        results.payments.length > 0;
 
     if (!canSearch) {
         return null;
@@ -141,7 +146,7 @@ export function GlobalSearch() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Search borrowers and loans"
+                aria-label="Search borrowers, loans and payments"
                 onClick={() => setOpen(true)}
                 className="gap-2 font-normal text-muted-foreground"
             >
@@ -155,8 +160,8 @@ export function GlobalSearch() {
             <CommandDialog
                 open={open}
                 onOpenChange={handleOpenChange}
-                title="Search borrowers and loans"
-                description="Find a borrower by name, phone or national ID, or open a loan by number."
+                title="Search borrowers, loans and payments"
+                description="Find a borrower by name, phone or national ID, open a loan by number, or find a payment by reference or number."
                 shouldFilter={false}
                 contentClassName="sm:max-w-xl"
             >
@@ -164,7 +169,7 @@ export function GlobalSearch() {
                     <CommandInput
                         value={query}
                         onValueChange={setQuery}
-                        placeholder="Search borrowers and loans..."
+                        placeholder="Search borrowers, loans and payments..."
                     />
 
                     {loading && (
@@ -176,10 +181,10 @@ export function GlobalSearch() {
                     {!hasResults && (
                         <CommandEmpty>
                             {query.trim() === ''
-                                ? 'Type a name, phone, national ID or loan number.'
+                                ? 'Type a name, phone, national ID, loan number or payment reference.'
                                 : loading
                                   ? 'Searching...'
-                                  : 'No borrowers or loans found.'}
+                                  : 'No borrowers, loans or payments found.'}
                         </CommandEmpty>
                     )}
 
@@ -254,6 +259,40 @@ export function GlobalSearch() {
                                         <span className="text-xs text-muted-foreground">
                                             {loan.status_label} ·{' '}
                                             {formatMoney(loan.principal)}
+                                        </span>
+                                    </div>
+                                    <ArrowRight className="ml-auto opacity-50" />
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    )}
+
+                    {results.payments.length > 0 && (
+                        <CommandGroup heading="Payments">
+                            {results.payments.map((payment) => (
+                                <CommandItem
+                                    key={`payment-${payment.id}`}
+                                    value={`payment-${payment.id}`}
+                                    onSelect={() => go(payment.url)}
+                                >
+                                    <Receipt />
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="truncate">
+                                            {payment.reference ||
+                                                `Payment #${payment.id}`}
+                                            {payment.borrower
+                                                ? ` · ${payment.borrower}`
+                                                : ''}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {payment.method_label} ·{' '}
+                                            {formatDateOnly(
+                                                payment.payment_date,
+                                            )}{' '}
+                                            · {formatMoney(payment.amount)}
+                                            {payment.reversed
+                                                ? ' · Reversed'
+                                                : ''}
                                         </span>
                                     </div>
                                     <ArrowRight className="ml-auto opacity-50" />

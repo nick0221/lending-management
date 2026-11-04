@@ -2,6 +2,7 @@
 
 use App\Models\Borrower;
 use App\Models\Loan;
+use App\Models\Payment;
 use App\Models\User;
 
 test('staff can search borrowers by name, phone or national ID', function (string $term) {
@@ -45,6 +46,7 @@ test('a blank search returns no results', function () {
             'query' => '',
             'borrowers' => [],
             'loans' => [],
+            'payments' => [],
         ]);
 });
 
@@ -57,6 +59,56 @@ test('search results are limited to five per group', function () {
         ->getJson(route('admin.search', ['q' => 'Repeated Name']))
         ->assertOk()
         ->assertJsonCount(5, 'borrowers');
+});
+
+test('staff can find a payment by its reference', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Grace Mwangi']);
+    $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
+
+    $payment = Payment::factory()->for($loan)->create([
+        'reference' => 'PAY-4242',
+        'amount' => '750.00',
+        'payment_date' => today(),
+    ]);
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.search', ['q' => 'PAY-4242']))
+        ->assertOk()
+        ->assertJsonCount(1, 'payments')
+        ->assertJsonPath('payments.0.id', $payment->id)
+        ->assertJsonPath('payments.0.amount', 750)
+        ->assertJsonPath('payments.0.reference', 'PAY-4242')
+        ->assertJsonPath('payments.0.borrower', 'Grace Mwangi')
+        ->assertJsonPath('payments.0.loan_id', $loan->id)
+        ->assertJsonPath('payments.0.reversed', false);
+});
+
+test('staff can find a payment by its number and open the loan payments tab', function () {
+    $admin = User::factory()->admin()->create();
+    $payment = Payment::factory()->create();
+
+    $response = $this->actingAs($admin)
+        ->getJson(route('admin.search', ['q' => "#{$payment->id}"]))
+        ->assertOk()
+        ->assertJsonPath('payments.0.id', $payment->id);
+
+    expect($response->json('payments.0.url'))
+        ->toContain("loans/{$payment->loan_id}")
+        ->toContain('tab=payments');
+});
+
+test('a reversed payment is flagged in search results', function () {
+    $admin = User::factory()->admin()->create();
+    $payment = Payment::factory()->create([
+        'reference' => 'PAY-REVERSED',
+        'reversed_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.search', ['q' => 'PAY-REVERSED']))
+        ->assertOk()
+        ->assertJsonPath('payments.0.reversed', true);
 });
 
 test('non-staff cannot use global search', function () {

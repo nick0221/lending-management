@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Borrower;
 use App\Models\Loan;
+use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class SearchController extends Controller
 {
     /**
-     * Return the borrowers and loans matching a global search query.
+     * Return the borrowers, loans and payments matching a global search query.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -22,11 +24,13 @@ class SearchController extends Controller
                 'query' => '',
                 'borrowers' => [],
                 'loans' => [],
+                'payments' => [],
             ]);
         }
 
         $like = '%'.$query.'%';
-        $loanId = ctype_digit(ltrim($query, '#')) ? (int) ltrim($query, '#') : null;
+        $numericId = ctype_digit(ltrim($query, '#')) ? (int) ltrim($query, '#') : null;
+        $loanId = $numericId;
 
         $borrowers = Borrower::query()
             ->where(function ($builder) use ($like): void {
@@ -76,6 +80,43 @@ class SearchController extends Controller
             'query' => $query,
             'borrowers' => $borrowers,
             'loans' => $loans,
+            'payments' => $this->payments($like, $numericId),
         ]);
+    }
+
+    /**
+     * Find payments by reference or number, with the loan they belong to.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function payments(string $like, ?int $paymentId): Collection
+    {
+        return Payment::query()
+            ->with('loan.borrower:id,name')
+            ->where(function ($builder) use ($like, $paymentId): void {
+                $builder->where('reference', 'like', $like);
+
+                if ($paymentId !== null) {
+                    $builder->orWhereKey($paymentId);
+                }
+            })
+            ->latest('payment_date')
+            ->latest('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (Payment $payment): array => [
+                'id' => $payment->id,
+                'amount' => (float) $payment->amount,
+                'reference' => $payment->reference,
+                'method_label' => $payment->method->label(),
+                'payment_date' => $payment->payment_date->toDateString(),
+                'reversed' => $payment->reversed_at !== null,
+                'borrower' => $payment->loan?->borrower?->name,
+                'loan_id' => $payment->loan_id,
+                'url' => route('admin.loans.show', [
+                    'loan' => $payment->loan_id,
+                    'tab' => 'payments',
+                ]),
+            ]);
     }
 }

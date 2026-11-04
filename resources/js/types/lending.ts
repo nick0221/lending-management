@@ -710,10 +710,23 @@ export type LoanSearchResult = {
     url: string;
 };
 
+export type PaymentSearchResult = {
+    id: number;
+    amount: number;
+    reference: string | null;
+    method_label: string;
+    payment_date: string;
+    reversed: boolean;
+    borrower: string | null;
+    loan_id: number;
+    url: string;
+};
+
 export type GlobalSearchResults = {
     query: string;
     borrowers: BorrowerSearchResult[];
     loans: LoanSearchResult[];
+    payments: PaymentSearchResult[];
 };
 
 export type AppSettings = {
