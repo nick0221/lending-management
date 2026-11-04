@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\NotificationLog;
+use App\Services\OpsHeartbeat;
 use App\Services\Settings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\RedirectResponse;
@@ -170,14 +171,23 @@ class SystemStatusController extends Controller
      */
     private function scheduledCommands(): array
     {
+        $heartbeat = app(OpsHeartbeat::class);
+        $maxAgeHours = 26;
+
         return collect(app(Schedule::class)->events())
-            ->map(function ($event): array {
+            ->map(function ($event) use ($heartbeat, $maxAgeHours): array {
                 $command = (string) $event->command;
+                $name = preg_replace('/^.*?artisan["\']?\s+/', '', $command) ?: $command;
+                $lastRun = $heartbeat->lastRun($name);
 
                 return [
-                    'command' => preg_replace('/^.*?artisan["\']?\s+/', '', $command) ?: $command,
+                    'command' => $name,
                     'expression' => $event->expression,
                     'next_run_at' => $event->nextRunDate()->toIso8601String(),
+                    'last_run_at' => $lastRun,
+                    'max_age_hours' => $maxAgeHours,
+                    'stale' => $lastRun === null
+                        || Carbon::parse($lastRun)->lt(now()->subHours($maxAgeHours)),
                 ];
             })
             ->values()

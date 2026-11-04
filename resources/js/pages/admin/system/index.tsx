@@ -44,6 +44,9 @@ type ScheduledCommand = {
     command: string;
     expression: string;
     next_run_at: string;
+    last_run_at: string | null;
+    max_age_hours: number;
+    stale: boolean;
 };
 
 type FailedJob = {
@@ -497,7 +500,7 @@ export default function SystemStatus({
 
                     <SectionCard
                         title="Scheduler"
-                        description="Scheduled commands and when each one runs next."
+                        description="Scheduled commands, when each one runs next and when it last completed. A command is overdue when it has not completed within its expected window."
                         className="lg:col-span-2"
                     >
                         <Table>
@@ -505,6 +508,7 @@ export default function SystemStatus({
                                 <TableRow>
                                     <TableHead>Command</TableHead>
                                     <TableHead>Cron</TableHead>
+                                    <TableHead>Last run</TableHead>
                                     <TableHead>Next run</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -517,6 +521,30 @@ export default function SystemStatus({
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {event.expression}
+                                        </TableCell>
+                                        <TableCell>
+                                            {event.last_run_at ? (
+                                                <span
+                                                    className={cn(
+                                                        event.stale
+                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-muted-foreground',
+                                                    )}
+                                                    title={formatDateTime(
+                                                        event.last_run_at,
+                                                    )}
+                                                >
+                                                    {formatRelativeTime(
+                                                        event.last_run_at,
+                                                    )}
+                                                    {event.stale &&
+                                                        ' · overdue'}
+                                                </span>
+                                            ) : (
+                                                <span className="text-amber-600 dark:text-amber-400">
+                                                    Not recorded
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             <span
@@ -535,7 +563,7 @@ export default function SystemStatus({
                                 {scheduled.length === 0 && (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={3}
+                                            colSpan={4}
                                             className="py-8 text-center text-muted-foreground"
                                         >
                                             No scheduled commands.
