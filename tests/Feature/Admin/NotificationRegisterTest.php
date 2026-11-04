@@ -198,6 +198,55 @@ test('the notification register exports the filtered deliveries as a CSV', funct
         ->not->toContain('Grace Other');
 });
 
+test('the notification register can be narrowed to one borrower and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $borrowerLoan = Loan::factory()->create();
+    $borrowerLoan->borrower->update(['name' => 'Ada Logs', 'phone' => '+1-555-0100']);
+    $borrower = $borrowerLoan->borrower;
+
+    $matching = deliveryLog($borrowerLoan, ['status' => NotificationLog::STATUS_SENT]);
+
+    $otherLoan = Loan::factory()->create();
+    $otherLoan->borrower->update(['name' => 'Grace Other']);
+    deliveryLog($otherLoan, ['status' => NotificationLog::STATUS_FAILED]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.notifications.index', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.id', $matching->id)
+            ->where('currentBorrower.id', $borrower->id)
+            ->where('currentBorrower.name', 'Ada Logs')
+            ->where('counts.all', 1)
+            ->where('counts.sent', 1)
+            ->where('counts.failed', 0)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.notifications.export', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Logs')
+        ->not->toContain('Grace Other');
+});
+
+test('an unknown borrower filter is ignored by the notification register', function () {
+    $admin = User::factory()->admin()->create();
+    deliveryLog(Loan::factory()->create(), ['status' => NotificationLog::STATUS_SENT]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.notifications.index', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('currentBorrower', null)
+        );
+});
+
 test('regular users cannot open or export the notification register', function () {
     $user = User::factory()->create();
 

@@ -8,6 +8,7 @@ import {
     Download,
     RotateCcw,
     Send,
+    X,
 } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { DateRangePicker } from '@/components/date-range-picker';
@@ -76,6 +77,7 @@ export default function NotificationsIndex({
     currentStatus,
     currentChannel,
     currentType,
+    currentBorrower,
     search,
     from,
     to,
@@ -88,6 +90,7 @@ export default function NotificationsIndex({
     currentStatus: NotificationStatus | null;
     currentChannel: string | null;
     currentType: string | null;
+    currentBorrower: { id: number; name: string } | null;
     search: string;
     from: string | null;
     to: string | null;
@@ -96,6 +99,7 @@ export default function NotificationsIndex({
         status?: NotificationStatus | null;
         channel?: string | null;
         type?: string | null;
+        borrower?: number | null;
         from?: string | null;
         to?: string | null;
     }) => {
@@ -107,6 +111,10 @@ export default function NotificationsIndex({
                 : currentChannel;
         const type =
             overrides.type !== undefined ? overrides.type : currentType;
+        const borrower =
+            overrides.borrower !== undefined
+                ? overrides.borrower
+                : (currentBorrower?.id ?? null);
         const rangeFrom = overrides.from !== undefined ? overrides.from : from;
         const rangeTo = overrides.to !== undefined ? overrides.to : to;
 
@@ -115,6 +123,7 @@ export default function NotificationsIndex({
                 ...(status ? { status } : {}),
                 ...(channel ? { channel } : {}),
                 ...(type ? { type } : {}),
+                ...(borrower ? { borrower } : {}),
                 ...(rangeFrom ? { from: rangeFrom } : {}),
                 ...(rangeTo ? { to: rangeTo } : {}),
                 ...(search ? { search } : {}),
@@ -171,6 +180,7 @@ export default function NotificationsIndex({
             ...(currentStatus ? { status: currentStatus } : {}),
             ...(currentChannel ? { channel: currentChannel } : {}),
             ...(currentType ? { type: currentType } : {}),
+            ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
             ...(from ? { from } : {}),
             ...(to ? { to } : {}),
             ...(search ? { search } : {}),
@@ -182,6 +192,7 @@ export default function NotificationsIndex({
         currentStatus !== null ||
         currentChannel !== null ||
         currentType !== null ||
+        currentBorrower !== null ||
         from !== null ||
         to !== null;
 
@@ -197,7 +208,11 @@ export default function NotificationsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Notifications"
-                    description="Every email and SMS delivery recorded against the book, newest first."
+                    description={
+                        currentBorrower
+                            ? `Every email and SMS delivery recorded for ${currentBorrower.name}, newest first.`
+                            : 'Every email and SMS delivery recorded against the book, newest first.'
+                    }
                     actions={
                         <Button variant="outline" asChild>
                             <a href={exportUrl.url}>
@@ -300,6 +315,34 @@ export default function NotificationsIndex({
                         to={to}
                         onChange={changeRange}
                     />
+
+                    {currentBorrower && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="text-muted-foreground">
+                                Borrower
+                            </span>
+
+                            <span className="font-medium">
+                                {currentBorrower.name}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ borrower: null })}
+                                    aria-label="Clear the borrower filter"
+                                    title="Clear the borrower filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -330,9 +373,11 @@ export default function NotificationsIndex({
                             icon={Bell}
                             title="No notifications found"
                             description={
-                                hasFilters
-                                    ? 'No deliveries match these filters. Try another channel, type, date range or status.'
-                                    : 'Reminders, overdue notices, receipts and statements appear here once they are sent.'
+                                currentBorrower
+                                    ? `No deliveries are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
+                                    : hasFilters
+                                      ? 'No deliveries match these filters. Try another channel, type, date range or status.'
+                                      : 'Reminders, overdue notices, receipts and statements appear here once they are sent.'
                             }
                             action={
                                 hasFilters && (

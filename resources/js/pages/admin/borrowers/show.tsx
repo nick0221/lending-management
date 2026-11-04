@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
+    Bell,
     CalendarClock,
     Check,
     Download,
@@ -43,6 +44,7 @@ import {
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
 import { receipt as receiptForPayment } from '@/routes/admin/loans/payments';
 import { download as downloadStatement } from '@/routes/admin/loans/statement';
+import { index as notificationsIndex } from '@/routes/admin/notifications';
 import { index as paymentsIndex } from '@/routes/admin/payments';
 import type {
     BorrowerActivity,
@@ -640,6 +642,18 @@ export default function ShowBorrower({
                             title="Notifications"
                             description="Email and SMS preferences for this borrower."
                             contentClassName="p-6"
+                            actions={
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                        href={notificationsIndex({
+                                            query: { borrower: borrower.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Bell /> All deliveries
+                                    </Link>
+                                </Button>
+                            }
                         >
                             <div className="space-y-4">
                                 <div className="space-y-1 text-sm">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Borrower;
 use App\Models\NotificationLog;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -131,6 +132,7 @@ class NotificationController extends Controller
             'currentStatus' => $status,
             'currentChannel' => $filters['channel'] ?? null,
             'currentType' => $filters['type'] ?? null,
+            'currentBorrower' => $this->borrowerFilter($filters['borrower'] ?? null),
             'search' => $filters['search'] ?? '',
             'from' => $filters['from'] ?? null,
             'to' => $filters['to'] ?? null,
@@ -153,7 +155,7 @@ class NotificationController extends Controller
     /**
      * Validate the filters shared by the page and the CSV export.
      *
-     * @return array<string, string|null>
+     * @return array<string, string|int|null>
      */
     private function validatedFilters(Request $request): array
     {
@@ -164,7 +166,10 @@ class NotificationController extends Controller
             'type' => ['nullable', Rule::in(self::TYPES)],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'borrower' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        $borrowerId = (int) ($validated['borrower'] ?? 0);
 
         return [
             'search' => trim((string) ($validated['search'] ?? '')),
@@ -173,19 +178,46 @@ class NotificationController extends Controller
             'type' => $validated['type'] ?? null,
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
+            'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
+                ? $borrowerId
+                : null,
         ];
     }
 
     /**
-     * Apply the channel, type, search and date filters to the delivery log.
+     * The borrower a filtered register is narrowed to, if any.
      *
-     * @param  array<string, string|null>  $filters
+     * @return array{id: int, name: string}|null
+     */
+    private function borrowerFilter(?int $borrowerId): ?array
+    {
+        if ($borrowerId === null) {
+            return null;
+        }
+
+        $borrower = Borrower::query()
+            ->whereKey($borrowerId)
+            ->first(['id', 'name']);
+
+        return $borrower === null
+            ? null
+            : ['id' => $borrower->id, 'name' => $borrower->name];
+    }
+
+    /**
+     * Apply the borrower, channel, type, search and date filters to the delivery log.
+     *
+     * @param  array<string, string|int|null>  $filters
      */
     private function filteredQuery(array $filters): Builder
     {
         $search = (string) ($filters['search'] ?? '');
 
         return NotificationLog::query()
+            ->when(
+                $filters['borrower'] ?? null,
+                fn (Builder $query, int $borrowerId) => $query->where('borrower_id', $borrowerId),
+            )
             ->when(
                 $filters['channel'] ?? null,
                 fn (Builder $query, string $channel) => $query->where('channel', $channel),
@@ -226,7 +258,7 @@ class NotificationController extends Controller
     /**
      * Build the CSV rows lazily so a long delivery log streams in chunks.
      *
-     * @param  array<string, string|null>  $filters
+     * @param  array<string, string|int|null>  $filters
      * @return \Generator<int, array<int, string|int|null>>
      */
     private function csvRows(array $filters): \Generator
