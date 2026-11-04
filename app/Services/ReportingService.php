@@ -12,6 +12,7 @@ use App\Models\LoanInstallment;
 use App\Models\Payment;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -128,6 +129,61 @@ class ReportingService
             })
             ->sortByDesc('contacts')
             ->values();
+    }
+
+    /**
+     * Payments received per month, newest month last. Reversed payments are
+     * excluded. Without an explicit period the trend covers the last six
+     * months including the current one.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function collectionsTrend(int $months = 6): array
+    {
+        $end = $this->to ?? Date::now()->endOfDay();
+        $start = $this->from ?? $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
+
+        $payments = Payment::query()
+            ->whereNull('reversed_at')
+            ->whereDate('payment_date', '>=', $start->toDateString())
+            ->whereDate('payment_date', '<=', $end->toDateString())
+            ->get(['amount', 'payment_date']);
+
+        $buckets = [];
+
+        for (
+            $cursor = $start->copy()->startOfMonth();
+            $cursor->lte($end);
+            $cursor = $cursor->copy()->addMonthNoOverflow()
+        ) {
+            $key = $cursor->format('Y-m');
+
+            $buckets[$key] = [
+                'month' => $key,
+                'label' => $cursor->format('M Y'),
+                'amount' => 0.0,
+                'count' => 0,
+            ];
+        }
+
+        foreach ($payments as $payment) {
+            $key = $payment->payment_date->format('Y-m');
+
+            if (! isset($buckets[$key])) {
+                continue;
+            }
+
+            $buckets[$key]['amount'] += (float) $payment->amount;
+            $buckets[$key]['count']++;
+        }
+
+        return collect($buckets)
+            ->map(fn (array $bucket): array => [
+                ...$bucket,
+                'amount' => round($bucket['amount'], 2),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

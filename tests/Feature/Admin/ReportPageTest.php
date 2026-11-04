@@ -21,6 +21,7 @@ test('the reports page defaults to the portfolio tab', function () {
             ->has('aging')
             ->has('risk')
             ->has('collections')
+            ->has('collections_trend')
             ->has('loans')
             ->has('products')
             ->has('officers')
@@ -43,6 +44,86 @@ test('the reports page falls back to the portfolio tab for an unknown tab', func
         ->get(route('admin.reports.index', ['tab' => 'nonsense']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('currentTab', 'portfolio'));
+});
+
+test('the collections tab reports payments received by month', function () {
+    $this->travelTo('2026-11-15 10:00:00');
+
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->create();
+
+    Payment::factory()->count(2)->for($loan)->create([
+        'amount' => '500.00',
+        'payment_date' => '2026-11-03',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '250.00',
+        'payment_date' => '2026-10-04',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '75.00',
+        'payment_date' => '2026-06-10',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '999.00',
+        'payment_date' => '2026-11-05',
+        'reversed_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['tab' => 'collections']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('collections_trend', 6)
+            ->where('collections_trend.0.month', '2026-06')
+            ->where('collections_trend.0.amount', 75)
+            ->where('collections_trend.4.month', '2026-10')
+            ->where('collections_trend.4.amount', 250)
+            ->where('collections_trend.4.count', 1)
+            ->where('collections_trend.5.month', '2026-11')
+            ->where('collections_trend.5.amount', 1000)
+            ->where('collections_trend.5.count', 2)
+        );
+});
+
+test('the collections trend follows the report period', function () {
+    $this->travelTo('2026-11-15 10:00:00');
+
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->create();
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '120.00',
+        'payment_date' => '2026-01-10',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '80.00',
+        'payment_date' => '2026-02-10',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '40.00',
+        'payment_date' => '2026-03-10',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', [
+            'tab' => 'collections',
+            'from' => '2026-01-01',
+            'to' => '2026-02-28',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('collections_trend', 2)
+            ->where('collections_trend.0.month', '2026-01')
+            ->where('collections_trend.0.amount', 120)
+            ->where('collections_trend.1.month', '2026-02')
+            ->where('collections_trend.1.amount', 80)
+        );
 });
 
 test('the portfolio print view renders the summary', function () {

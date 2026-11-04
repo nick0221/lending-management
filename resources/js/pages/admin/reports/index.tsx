@@ -44,6 +44,7 @@ import {
 import type {
     AgingBuckets,
     Collections,
+    CollectionsTrendPoint,
     OfficerPerformance,
     PortfolioRisk,
     PortfolioSummary,
@@ -464,6 +465,7 @@ export default function ReportsIndex({
     aging,
     risk,
     collections,
+    collections_trend: collectionsTrend,
     loans,
     products,
     officers,
@@ -474,6 +476,7 @@ export default function ReportsIndex({
     aging: AgingBuckets;
     risk: PortfolioRisk;
     collections: Collections;
+    collections_trend: CollectionsTrendPoint[];
     loans: ReportLoanRow[];
     products: ProductPerformance[];
     officers: OfficerPerformance[];
@@ -568,6 +571,24 @@ export default function ReportsIndex({
             color: 'var(--destructive)',
         },
     ];
+
+    const collectionsTrendData: ReportBarDatum[] = collectionsTrend.map(
+        (point) => ({
+            label: point.label,
+            value: point.amount,
+            color: 'var(--chart-2)',
+        }),
+    );
+
+    const collectionsTrendTotal = collectionsTrend.reduce(
+        (total, point) => total + point.amount,
+        0,
+    );
+
+    const collectionsTrendCount = collectionsTrend.reduce(
+        (total, point) => total + point.count,
+        0,
+    );
 
     const collectionRows = [
         ...collections.overdue_installments,
@@ -996,7 +1017,7 @@ export default function ReportsIndex({
 
                 {currentTab === 'collections' && (
                     <>
-                        <section className="grid gap-4 sm:grid-cols-3">
+                        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <StatCard
                                 title="Due today"
                                 value={formatMoney(collections.due_today)}
@@ -1014,6 +1035,22 @@ export default function ReportsIndex({
                                         : 'default'
                                 }
                             />
+                            <StatCard
+                                title="Received"
+                                value={formatMoney(collectionsTrendTotal)}
+                                hint={`${collectionsTrendCount} payment${
+                                    collectionsTrendCount === 1 ? '' : 's'
+                                } ${
+                                    periodLabel
+                                        ? 'in this period'
+                                        : 'in the last six months'
+                                }`}
+                                tone={
+                                    collectionsTrendTotal > 0
+                                        ? 'success'
+                                        : 'default'
+                                }
+                            />
                         </section>
 
                         <SectionCard
@@ -1026,6 +1063,76 @@ export default function ReportsIndex({
                                     ariaLabel="Collections due today, this week and overdue"
                                 />
                             </div>
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Collections by month"
+                            description={`Payments received per month ${
+                                periodLabel
+                                    ? 'in this period'
+                                    : 'over the last six months'
+                            }. Reversed payments are excluded.`}
+                        >
+                            {collectionsTrendTotal === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No payments were recorded in this period.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="border-b p-4">
+                                        <ReportBarChart
+                                            data={collectionsTrendData}
+                                            ariaLabel="Payments received by month"
+                                        />
+                                    </div>
+
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Month</TableHead>
+                                                <TableHead className="hidden text-right sm:table-cell">
+                                                    Payments
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Amount
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {collectionsTrend.map((point) => (
+                                                <TableRow key={point.month}>
+                                                    <TableCell className="font-medium">
+                                                        {point.label}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                        {point.count}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            point.amount,
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell>Total</TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {collectionsTrendCount}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        collectionsTrendTotal,
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </>
+                            )}
                         </SectionCard>
 
                         <SectionCard

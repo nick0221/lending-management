@@ -573,6 +573,13 @@ export type Collections = {
     overdue_installments: CollectionInstallment[];
 };
 
+export type CollectionsTrendPoint = {
+    month: string;
+    label: string;
+    amount: number;
+    count: number;
+};
+
 export type ReportLoanRow = {
     id: number;
     borrower_id: number;

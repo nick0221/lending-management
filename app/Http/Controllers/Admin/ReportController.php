@@ -39,6 +39,7 @@ class ReportController extends Controller
             'aging' => $this->reporting->agingBuckets(),
             'risk' => $this->reporting->portfolioAtRisk(),
             'collections' => $this->reporting->collections(),
+            'collections_trend' => $this->reporting->collectionsTrend(),
             'loans' => $this->reporting->loanRows()->values()->all(),
             'products' => $this->reporting->productPerformance()->all(),
             'officers' => $this->reporting->officerPerformance()->all(),
