@@ -1,4 +1,4 @@
-import { Form, router } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import {
     AlertTriangle,
     Ban,
@@ -17,7 +17,10 @@ import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
 import { RestructureLoanDialog } from '@/components/admin/restructure-loan-dialog';
 import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
-import { ConfirmDeleteDialog } from '@/components/confirm-delete';
+import {
+    ConfirmActionDialog,
+    ConfirmDeleteDialog,
+} from '@/components/confirm-delete';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -72,6 +75,8 @@ export function LoanActions({
     const [restructureOpen, setRestructureOpen] = useState(false);
     const [statementOpen, setStatementOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [defaultOpen, setDefaultOpen] = useState(false);
+    const [writeOffOpen, setWriteOffOpen] = useState(false);
 
     const hasSecondaryActions =
         can.log_contact ||
@@ -207,13 +212,10 @@ export function LoanActions({
 
                             {can.default && (
                                 <DropdownMenuItem
-                                    onSelect={() =>
-                                        router.post(
-                                            markLoanDefault.url(loan.id),
-                                            {},
-                                            { preserveScroll: true },
-                                        )
-                                    }
+                                    onSelect={(event) => {
+                                        event.preventDefault();
+                                        setDefaultOpen(true);
+                                    }}
                                     data-test="mark-default-loan-button"
                                 >
                                     <AlertTriangle /> Mark defaulted
@@ -223,13 +225,10 @@ export function LoanActions({
                             {can.write_off && (
                                 <DropdownMenuItem
                                     variant="destructive"
-                                    onSelect={() =>
-                                        router.post(
-                                            writeOffLoan.url(loan.id),
-                                            {},
-                                            { preserveScroll: true },
-                                        )
-                                    }
+                                    onSelect={(event) => {
+                                        event.preventDefault();
+                                        setWriteOffOpen(true);
+                                    }}
                                     data-test="write-off-loan-button"
                                 >
                                     <Ban /> Write off
@@ -272,6 +271,31 @@ export function LoanActions({
                     borrowerName={loan.borrower_name}
                     open={statementOpen}
                     onOpenChange={setStatementOpen}
+                />
+            )}
+
+            {can.default && (
+                <ConfirmActionDialog
+                    form={markLoanDefault.form(loan.id)}
+                    title={`Mark loan #${loan.id} as defaulted?`}
+                    description={`${loan.borrower_name}'s loan moves from the active book to the defaulted book so collections can keep working it. The schedule, payments and history stay intact.`}
+                    label="Mark defaulted"
+                    processingLabel="Marking…"
+                    variant="default"
+                    open={defaultOpen}
+                    onOpenChange={setDefaultOpen}
+                />
+            )}
+
+            {can.write_off && (
+                <ConfirmActionDialog
+                    form={writeOffLoan.form(loan.id)}
+                    title={`Write off loan #${loan.id}?`}
+                    description={`The outstanding balance for ${loan.borrower_name} is written off and the loan closes. Recorded payments and history stay intact.`}
+                    label="Write off"
+                    processingLabel="Writing off…"
+                    open={writeOffOpen}
+                    onOpenChange={setWriteOffOpen}
                 />
             )}
 

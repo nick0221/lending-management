@@ -13,11 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import type { RouteFormDefinition } from '@/wayfinder';
 
-type ConfirmDeleteProps = {
+type ConfirmActionProps = {
     form: RouteFormDefinition<'post'>;
     title: string;
     description: string;
-    label?: string;
+    label: string;
+    processingLabel: string;
+    variant?: 'default' | 'destructive';
     testId?: string;
 };
 
@@ -25,13 +27,16 @@ type ConfirmDeleteProps = {
  * The confirmation body, controlled by the caller so row menus can open it
  * from a dropdown item.
  */
-export function ConfirmDeleteDialog({
+export function ConfirmActionDialog({
     form,
     title,
     description,
+    label,
+    processingLabel,
+    variant = 'destructive',
     open,
     onOpenChange,
-}: Omit<ConfirmDeleteProps, 'label' | 'testId'> & {
+}: Omit<ConfirmActionProps, 'testId'> & {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
@@ -52,10 +57,10 @@ export function ConfirmDeleteDialog({
                         {({ processing }) => (
                             <Button
                                 type="submit"
-                                variant="destructive"
+                                variant={variant}
                                 disabled={processing}
                             >
-                                {processing ? 'Deleting…' : 'Delete'}
+                                {processing ? processingLabel : label}
                             </Button>
                         )}
                     </Form>
@@ -64,6 +69,40 @@ export function ConfirmDeleteDialog({
         </AlertDialog>
     );
 }
+
+/**
+ * Delete confirmation with copy tailored to permanent deletion.
+ */
+export function ConfirmDeleteDialog({
+    form,
+    title,
+    description,
+    open,
+    onOpenChange,
+}: Pick<ConfirmActionProps, 'form' | 'title' | 'description'> & {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    return (
+        <ConfirmActionDialog
+            form={form}
+            title={title}
+            description={description}
+            label="Delete"
+            processingLabel="Deleting…"
+            open={open}
+            onOpenChange={onOpenChange}
+        />
+    );
+}
+
+type ConfirmDeleteProps = {
+    form: RouteFormDefinition<'post'>;
+    title: string;
+    description: string;
+    label?: string;
+    testId?: string;
+};
 
 /**
  * Destructive action behind an AlertDialog. The Inertia form only submits once
