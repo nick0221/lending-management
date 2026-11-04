@@ -8,7 +8,7 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LogCollectionContactDialog } from '@/components/admin/log-collection-contact-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -19,6 +19,7 @@ import { SearchInput } from '@/components/search-input';
 import { SortableHeader } from '@/components/sortable-header';
 import StatCard from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -39,6 +40,7 @@ import { cn } from '@/lib/utils';
 import {
     index as collectionsIndex,
     exportMethod as exportCollections,
+    bulkOfficer as bulkAssignCollectionOfficers,
     officer as assignCollectionOfficer,
 } from '@/routes/admin/collections';
 import { dashboard as adminDashboard } from '@/routes/admin';
@@ -89,6 +91,47 @@ export default function CollectionsIndex({
     const [contactLoan, setContactLoan] = useState<CollectionQueueRow | null>(
         null,
     );
+    const [selected, setSelected] = useState<number[]>([]);
+    const [bulkOfficer, setBulkOfficer] = useState('');
+
+    useEffect(() => {
+        setSelected((current) =>
+            current.filter((id) =>
+                loans.data.some((loan) => loan.id === id && loan.can.assign),
+            ),
+        );
+    }, [loans]);
+
+    const selectableIds = loans.data
+        .filter((loan) => loan.can.assign)
+        .map((loan) => loan.id);
+    const allSelected =
+        selectableIds.length > 0 &&
+        selectableIds.every((id) => selected.includes(id));
+    const someSelected = selected.length > 0 && !allSelected;
+
+    const submitBulkAssign = () => {
+        if (selected.length === 0 || bulkOfficer === '') {
+            return;
+        }
+
+        router.post(
+            bulkAssignCollectionOfficers().url,
+            {
+                loans: selected,
+                officer_id:
+                    bulkOfficer === 'unassigned' ? null : Number(bulkOfficer),
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    setSelected([]);
+                    setBulkOfficer('');
+                },
+            },
+        );
+    };
     const withFilters = (overrides: {
         tab?: CollectionTab;
         officer?: number | null;
@@ -358,6 +401,60 @@ export default function CollectionsIndex({
                     className="min-w-0"
                 />
 
+                {selected.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-medium">
+                            {selected.length} loan
+                            {selected.length === 1 ? '' : 's'} selected
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelected([])}
+                            >
+                                Clear
+                            </Button>
+
+                            <Select
+                                value={bulkOfficer || undefined}
+                                onValueChange={setBulkOfficer}
+                            >
+                                <SelectTrigger
+                                    className="w-[170px]"
+                                    aria-label="Collection officer to apply"
+                                >
+                                    <SelectValue placeholder="Choose officer" />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    <SelectItem value="unassigned">
+                                        Unassigned
+                                    </SelectItem>
+
+                                    {officers.map((officer) => (
+                                        <SelectItem
+                                            key={officer.value}
+                                            value={String(officer.value)}
+                                        >
+                                            {officer.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Button
+                                size="sm"
+                                onClick={submitBulkAssign}
+                                disabled={bulkOfficer === ''}
+                            >
+                                <Users /> Assign
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {loans.data.length === 0 ? (
                         <EmptyState
@@ -382,6 +479,28 @@ export default function CollectionsIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={
+                                                allSelected
+                                                    ? true
+                                                    : someSelected
+                                                      ? 'indeterminate'
+                                                      : false
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked === true
+                                                        ? selectableIds
+                                                        : [],
+                                                )
+                                            }
+                                            disabled={
+                                                selectableIds.length === 0
+                                            }
+                                            aria-label="Select all loans on this page"
+                                        />
+                                    </TableHead>
                                     <TableHead>Loan</TableHead>
                                     <TableHead className="hidden md:table-cell">
                                         Officer
@@ -434,6 +553,35 @@ export default function CollectionsIndex({
                             <TableBody>
                                 {loans.data.map((loan) => (
                                     <TableRow key={loan.id}>
+                                        <TableCell>
+                                            {loan.can.assign && (
+                                                <Checkbox
+                                                    checked={selected.includes(
+                                                        loan.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelected(
+                                                            (current) =>
+                                                                checked === true
+                                                                    ? [
+                                                                          ...current,
+                                                                          loan.id,
+                                                                      ]
+                                                                    : current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              loan.id,
+                                                                      ),
+                                                        )
+                                                    }
+                                                    aria-label={`Select loan ${loan.id}`}
+                                                />
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             <Link
                                                 href={showLoan(loan.id)}

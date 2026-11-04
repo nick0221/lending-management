@@ -8,6 +8,7 @@ use App\Enums\LoanStatus;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignCollectionOfficerRequest;
+use App\Http\Requests\Admin\BulkAssignCollectionOfficerRequest;
 use App\Http\Requests\Admin\LogCollectionContactRequest;
 use App\Models\CollectionContact;
 use App\Models\Loan;
@@ -184,6 +185,39 @@ class CollectionController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Collection officer updated.'),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Put the selected loans in the given collector's queue, or clear them.
+     */
+    public function bulkAssignOfficer(BulkAssignCollectionOfficerRequest $request): RedirectResponse
+    {
+        $ids = $request->validated('loans');
+        $officerId = $request->validated('officer_id');
+
+        $assigned = Loan::query()
+            ->whereIn('id', $ids)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->update(['collection_officer_id' => $officerId]);
+
+        $skipped = count($ids) - $assigned;
+
+        $message = trans_choice(
+            '{0} No loans were reassigned.|{1} :count loan reassigned.|[2,*] :count loans reassigned.',
+            $assigned,
+            ['count' => $assigned],
+        );
+
+        if ($skipped > 0) {
+            $message .= ' '.__(':count skipped.', ['count' => $skipped]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => $assigned > 0 ? 'success' : 'warning',
+            'message' => $message,
         ]);
 
         return back();

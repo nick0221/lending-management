@@ -228,6 +228,64 @@ test('officers cannot be assigned to a closed loan', function () {
     expect($loan->fresh()->collection_officer_id)->toBeNull();
 });
 
+test('the queue can assign an officer to several loans at once', function () {
+    $admin = User::factory()->admin()->create();
+    $other = User::factory()->admin()->create();
+
+    $first = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $second = Loan::factory()->withStatus(LoanStatus::Defaulted)->create();
+    $closed = Loan::factory()->withStatus(LoanStatus::Closed)->create([
+        'collection_officer_id' => $other->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.collections.bulk-officer'), [
+            'loans' => [$first->id, $second->id, $closed->id],
+            'officer_id' => $admin->id,
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($first->fresh()->collection_officer_id)->toBe($admin->id)
+        ->and($second->fresh()->collection_officer_id)->toBe($admin->id)
+        ->and($closed->fresh()->collection_officer_id)->toBe($other->id);
+});
+
+test('the bulk assignment can clear several loans', function () {
+    $admin = User::factory()->admin()->create();
+
+    $first = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $admin->id,
+    ]);
+    $second = Loan::factory()->withStatus(LoanStatus::Defaulted)->create([
+        'collection_officer_id' => $admin->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.collections.bulk-officer'), [
+            'loans' => [$first->id, $second->id],
+            'officer_id' => null,
+        ])
+        ->assertRedirect();
+
+    expect($first->fresh()->collection_officer_id)->toBeNull()
+        ->and($second->fresh()->collection_officer_id)->toBeNull();
+});
+
+test('regular users cannot bulk assign collection officers', function () {
+    $user = User::factory()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+
+    $this->actingAs($user)
+        ->post(route('admin.collections.bulk-officer'), [
+            'loans' => [$loan->id],
+            'officer_id' => $user->id,
+        ])
+        ->assertForbidden();
+
+    expect($loan->fresh()->collection_officer_id)->toBeNull();
+});
+
 test('the queue offers the contact channels and outcomes needed to log a call', function () {
     $admin = User::factory()->admin()->create();
 

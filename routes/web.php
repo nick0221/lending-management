@@ -118,6 +118,8 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->name('collections.export');
         Route::patch('collections/{loan}/officer', [CollectionController::class, 'assignOfficer'])
             ->name('collections.officer');
+        Route::post('collections/bulk-officer', [CollectionController::class, 'bulkAssignOfficer'])
+            ->name('collections.bulk-officer');
 
         Route::post('loans/{loan}/notifications/{notificationLog}/resend', [LoanController::class, 'resendNotification'])
             ->middleware('throttle:reminders')
