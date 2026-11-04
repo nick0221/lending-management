@@ -154,6 +154,8 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->name('system.failed-jobs.retry');
         Route::delete('system/failed-jobs/{uuid}', [SystemStatusController::class, 'forgetFailedJob'])
             ->name('system.failed-jobs.destroy');
+        Route::post('system/failed-jobs/retry-all', [SystemStatusController::class, 'retryAllFailedJobs'])
+            ->name('system.failed-jobs.retry-all');
 
         Route::middleware('role:super_admin')->group(function () {
             Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');

@@ -68,6 +68,47 @@ class SystemStatusController extends Controller
     }
 
     /**
+     * Retry every failed job currently in the queue backlog.
+     */
+    public function retryAllFailedJobs(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        $count = DB::table('failed_jobs')->count();
+
+        if ($count === 0) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => __('There are no failed jobs to retry.'),
+            ]);
+
+            return back();
+        }
+
+        $exitCode = Artisan::call('queue:retry', ['id' => ['all']]);
+
+        if ($exitCode !== 0) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => __('The failed jobs could not be retried.'),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice(
+                '{1} :count failed job queued for retry.|[2,*] :count failed jobs queued for retry.',
+                $count,
+                ['count' => $count],
+            ),
+        ]);
+
+        return back();
+    }
+
+    /**
      * Remove one failed job without retrying it.
      */
     public function forgetFailedJob(Request $request, string $uuid): RedirectResponse

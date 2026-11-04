@@ -30,6 +30,7 @@ import { index as systemIndex } from '@/routes/admin/system';
 import {
     destroy as forgetFailedJob,
     retry as retryFailedJob,
+    retryAll as retryAllFailedJobs,
 } from '@/routes/admin/system/failed-jobs';
 
 type StatusTone = 'ok' | 'warn' | 'bad';
@@ -309,6 +310,11 @@ export default function SystemStatus({
                         title="Failed jobs"
                         description="The most recent jobs the queue gave up on. Retry requeues the job; forget removes it without retrying."
                         className="lg:col-span-2"
+                        actions={
+                            failedJobs.length > 0 && (
+                                <RetryAllFailedJobs count={failedJobs.length} />
+                            )
+                        }
                     >
                         {failedJobs.length === 0 ? (
                             <p className="p-4 text-sm text-muted-foreground">
@@ -623,6 +629,56 @@ export default function SystemStatus({
                     </SectionCard>
                 </div>
             </div>
+        </>
+    );
+}
+
+function RetryAllFailedJobs({ count }: { count: number }) {
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
+    const retryAll = () => {
+        router.post(
+            retryAllFailedJobs.url(),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setConfirmOpen(false),
+            },
+        );
+    };
+
+    return (
+        <>
+            <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmOpen(true)}
+            >
+                <RotateCcw /> Retry all
+            </Button>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Retry every failed job?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Every failed job in the queue will be pushed back
+                            onto the queue and retried, including the {count}{' '}
+                            listed here. Jobs that fail again come back to this
+                            list.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <Button onClick={retryAll}>
+                            <RotateCcw /> Retry all
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
