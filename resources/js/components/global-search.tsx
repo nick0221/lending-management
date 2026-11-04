@@ -38,6 +38,7 @@ import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import { index as collectionsIndex } from '@/routes/admin/collections';
 import { index as loanProductsIndex } from '@/routes/admin/loan-products';
 import { index as loansIndex } from '@/routes/admin/loans';
+import { index as paymentsIndex } from '@/routes/admin/payments';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as systemIndex } from '@/routes/admin/system';
@@ -92,6 +93,12 @@ export function GlobalSearch() {
             label: 'Loans',
             url: loansIndex().url,
             icon: Wallet,
+        },
+        {
+            value: 'go-payments',
+            label: 'Payments',
+            url: paymentsIndex().url,
+            icon: Receipt,
         },
         {
             value: 'go-collections',

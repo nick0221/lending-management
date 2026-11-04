@@ -351,6 +351,23 @@ export type Payment = {
     allocations: PaymentAllocation[];
 };
 
+export type PaymentRegisterRow = {
+    id: number;
+    loan_id: number;
+    borrower_id: number;
+    borrower_name: string;
+    borrower_phone: string;
+    amount: string;
+    method: PaymentMethod;
+    method_label: string;
+    reference: string | null;
+    payment_date: string;
+    recorded_by: string | null;
+    reversed: boolean;
+    reversed_at: string | null;
+    reversal_reason: string | null;
+};
+
 export type PaymentAging = {
     current: string;
     days_1_30: string;

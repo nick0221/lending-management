@@ -7,6 +7,7 @@ import {
     Landmark,
     LayoutGrid,
     PhoneCall,
+    Receipt,
     ScrollText,
     Server,
     Settings,
@@ -34,6 +35,7 @@ import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
+import { index as adminPayments } from '@/routes/admin/payments';
 import { index as adminReports } from '@/routes/admin/reports';
 import { edit as adminSettings } from '@/routes/admin/settings';
 import { index as adminSystem } from '@/routes/admin/system';
@@ -73,6 +75,11 @@ const adminNavItems: NavItem[] = [
         title: 'Loans',
         href: adminLoans(),
         icon: Wallet,
+    },
+    {
+        title: 'Payments',
+        href: adminPayments(),
+        icon: Receipt,
     },
     {
         title: 'Collections',
