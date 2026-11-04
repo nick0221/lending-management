@@ -62,33 +62,12 @@ class LoanController extends Controller
         Gate::authorize('viewAny', Loan::class);
 
         $actor = $request->user();
-        $status = LoanStatus::tryFrom($request->string('status')->toString());
-        $overdueOnly = $request->boolean('overdue');
-        $search = trim($request->string('search')->toString());
-        $productId = $request->integer('product');
-        $productId = $productId > 0 && LoanProduct::whereKey($productId)->exists()
-            ? $productId
-            : null;
+        $filters = $this->loanFilters($request);
 
-        $sort = $request->string('sort')->toString();
-        $sort = in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null;
-        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+        $statusCountsQuery = Loan::query();
+        $this->applyLoanFilters($statusCountsQuery, $filters);
 
-        $applySearch = function (Builder $query) use ($search): void {
-            $query->where(function (Builder $query) use ($search): void {
-                $query->whereHas('borrower', fn (Builder $borrower) => $borrower
-                    ->where('name', 'like', "%{$search}%"));
-
-                if (ctype_digit($search)) {
-                    $query->orWhereKey((int) $search);
-                }
-            });
-        };
-
-        $statusCounts = Loan::query()
-            ->when($overdueOnly, fn (Builder $query) => $query->overdue())
-            ->when($productId, fn (Builder $query) => $query->where('loan_product_id', $productId))
-            ->when($search !== '', fn (Builder $query) => $applySearch($query))
+        $statusCounts = $statusCountsQuery
             ->selectRaw('status, count(*) as aggregate')
             ->groupBy('status')
             ->get()
@@ -96,18 +75,12 @@ class LoanController extends Controller
                 $loan->status->value => (int) $loan->aggregate,
             ]);
 
-        $loans = Loan::query()
-            ->with(['borrower', 'loanProduct', 'installments.allocations'])
-            ->when($status, fn (Builder $query, LoanStatus $loanStatus) => $query->ofStatus($loanStatus))
-            ->when($overdueOnly, fn (Builder $query) => $query->overdue())
-            ->when($productId, fn (Builder $query) => $query->where('loan_product_id', $productId))
-            ->when($search !== '', fn (Builder $query) => $applySearch($query))
-            ->when($sort === null, fn (Builder $query) => $query->latest())
-            ->when($sort === 'arrears', fn (Builder $query) => $query->orderByArrears($direction))
-            ->when(
-                in_array($sort, ['principal', 'applied_at'], true),
-                fn (Builder $query) => $query->orderBy($sort, $direction),
-            )
+        $loansQuery = Loan::query()
+            ->with(['borrower', 'loanProduct', 'installments.allocations']);
+        $this->applyLoanFilters($loansQuery, $filters);
+        $this->applyLoanSort($loansQuery, $filters);
+
+        $loans = $loansQuery
             ->paginate($this->perPage($request))
             ->withQueryString()
             ->through(fn (Loan $loan): array => [
@@ -139,12 +112,12 @@ class LoanController extends Controller
                     'label' => $product->name,
                 ])
                 ->all(),
-            'currentStatus' => $status?->value,
-            'currentProduct' => $productId,
-            'overdueOnly' => $overdueOnly,
-            'search' => $search,
-            'currentSort' => $sort,
-            'currentDirection' => $direction,
+            'currentStatus' => $filters['status']?->value,
+            'currentProduct' => $filters['product'],
+            'overdueOnly' => $filters['overdue'],
+            'search' => $filters['search'],
+            'currentSort' => $filters['sort'],
+            'currentDirection' => $filters['direction'],
             'counts' => [
                 'all' => (int) $statusCounts->sum(),
                 ...collect(LoanStatus::cases())
@@ -154,6 +127,26 @@ class LoanController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    /**
+     * Stream the loan queue for the current filters as a CSV download.
+     */
+    public function export(Request $request, CsvExporter $csvExporter): StreamedResponse
+    {
+        Gate::authorize('viewAny', Loan::class);
+
+        $filters = $this->loanFilters($request);
+
+        $query = Loan::query()
+            ->with(['borrower', 'loanProduct', 'installments.allocations']);
+        $this->applyLoanFilters($query, $filters);
+        $this->applyLoanSort($query, $filters);
+
+        return $csvExporter->stream(
+            'loans-'.now()->format('Y-m-d').'.csv',
+            $this->loanExportRows($query->lazy(500)),
+        );
     }
 
     /**
@@ -900,6 +893,111 @@ class LoanController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Parse the loan queue filters from the request.
+     *
+     * @return array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}
+     */
+    private function loanFilters(Request $request): array
+    {
+        $productId = $request->integer('product');
+        $sort = $request->string('sort')->toString();
+
+        return [
+            'status' => LoanStatus::tryFrom($request->string('status')->toString()),
+            'overdue' => $request->boolean('overdue'),
+            'product' => $productId > 0 && LoanProduct::whereKey($productId)->exists() ? $productId : null,
+            'search' => trim($request->string('search')->toString()),
+            'sort' => in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null,
+            'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
+        ];
+    }
+
+    /**
+     * Apply the loan queue filters to a query.
+     *
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     */
+    private function applyLoanFilters(Builder $query, array $filters): void
+    {
+        $search = $filters['search'];
+
+        $query
+            ->when($filters['status'], fn (Builder $query, LoanStatus $status) => $query->ofStatus($status))
+            ->when($filters['overdue'], fn (Builder $query) => $query->overdue())
+            ->when($filters['product'] !== null, fn (Builder $query) => $query->where('loan_product_id', $filters['product']))
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $query) use ($search): void {
+                    $query->whereHas('borrower', fn (Builder $borrower) => $borrower
+                        ->where('name', 'like', "%{$search}%"));
+
+                    if (ctype_digit($search)) {
+                        $query->orWhereKey((int) $search);
+                    }
+                });
+            });
+    }
+
+    /**
+     * Apply the requested loan queue order, defaulting to newest first.
+     *
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     */
+    private function applyLoanSort(Builder $query, array $filters): void
+    {
+        if ($filters['sort'] === 'arrears') {
+            $query->orderByArrears($filters['direction']);
+
+            return;
+        }
+
+        $query->when(
+            in_array($filters['sort'], ['principal', 'applied_at'], true),
+            fn (Builder $query) => $query->orderBy($filters['sort'], $filters['direction']),
+        )->when($filters['sort'] === null, fn (Builder $query) => $query->latest());
+    }
+
+    /**
+     * Build the loan CSV rows lazily so the book streams in chunks.
+     *
+     * @param  iterable<int, Loan>  $loans
+     * @return \Generator<int, array<int, string|int|null>>
+     */
+    private function loanExportRows(iterable $loans): \Generator
+    {
+        yield [
+            'Loan #',
+            'Borrower',
+            'Phone',
+            'Product',
+            'Status',
+            'Principal',
+            'Outstanding',
+            'Arrears',
+            'Days past due',
+            'Applied',
+            'Disbursed',
+        ];
+
+        foreach ($loans as $loan) {
+            yield [
+                $loan->id,
+                $loan->borrower->name,
+                $loan->borrower->phone,
+                $loan->loanProduct->name,
+                $loan->status->label(),
+                $loan->principal,
+                number_format(round($loan->installments->sum(
+                    fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
+                ), 2), 2, '.', ''),
+                number_format($this->loanArrears($loan), 2, '.', ''),
+                $loan->days_past_due,
+                $loan->applied_at?->toDateString(),
+                $loan->disbursed_at?->toDateString(),
+            ];
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     Calculator,
     CheckCheck,
+    Download,
     FileText,
     Plus,
     RotateCcw,
@@ -51,6 +52,7 @@ import {
     bulkApprove as bulkApproveLoans,
     calculator as loanCalculator,
     create as createLoan,
+    exportMethod as exportLoans,
     index as loansIndex,
     remind as remindLoans,
     show as showLoan,
@@ -217,6 +219,18 @@ export default function LoansIndex({
         (product) => product.value === currentProduct,
     );
 
+    const exportUrl = exportLoans({
+        query: {
+            ...(currentStatus ? { status: currentStatus } : {}),
+            ...(currentProduct ? { product: currentProduct } : {}),
+            ...(overdueOnly ? { overdue: '1' } : {}),
+            ...(search ? { search } : {}),
+            ...(currentSort
+                ? { sort: currentSort, direction: currentDirection }
+                : {}),
+        },
+    });
+
     return (
         <>
             <Head title="Loans" />
@@ -227,6 +241,12 @@ export default function LoansIndex({
                     description="Originate and review loan applications."
                     actions={
                         <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button variant="outline" asChild>
+                                <a href={exportUrl.url}>
+                                    <Download /> Export CSV
+                                </a>
+                            </Button>
+
                             <Button variant="outline" asChild>
                                 <Link href={loanCalculator()}>
                                     <Calculator /> Calculator

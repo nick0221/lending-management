@@ -312,6 +312,67 @@ test('the loan list can be sorted by arrears', function () {
         );
 });
 
+test('the loan book exports the filtered loans as a CSV', function () {
+    $admin = User::factory()->admin()->create();
+    $product = LoanProduct::factory()->create(['name' => 'Salary loan']);
+
+    $borrower = Borrower::factory()->create([
+        'name' => 'Ada Exported',
+        'phone' => '+1-555-0100',
+    ]);
+
+    Loan::factory()->approved()->forProduct($product)->for($borrower)->create([
+        'principal' => 1200,
+        'days_past_due' => 12,
+        'applied_at' => '2026-01-05',
+    ]);
+
+    $hidden = Loan::factory()->pending()->create();
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.loans.export', [
+            'status' => LoanStatus::Approved->value,
+        ]));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Loan #')
+        ->toContain('Outstanding')
+        ->toContain('Ada Exported')
+        ->toContain('+1-555-0100')
+        ->toContain('Salary loan')
+        ->toContain('Approved')
+        ->toContain('1200.00');
+
+    expect(array_filter(explode("\n", trim($content))))->toHaveCount(2)
+        ->and($content)->not->toContain($hidden->borrower->name);
+});
+
+test('the loan book export follows the requested sort', function () {
+    $admin = User::factory()->admin()->create();
+
+    Loan::factory()->create(['principal' => 900]);
+    Loan::factory()->create(['principal' => 1500]);
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.loans.export', [
+            'sort' => 'principal',
+            'direction' => 'asc',
+        ]))
+        ->assertOk()
+        ->streamedContent();
+
+    $rows = array_values(array_filter(explode("\n", trim($content))));
+
+    expect($rows[1])->toContain('900.00')
+        ->and($rows[2])->toContain('1500.00');
+});
+
 test('admins can originate a loan and the product terms are snapshotted', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();

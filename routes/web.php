@@ -78,6 +78,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->name('loans.bulk-approve');
         Route::post('loans/preview', [LoanController::class, 'preview'])->name('loans.preview');
         Route::get('loans/calculator', [LoanController::class, 'calculator'])->name('loans.calculator');
+        Route::get('loans/export', [LoanController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('loans.export');
         Route::resource('loans', LoanController::class)->except(['edit', 'update']);
         Route::get('loans/{loan}/payments/{payment}/receipt', [LoanController::class, 'receipt'])
             ->name('loans.payments.receipt');
