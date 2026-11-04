@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Check, Copy, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import {
+    Check,
+    Copy,
+    RefreshCw,
+    RotateCcw,
+    ScrollText,
+    Trash2,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
@@ -14,6 +21,13 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import {
     Table,
     TableBody,
@@ -56,6 +70,7 @@ type FailedJob = {
     queue: string;
     failed_at: string;
     exception: string;
+    exception_detail: string;
 };
 
 export default function SystemStatus({
@@ -373,6 +388,16 @@ export default function SystemStatus({
                                 </Table>
                             </div>
                         )}
+
+                        {queue.failed !== null &&
+                            queue.failed > failedJobs.length && (
+                                <p className="border-t px-4 py-3 text-xs text-muted-foreground">
+                                    Showing the {failedJobs.length} most recent
+                                    of {queue.failed} failed jobs. Retry all
+                                    requeues every one of them, including those
+                                    not listed.
+                                </p>
+                            )}
                     </SectionCard>
 
                     <SectionCard
@@ -685,6 +710,9 @@ function RetryAllFailedJobs({ count }: { count: number }) {
 
 function FailedJobActions({ job }: { job: FailedJob }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [traceOpen, setTraceOpen] = useState(false);
+    const [, copy] = useClipboard();
+    const [copiedTrace, setCopiedTrace] = useState(false);
 
     const retry = () => {
         router.post(retryFailedJob.url(job.uuid), {}, { preserveScroll: true });
@@ -697,10 +725,31 @@ function FailedJobActions({ job }: { job: FailedJob }) {
         });
     };
 
+    const copyTrace = async () => {
+        const copied = await copy(job.exception_detail);
+
+        if (!copied) {
+            return;
+        }
+
+        setCopiedTrace(true);
+        window.setTimeout(() => setCopiedTrace(false), 2000);
+    };
+
     return (
         <div className="flex items-center justify-end gap-1">
             <Button size="sm" variant="outline" onClick={retry}>
                 <RotateCcw /> Retry
+            </Button>
+
+            <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setTraceOpen(true)}
+                aria-label={`View the trace for failed job ${job.name}`}
+                title="View trace"
+            >
+                <ScrollText />
             </Button>
 
             <Button
@@ -711,6 +760,31 @@ function FailedJobActions({ job }: { job: FailedJob }) {
             >
                 <Trash2 />
             </Button>
+
+            <Sheet open={traceOpen} onOpenChange={setTraceOpen}>
+                <SheetContent className="w-full sm:max-w-2xl">
+                    <SheetHeader className="border-b">
+                        <SheetTitle className="font-mono text-sm break-all">
+                            {job.name}
+                        </SheetTitle>
+                        <SheetDescription>
+                            {job.queue} queue · failed{' '}
+                            {formatDateTime(job.failed_at)}
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-6">
+                        <Button size="sm" variant="outline" onClick={copyTrace}>
+                            {copiedTrace ? <Check /> : <Copy />}
+                            {copiedTrace ? 'Copied' : 'Copy trace'}
+                        </Button>
+
+                        <pre className="rounded-lg border bg-muted/50 p-4 font-mono text-xs break-words whitespace-pre-wrap">
+                            {job.exception_detail}
+                        </pre>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent>

@@ -145,6 +145,7 @@ class SystemStatusController extends Controller
                     'queue' => $job->queue,
                     'failed_at' => Carbon::parse($job->failed_at)->toIso8601String(),
                     'exception' => Str::limit(Str::before($exception, "\n"), 180),
+                    'exception_detail' => Str::limit($exception, 4000),
                 ];
             })
             ->all();

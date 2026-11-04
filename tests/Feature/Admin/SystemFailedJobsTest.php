@@ -37,6 +37,7 @@ test('a super admin sees the failed jobs on the system page', function () {
             ->where('failed_jobs.0.name', 'App\Jobs\SendLoanReminder')
             ->where('failed_jobs.0.queue', 'default')
             ->where('failed_jobs.0.exception', 'RuntimeException: Mail gateway down')
+            ->where('failed_jobs.0.exception_detail', "RuntimeException: Mail gateway down\n#0 /app/Jobs/SendLoanReminder.php(42)")
         );
 });
 
