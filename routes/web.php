@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\SearchController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SystemStatusController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\BorrowerLoanController;
 use App\Http\Controllers\DashboardController as BorrowerDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,7 @@ Route::get('/', function (Request $request) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [BorrowerDashboardController::class, 'index'])->name('dashboard');
+    Route::get('loans/{loan}', [BorrowerLoanController::class, 'show'])->name('loans.show');
 });
 
 Route::middleware(['auth', 'verified', 'role:super_admin,admin'])

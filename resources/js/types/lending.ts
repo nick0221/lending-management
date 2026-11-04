@@ -285,6 +285,20 @@ export type LoanAbilities = {
     delete: boolean;
 };
 
+export type BorrowerLoanTotals = {
+    payable: string;
+    paid: string;
+    outstanding: string;
+    arrears: string;
+    next_due: {
+        sequence: number;
+        due_date: string;
+        amount: string;
+        overdue: boolean;
+        days_past_due: number;
+    } | null;
+};
+
 export type LoanInstallment = {
     sequence: number;
     due_date: string;

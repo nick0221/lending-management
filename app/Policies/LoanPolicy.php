@@ -26,6 +26,15 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the borrower linked to the loan may view it.
+     */
+    public function viewOwn(User $user, Loan $loan): bool
+    {
+        return $loan->borrower->user_id !== null
+            && $loan->borrower->user_id === $user->id;
+    }
+
+    /**
      * Determine whether the user can originate loans.
      */
     public function create(User $user): bool

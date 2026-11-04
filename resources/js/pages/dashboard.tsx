@@ -28,6 +28,7 @@ import { formatDate, formatDateOnly, formatMoney } from '@/lib/format';
 import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminLoans, show as showLoan } from '@/routes/admin/loans';
+import { show as showMyLoan } from '@/routes/loans';
 import type { BorrowerSummary } from '@/types';
 
 export default function Dashboard({
@@ -339,19 +340,21 @@ export default function Dashboard({
                                         {summary.loans.map((loan) => (
                                             <TableRow key={loan.id}>
                                                 <TableCell className="font-medium">
-                                                    {canAccessAdmin ? (
-                                                        <Link
-                                                            href={showLoan(
-                                                                loan.id,
-                                                            )}
-                                                            prefetch
-                                                            className="underline-offset-4 hover:underline"
-                                                        >
-                                                            #{loan.id}
-                                                        </Link>
-                                                    ) : (
-                                                        `#${loan.id}`
-                                                    )}
+                                                    <Link
+                                                        href={
+                                                            canAccessAdmin
+                                                                ? showLoan(
+                                                                      loan.id,
+                                                                  )
+                                                                : showMyLoan(
+                                                                      loan.id,
+                                                                  )
+                                                        }
+                                                        prefetch
+                                                        className="underline-offset-4 hover:underline"
+                                                    >
+                                                        #{loan.id}
+                                                    </Link>
 
                                                     <p className="mt-0.5 text-xs text-muted-foreground md:hidden">
                                                         {loan.product ?? '—'} ·{' '}
@@ -393,22 +396,26 @@ export default function Dashboard({
                                                 </TableCell>
 
                                                 <TableCell className="hidden text-right md:table-cell">
-                                                    {canAccessAdmin && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            asChild
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={
+                                                                canAccessAdmin
+                                                                    ? showLoan(
+                                                                          loan.id,
+                                                                      )
+                                                                    : showMyLoan(
+                                                                          loan.id,
+                                                                      )
+                                                            }
+                                                            prefetch
                                                         >
-                                                            <Link
-                                                                href={showLoan(
-                                                                    loan.id,
-                                                                )}
-                                                                prefetch
-                                                            >
-                                                                View
-                                                            </Link>
-                                                        </Button>
-                                                    )}
+                                                            View
+                                                        </Link>
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
