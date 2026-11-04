@@ -38,8 +38,9 @@ class BorrowerController extends Controller
         $actor = $request->user();
         $status = $this->statusFilter($request);
         $search = $this->searchTerm($request);
+        $arrearsOnly = $request->boolean('arrears');
 
-        $counts = $this->applyFilters(Borrower::query(), null, $search)
+        $counts = $this->applyFilters(Borrower::query(), null, $search, $arrearsOnly)
             ->selectRaw('kyc_status, count(*) as aggregate')
             ->groupBy('kyc_status')
             ->toBase()
@@ -52,6 +53,7 @@ class BorrowerController extends Controller
             Borrower::query()->with(['user', 'loans.installments.allocations']),
             $status,
             $search,
+            $arrearsOnly,
         )
             ->orderBy('name')
             ->paginate($this->perPage($request))
@@ -65,18 +67,33 @@ class BorrowerController extends Controller
                     ),
                 );
 
+                $outstanding = round(
+                    $openLoans->sum(
+                        fn (Loan $loan): float => $loan->installments->sum(
+                            fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
+                        ),
+                    ),
+                    2,
+                );
+
+                $arrears = round(
+                    $openLoans->sum(
+                        fn (Loan $loan): float => $loan->installments->sum(
+                            fn (LoanInstallment $installment): float => $installment->isOverdue()
+                                ? $installment->outstandingTotal()
+                                : 0.0,
+                        ),
+                    ),
+                    2,
+                );
+
                 return [
                     ...$this->toPayload($borrower),
                     'loan_count' => $borrower->loans->count(),
                     'open_loan_count' => $openLoans->count(),
-                    'outstanding' => number_format(round(
-                        $openLoans->sum(
-                            fn (Loan $loan): float => $loan->installments->sum(
-                                fn (LoanInstallment $installment): float => $installment->outstandingTotal(),
-                            ),
-                        ),
-                        2,
-                    ), 2, '.', ''),
+                    'outstanding' => number_format($outstanding, 2, '.', ''),
+                    'arrears' => number_format($arrears, 2, '.', ''),
+                    'in_arrears' => $arrears > 0,
                     'can' => [
                         'view' => $actor->can('view', $borrower),
                         'update' => $actor->can('update', $borrower),
@@ -89,6 +106,7 @@ class BorrowerController extends Controller
             'borrowers' => $borrowers,
             'kycStatuses' => $this->kycStatusOptions(),
             'currentKycStatus' => $status?->value,
+            'arrearsOnly' => $arrearsOnly,
             'search' => $search,
             'kycCounts' => [
                 'all' => (int) $counts->sum(),
@@ -110,7 +128,11 @@ class BorrowerController extends Controller
 
         return $this->csvExporter->stream(
             'borrowers-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($this->statusFilter($request), $this->searchTerm($request)),
+            $this->csvRows(
+                $this->statusFilter($request),
+                $this->searchTerm($request),
+                $request->boolean('arrears'),
+            ),
         );
     }
 
@@ -291,10 +313,19 @@ class BorrowerController extends Controller
     /**
      * Apply the register filters to a borrower query.
      */
-    private function applyFilters(Builder $query, ?KycStatus $status, string $search): Builder
+    private function applyFilters(Builder $query, ?KycStatus $status, string $search, bool $arrearsOnly = false): Builder
     {
         return $query
             ->when($status, fn (Builder $query) => $query->where('kyc_status', $status))
+            ->when(
+                $arrearsOnly,
+                fn (Builder $query) => $query->whereHas(
+                    'loans',
+                    fn (Builder $query) => $query
+                        ->whereIn('status', [LoanStatus::Active, LoanStatus::Defaulted])
+                        ->where('days_past_due', '>', 0),
+                ),
+            )
             ->when(
                 $search !== '',
                 fn (Builder $query) => $query->whereAny(
@@ -310,7 +341,7 @@ class BorrowerController extends Controller
      *
      * @return \Generator<int, array<int, string|int|null>>
      */
-    private function csvRows(?KycStatus $status, string $search): \Generator
+    private function csvRows(?KycStatus $status, string $search, bool $arrearsOnly = false): \Generator
     {
         yield [
             'Name',
@@ -319,14 +350,35 @@ class BorrowerController extends Controller
             'National ID',
             'KYC status',
             'Portal account',
+            'Arrears',
             'Joined',
         ];
 
-        $borrowers = $this->applyFilters(Borrower::query()->with('user'), $status, $search)
+        $borrowers = $this->applyFilters(
+            Borrower::query()->with(['user', 'loans.installments.allocations']),
+            $status,
+            $search,
+            $arrearsOnly,
+        )
             ->orderBy('name')
             ->lazy(500);
 
         foreach ($borrowers as $borrower) {
+            $arrears = round(
+                $borrower->loans
+                    ->filter(fn (Loan $loan): bool => in_array(
+                        $loan->status,
+                        [LoanStatus::Active, LoanStatus::Defaulted],
+                        true,
+                    ))
+                    ->sum(fn (Loan $loan): float => $loan->installments->sum(
+                        fn (LoanInstallment $installment): float => $installment->isOverdue()
+                            ? $installment->outstandingTotal()
+                            : 0.0,
+                    )),
+                2,
+            );
+
             yield [
                 $borrower->name,
                 $borrower->phone,
@@ -334,6 +386,7 @@ class BorrowerController extends Controller
                 $borrower->national_id,
                 $borrower->kyc_status->label(),
                 $borrower->user?->email,
+                number_format($arrears, 2, '.', ''),
                 $borrower->created_at?->toDateString(),
             ];
         }

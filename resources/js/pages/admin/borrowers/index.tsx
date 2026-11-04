@@ -4,6 +4,7 @@ import {
     Download,
     Plus,
     RotateCcw,
+    TriangleAlert,
     Upload,
     Users,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Toggle } from '@/components/ui/toggle';
 import { formatMoney } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
@@ -53,12 +55,14 @@ export default function BorrowersIndex({
     borrowers,
     kycStatuses,
     currentKycStatus,
+    arrearsOnly,
     kycCounts,
     search,
 }: {
     borrowers: Paginated<BorrowerListItem>;
     kycStatuses: KycStatusOption[];
     currentKycStatus: KycStatus | null;
+    arrearsOnly: boolean;
     kycCounts: Record<string, number>;
     search: string;
 }) {
@@ -99,16 +103,27 @@ export default function BorrowersIndex({
         );
     };
 
-    const withFilters = (kycStatus?: KycStatus) =>
-        borrowersIndex({
+    const withFilters = (overrides: {
+        kycStatus?: KycStatus | null;
+        arrears?: boolean;
+    }) => {
+        const kycStatus =
+            overrides.kycStatus === undefined
+                ? currentKycStatus
+                : overrides.kycStatus;
+        const arrears = overrides.arrears ?? arrearsOnly;
+
+        return borrowersIndex({
             query: {
                 ...(kycStatus ? { kyc_status: kycStatus } : {}),
+                ...(arrears ? { arrears: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(borrowers.per_page !== 15
                     ? { per_page: borrowers.per_page }
                     : {}),
             },
         });
+    };
 
     const clearFilters = borrowersIndex({
         query:
@@ -121,6 +136,7 @@ export default function BorrowersIndex({
         query: {
             ...(search ? { search } : {}),
             ...(currentKycStatus ? { kyc_status: currentKycStatus } : {}),
+            ...(arrearsOnly ? { arrears: '1' } : {}),
         },
     });
 
@@ -168,19 +184,35 @@ export default function BorrowersIndex({
                                 value: 'all',
                                 label: 'All',
                                 count: kycCounts.all,
-                                href: withFilters(),
+                                href: withFilters({ kycStatus: null }),
                             },
                             ...kycStatuses.map((status) => ({
                                 value: status.value,
                                 label: status.label,
                                 count: kycCounts[status.value] ?? 0,
-                                href: withFilters(status.value),
+                                href: withFilters({ kycStatus: status.value }),
                             })),
                         ]}
                         value={currentKycStatus ?? 'all'}
                         label="Filter borrowers by KYC status"
                         className="min-w-0 flex-1 basis-full lg:basis-auto"
                     />
+
+                    <Toggle
+                        asChild
+                        variant="outline"
+                        pressed={arrearsOnly}
+                        className="h-9 shrink-0 gap-2 px-3"
+                    >
+                        <Link
+                            href={withFilters({ arrears: !arrearsOnly })}
+                            preserveScroll
+                            prefetch
+                        >
+                            <TriangleAlert />
+                            In arrears
+                        </Link>
+                    </Toggle>
                 </div>
 
                 {selected.length > 0 && (
@@ -253,10 +285,12 @@ export default function BorrowersIndex({
                                     ? `No borrowers match "${search}". Try another term or clear the search.`
                                     : currentKycStatus
                                       ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
-                                      : 'Register the first borrower or import your existing book to start originating loans.'
+                                      : arrearsOnly
+                                        ? 'No borrowers are in arrears right now. Turn off the arrears filter to see the whole register.'
+                                        : 'Register the first borrower or import your existing book to start originating loans.'
                             }
                             action={
-                                search || currentKycStatus ? (
+                                search || currentKycStatus || arrearsOnly ? (
                                     <Button asChild size="sm" variant="outline">
                                         <Link href={clearFilters}>
                                             <RotateCcw /> Clear filters
@@ -322,6 +356,9 @@ export default function BorrowersIndex({
                                     <TableHead className="hidden text-right md:table-cell">
                                         Outstanding
                                     </TableHead>
+                                    <TableHead className="hidden text-right lg:table-cell">
+                                        Arrears
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -369,6 +406,14 @@ export default function BorrowersIndex({
                                             <div className="text-xs text-muted-foreground xl:hidden">
                                                 {borrower.phone}
                                             </div>
+                                            {borrower.in_arrears && (
+                                                <div className="text-xs font-medium text-destructive lg:hidden">
+                                                    {formatMoney(
+                                                        borrower.arrears,
+                                                    )}{' '}
+                                                    in arrears
+                                                </div>
+                                            )}
                                             <div className="mt-1 sm:hidden">
                                                 <KycBadge
                                                     status={borrower.kyc_status}
@@ -411,6 +456,19 @@ export default function BorrowersIndex({
                                                       borrower.outstanding,
                                                   )
                                                 : '—'}
+                                        </TableCell>
+                                        <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                                            {borrower.in_arrears ? (
+                                                <span className="font-medium text-destructive">
+                                                    {formatMoney(
+                                                        borrower.arrears,
+                                                    )}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">

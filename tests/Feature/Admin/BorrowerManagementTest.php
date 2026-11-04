@@ -77,6 +77,103 @@ test('the borrower list reports each borrower portfolio', function () {
         );
 });
 
+test('the borrower list reports arrears and can be filtered to borrowers in arrears', function () {
+    $admin = User::factory()->admin()->create();
+
+    $overdueBorrower = Borrower::factory()->create(['name' => 'Ada Arrears']);
+    $overdueLoan = Loan::factory()
+        ->for($overdueBorrower)
+        ->withStatus(LoanStatus::Active)
+        ->create(['days_past_due' => 12]);
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $overdueLoan->id,
+        'sequence' => 1,
+        'due_date' => today()->subDays(12),
+        'principal_due' => 100,
+        'interest_due' => 15,
+        'fee_due' => 5,
+        'penalty_accrued' => 0,
+    ]);
+
+    $currentBorrower = Borrower::factory()->create(['name' => 'Grace Current']);
+    $currentLoan = Loan::factory()
+        ->for($currentBorrower)
+        ->withStatus(LoanStatus::Active)
+        ->create();
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $currentLoan->id,
+        'sequence' => 1,
+        'due_date' => today()->addMonth(),
+        'principal_due' => 100,
+        'interest_due' => 0,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 2)
+            ->where('borrowers.data.0.name', 'Ada Arrears')
+            ->where('borrowers.data.0.arrears', '120.00')
+            ->where('borrowers.data.0.in_arrears', true)
+            ->where('borrowers.data.1.name', 'Grace Current')
+            ->where('borrowers.data.1.arrears', '0.00')
+            ->where('borrowers.data.1.in_arrears', false)
+            ->where('arrearsOnly', false)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index', ['arrears' => '1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 1)
+            ->where('borrowers.data.0.name', 'Ada Arrears')
+            ->where('arrearsOnly', true)
+            ->where('kycCounts.all', 1)
+        );
+});
+
+test('the borrower register export includes arrears and follows the arrears filter', function () {
+    $admin = User::factory()->admin()->create();
+
+    $overdueBorrower = Borrower::factory()->create(['name' => 'Ada Arrears']);
+    $overdueLoan = Loan::factory()
+        ->for($overdueBorrower)
+        ->withStatus(LoanStatus::Active)
+        ->create(['days_past_due' => 7]);
+
+    LoanInstallment::factory()->create([
+        'loan_id' => $overdueLoan->id,
+        'sequence' => 1,
+        'due_date' => today()->subDays(7),
+        'principal_due' => 250,
+        'interest_due' => 0,
+        'fee_due' => 0,
+        'penalty_accrued' => 0,
+    ]);
+
+    $currentBorrower = Borrower::factory()->create(['name' => 'Grace Current']);
+    Loan::factory()
+        ->for($currentBorrower)
+        ->withStatus(LoanStatus::Active)
+        ->create();
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.borrowers.export', ['arrears' => '1']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Arrears')
+        ->toContain('Ada Arrears')
+        ->toContain('250.00')
+        ->not->toContain('Grace Current');
+});
+
 test('the borrower register can be exported as CSV with the current filters', function () {
     $admin = User::factory()->admin()->create();
     $linked = User::factory()->create(['email' => 'portal@example.com']);
