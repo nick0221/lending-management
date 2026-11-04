@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
+    Bell,
     FileBarChart,
     HandCoins,
     Landmark,
@@ -38,6 +39,7 @@ import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import { index as collectionsIndex } from '@/routes/admin/collections';
 import { index as loanProductsIndex } from '@/routes/admin/loan-products';
 import { index as loansIndex } from '@/routes/admin/loans';
+import { index as notificationsIndex } from '@/routes/admin/notifications';
 import { index as paymentsIndex } from '@/routes/admin/payments';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { edit as settingsEdit } from '@/routes/admin/settings';
@@ -99,6 +101,12 @@ export function GlobalSearch() {
             label: 'Payments',
             url: paymentsIndex().url,
             icon: Receipt,
+        },
+        {
+            value: 'go-notifications',
+            label: 'Notifications',
+            url: notificationsIndex().url,
+            icon: Bell,
         },
         {
             value: 'go-collections',

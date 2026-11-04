@@ -8,6 +8,7 @@ use App\Models\ActivityLog;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanProduct;
+use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -97,6 +98,7 @@ class RoleMatrix
                     $this->ability('View loans', 'Open the loan queue and loan files.', 'viewAny', [Loan::class]),
                     $this->ability('View a loan', 'See a loan schedule, payments and activity.', 'view', [new Loan]),
                     $this->ability('View payments', 'Search and reconcile every repayment across the book.', 'viewAny', [Payment::class]),
+                    $this->ability('View notifications', 'Audit email and SMS delivery across the book.', 'viewAny', [NotificationLog::class]),
                     $this->ability('Originate loans', 'Create a loan from an approved product.', 'create', [Loan::class]),
                     $this->ability('Edit pending loans', 'Change an application before it is disbursed.', 'update', [new Loan(['status' => LoanStatus::Pending])]),
                     $this->ability('Approve pending loans', 'Allow a pending application to move forward.', 'approve', [new Loan(['status' => LoanStatus::Pending])]),

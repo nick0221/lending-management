@@ -24,6 +24,10 @@ test('the role matrix is evaluated from the policies', function () {
             ->where('groups.2.abilities.2.roles.super_admin', true)
             ->where('groups.2.abilities.2.roles.admin', true)
             ->where('groups.2.abilities.2.roles.user', false)
+            ->where('groups.2.abilities.3.label', 'View notifications')
+            ->where('groups.2.abilities.3.roles.super_admin', true)
+            ->where('groups.2.abilities.3.roles.admin', true)
+            ->where('groups.2.abilities.3.roles.user', false)
         );
 });
 

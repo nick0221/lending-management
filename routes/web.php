@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
@@ -118,6 +119,12 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('payments/export', [PaymentController::class, 'export'])
             ->middleware('throttle:reports')
             ->name('payments.export');
+
+        Route::get('notifications', [NotificationController::class, 'index'])
+            ->name('notifications.index');
+        Route::get('notifications/export', [NotificationController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('notifications.export');
 
         Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
         Route::get('collections/export', [CollectionController::class, 'export'])

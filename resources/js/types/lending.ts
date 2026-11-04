@@ -529,6 +529,19 @@ export type NotificationLogEntry = {
     can_resend: boolean;
 };
 
+export type NotificationRegisterRow = NotificationLogEntry & {
+    borrower_id: number | null;
+    borrower_name: string | null;
+    borrower_phone: string | null;
+    loan_id: number | null;
+    created_at: string | null;
+};
+
+export type NotificationOption = {
+    value: string;
+    label: string;
+};
+
 export type AgingBuckets = {
     current: number;
     days_1_30: number;

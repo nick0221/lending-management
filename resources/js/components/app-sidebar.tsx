@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Bell,
     BookOpen,
     FileBarChart,
     FolderGit2,
@@ -35,6 +36,7 @@ import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
 import { index as adminLoanProducts } from '@/routes/admin/loan-products';
 import { index as adminLoans } from '@/routes/admin/loans';
+import { index as adminNotifications } from '@/routes/admin/notifications';
 import { index as adminPayments } from '@/routes/admin/payments';
 import { index as adminReports } from '@/routes/admin/reports';
 import { edit as adminSettings } from '@/routes/admin/settings';
@@ -80,6 +82,11 @@ const adminNavItems: NavItem[] = [
         title: 'Payments',
         href: adminPayments(),
         icon: Receipt,
+    },
+    {
+        title: 'Notifications',
+        href: adminNotifications(),
+        icon: Bell,
     },
     {
         title: 'Collections',
