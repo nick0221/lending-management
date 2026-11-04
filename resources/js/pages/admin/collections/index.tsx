@@ -7,6 +7,8 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
+import { useState } from 'react';
+import { LogCollectionContactDialog } from '@/components/admin/log-collection-contact-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
@@ -40,6 +42,8 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import type {
+    CollectionChannelOption,
+    CollectionOutcomeOption,
     CollectionQueueRow,
     CollectionQueueSummary,
     Paginated,
@@ -56,6 +60,8 @@ export default function CollectionsIndex({
     counts,
     summary,
     officers,
+    collectionChannels,
+    collectionOutcomes,
     buckets,
     currentTab,
     currentOfficer,
@@ -68,6 +74,8 @@ export default function CollectionsIndex({
     counts: Record<CollectionTab, number>;
     summary: CollectionQueueSummary;
     officers: { value: number; label: string }[];
+    collectionChannels: CollectionChannelOption[];
+    collectionOutcomes: CollectionOutcomeOption[];
     buckets: { value: string; label: string }[];
     currentTab: CollectionTab;
     currentOfficer: number | null;
@@ -76,6 +84,9 @@ export default function CollectionsIndex({
     currentDirection: 'asc' | 'desc';
     search: string;
 }) {
+    const [contactLoan, setContactLoan] = useState<CollectionQueueRow | null>(
+        null,
+    );
     const withFilters = (overrides: {
         tab?: CollectionTab;
         officer?: number | null;
@@ -548,7 +559,19 @@ export default function CollectionsIndex({
                                         </TableCell>
 
                                         <TableCell>
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-end gap-2">
+                                                {loan.can.log_contact && (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            setContactLoan(loan)
+                                                        }
+                                                    >
+                                                        <PhoneCall /> Log
+                                                        contact
+                                                    </Button>
+                                                )}
+
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
@@ -572,6 +595,19 @@ export default function CollectionsIndex({
 
                 <DataPagination paginator={loans} />
             </div>
+
+            <LogCollectionContactDialog
+                loan={contactLoan ?? { id: 0, borrower_name: '' }}
+                open={contactLoan !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setContactLoan(null);
+                    }
+                }}
+                channels={collectionChannels}
+                outcomes={collectionOutcomes}
+                outstanding={contactLoan?.outstanding ?? '0'}
+            />
         </>
     );
 }

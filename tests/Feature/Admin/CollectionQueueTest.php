@@ -227,3 +227,19 @@ test('officers cannot be assigned to a closed loan', function () {
 
     expect($loan->fresh()->collection_officer_id)->toBeNull();
 });
+
+test('the queue offers the contact channels and outcomes needed to log a call', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.collections.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('collectionChannels', 5)
+            ->where('collectionChannels.0.value', 'call')
+            ->where('collectionChannels.0.label', 'Phone call')
+            ->has('collectionOutcomes', 6)
+            ->where('collectionOutcomes.0.value', 'promised')
+            ->where('collectionOutcomes.0.label', 'Promised to pay')
+        );
+});

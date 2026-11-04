@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\CollectionChannel;
 use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
 use App\Enums\Role;
@@ -161,6 +162,8 @@ class CollectionController extends Controller
                 'unassigned' => $counts['unassigned'],
             ],
             'officers' => $this->officerOptions(),
+            'collectionChannels' => $this->collectionChannelOptions(),
+            'collectionOutcomes' => $this->collectionOutcomeOptions(),
             'buckets' => [
                 ['value' => 'all', 'label' => 'All aging'],
                 ['value' => '1_30', 'label' => '1–30 days'],
@@ -302,6 +305,38 @@ class CollectionController extends Controller
                 'log_contact' => $actor->can('logContact', $loan),
             ],
         ];
+    }
+
+    /**
+     * Map the collection channels to select options.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function collectionChannelOptions(): array
+    {
+        return array_map(
+            fn (CollectionChannel $channel): array => [
+                'value' => $channel->value,
+                'label' => $channel->label(),
+            ],
+            CollectionChannel::cases(),
+        );
+    }
+
+    /**
+     * Map the collection outcomes to select options.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function collectionOutcomeOptions(): array
+    {
+        return array_map(
+            fn (CollectionOutcome $outcome): array => [
+                'value' => $outcome->value,
+                'label' => $outcome->label(),
+            ],
+            CollectionOutcome::cases(),
+        );
     }
 
     /**
