@@ -189,3 +189,81 @@ test('staff and unlinked accounts cannot print the borrower statement', function
         ->get(route('loans.statement', $loan))
         ->assertForbidden();
 });
+
+test('a borrower can print a receipt for their own payment', function () {
+    [$user, $borrower] = borrowerAccount();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->for($borrower)->create();
+
+    $payment = Payment::factory()->for($loan)->create([
+        'amount' => '400.00',
+        'reference' => 'PAY-1',
+        'payment_date' => today(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('loans.payments.receipt', [
+            'loan' => $loan,
+            'payment' => $payment,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('loans/receipt')
+            ->where('receipt.id', $payment->id)
+            ->where('receipt.number', 'R-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT))
+            ->where('receipt.amount', '400.00')
+            ->where('receipt.reference', 'PAY-1')
+            ->where('receipt.loan_id', $loan->id)
+            ->where('receipt.borrower_name', $borrower->name)
+            ->where('receipt.reversed_at', null)
+            ->has('receipt.allocations')
+        );
+});
+
+test('a borrower cannot print another borrower receipt', function () {
+    [$user] = borrowerAccount();
+
+    $otherBorrower = Borrower::factory()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->for($otherBorrower)->create();
+    $payment = Payment::factory()->for($loan)->create();
+
+    $this->actingAs($user)
+        ->get(route('loans.payments.receipt', [
+            'loan' => $loan,
+            'payment' => $payment,
+        ]))
+        ->assertForbidden();
+});
+
+test('a receipt must belong to the loan in the URL', function () {
+    [$user, $borrower] = borrowerAccount();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->for($borrower)->create();
+    $otherLoan = Loan::factory()->withStatus(LoanStatus::Active)->for($borrower)->create();
+    $payment = Payment::factory()->for($otherLoan)->create();
+
+    $this->actingAs($user)
+        ->get(route('loans.payments.receipt', [
+            'loan' => $loan,
+            'payment' => $payment,
+        ]))
+        ->assertNotFound();
+});
+
+test('staff and unlinked accounts cannot print the borrower receipt', function () {
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $payment = Payment::factory()->for($loan)->create();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('loans.payments.receipt', [
+            'loan' => $loan,
+            'payment' => $payment,
+        ]))
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('loans.payments.receipt', [
+            'loan' => $loan,
+            'payment' => $payment,
+        ]))
+        ->assertForbidden();
+});

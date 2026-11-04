@@ -36,6 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('loans/{loan}/statement', [BorrowerLoanController::class, 'statement'])
         ->middleware('throttle:reports')
         ->name('loans.statement');
+    Route::get('loans/{loan}/payments/{payment}/receipt', [BorrowerLoanController::class, 'receipt'])
+        ->middleware('throttle:reports')
+        ->name('loans.payments.receipt');
 });
 
 Route::middleware(['auth', 'verified', 'role:super_admin,admin'])

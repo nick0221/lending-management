@@ -7,6 +7,8 @@ use App\Models\LoanInstallment;
 use App\Models\LoanPaymentAllocation;
 use App\Models\Payment;
 use App\Services\LoanStatementService;
+use App\Services\PaymentReceiptService;
+use App\Services\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -52,6 +54,21 @@ class BorrowerLoanController extends Controller
             'loans/statement',
             $statementService->build($loan),
         );
+    }
+
+    /**
+     * Show the borrower a printable receipt for one of their payments.
+     */
+    public function receipt(Loan $loan, Payment $payment, PaymentReceiptService $receiptService): Response
+    {
+        Gate::authorize('viewOwn', $loan);
+
+        abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
+
+        return Inertia::render('loans/receipt', [
+            'organisation' => app(Settings::class)->organisationName(),
+            'receipt' => $receiptService->build($payment),
+        ]);
     }
 
     /**

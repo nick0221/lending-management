@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Loader2, Mail, Printer } from 'lucide-react';
 import { useState } from 'react';
-import { PaymentReceiptDocument } from '@/components/admin/payment-receipt-document';
+import { PaymentReceiptDocument } from '@/components/payment-receipt-document';
 import { Button } from '@/components/ui/button';
 import { useCurrencySymbol } from '@/hooks/use-currency-symbol';
 import { show as showLoan } from '@/routes/admin/loans';

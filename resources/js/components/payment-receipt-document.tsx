@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 import type { PaymentReceipt } from '@/types';
 
 /**
- * The receipt body shared by the payment sheet and the printable page.
+ * The receipt body shared by the staff receipt sheet, the printable staff page
+ * and the borrower's own receipt.
  */
 export function PaymentReceiptDocument({
     organisation,

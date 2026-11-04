@@ -33,6 +33,7 @@ use App\Services\CsvExporter;
 use App\Services\LoanService;
 use App\Services\LoanStatementService;
 use App\Services\NotificationService;
+use App\Services\PaymentReceiptService;
 use App\Services\RepaymentService;
 use App\Services\ScheduleService;
 use App\Services\Settings;
@@ -51,6 +52,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LoanController extends Controller
 {
+    public function __construct(private readonly PaymentReceiptService $receipts) {}
+
     /**
      * Display a listing of the loans.
      */
@@ -470,11 +473,9 @@ class LoanController extends Controller
 
         abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
 
-        $payment->load(['loan.borrower', 'loan.loanProduct', 'allocations.installment', 'recordedBy', 'reversedBy']);
-
         return Inertia::render('admin/loans/receipt', [
             'organisation' => app(Settings::class)->organisationName(),
-            'receipt' => $this->receiptPayload($payment),
+            'receipt' => $this->receipts->build($payment),
         ]);
     }
 
@@ -961,57 +962,10 @@ class LoanController extends Controller
                 'reversal_reason' => $payment->reversal_reason,
                 'reversed_by' => $payment->reversedBy?->name,
                 'can_reverse' => $actor->can('reversePayment', [$loan, $payment]),
-                'allocations' => $this->allocationPayload($payment),
+                'allocations' => $this->receipts->allocations($payment),
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * Transform a payment's allocations into the payload shared by the loan
-     * file and the receipt.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function allocationPayload(Payment $payment): array
-    {
-        return $payment->allocations
-            ->map(fn (LoanPaymentAllocation $allocation): array => [
-                'installment_sequence' => $allocation->sequence,
-                'principal_allocated' => $allocation->principal_allocated,
-                'interest_allocated' => $allocation->interest_allocated,
-                'fee_allocated' => $allocation->fee_allocated,
-                'penalty_allocated' => $allocation->penalty_allocated,
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Transform a payment into the printable receipt payload.
-     *
-     * @return array<string, mixed>
-     */
-    private function receiptPayload(Payment $payment): array
-    {
-        return [
-            'id' => $payment->id,
-            'number' => 'R-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT),
-            'payment_date' => $payment->payment_date->toDateString(),
-            'amount' => $payment->amount,
-            'method_label' => $payment->method->label(),
-            'reference' => $payment->reference,
-            'notes' => $payment->notes,
-            'recorded_by' => $payment->recordedBy?->name,
-            'reversed_at' => $payment->reversed_at?->toIso8601String(),
-            'reversal_reason' => $payment->reversal_reason,
-            'reversed_by' => $payment->reversedBy?->name,
-            'borrower_name' => $payment->loan->borrower->name,
-            'borrower_email' => $payment->loan->borrower->email,
-            'loan_id' => $payment->loan_id,
-            'product_name' => $payment->loan->loanProduct->name,
-            'allocations' => $this->allocationPayload($payment),
-        ];
     }
 
     /**

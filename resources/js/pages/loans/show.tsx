@@ -25,6 +25,7 @@ import {
 import { formatDate, formatDateOnly, formatMoney } from '@/lib/format';
 import { dashboard } from '@/routes';
 import { statement as loanStatement } from '@/routes/loans';
+import { receipt as paymentReceipt } from '@/routes/loans/payments';
 import type {
     BorrowerLoanTotals,
     Loan,
@@ -303,7 +304,7 @@ export default function ShowMyLoan({
 
                 <SectionCard
                     title="Payments"
-                    description="Every repayment recorded against this loan."
+                    description="Every repayment recorded against this loan. Open a receipt to print or save it."
                 >
                     {payments.length === 0 ? (
                         <EmptyState
@@ -331,6 +332,9 @@ export default function ShowMyLoan({
                                         </TableHead>
                                         <TableHead className="hidden xl:table-cell">
                                             Recorded by
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Receipt
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -365,6 +369,27 @@ export default function ShowMyLoan({
                                             </TableCell>
                                             <TableCell className="hidden text-muted-foreground xl:table-cell">
                                                 {payment.recorded_by ?? '—'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    asChild
+                                                >
+                                                    <a
+                                                        href={paymentReceipt.url(
+                                                            {
+                                                                loan: loan.id,
+                                                                payment:
+                                                                    payment.id,
+                                                            },
+                                                        )}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        Receipt
+                                                    </a>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

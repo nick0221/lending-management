@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Loader2, Mail, Printer } from 'lucide-react';
 import { useState } from 'react';
-import { PaymentReceiptDocument } from '@/components/admin/payment-receipt-document';
+import { PaymentReceiptDocument } from '@/components/payment-receipt-document';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
