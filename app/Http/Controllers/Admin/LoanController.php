@@ -7,6 +7,7 @@ use App\Enums\CollectionOutcome;
 use App\Enums\DisbursementMethod;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ApproveLoansRequest;
 use App\Http\Requests\Admin\DisburseLoanRequest;
@@ -114,6 +115,8 @@ class LoanController extends Controller
                 ->all(),
             'currentStatus' => $filters['status']?->value,
             'currentProduct' => $filters['product'],
+            'currentOfficer' => $filters['officer'],
+            'officers' => $this->officerOptions(),
             'overdueOnly' => $filters['overdue'],
             'search' => $filters['search'],
             'currentSort' => $filters['sort'],
@@ -898,17 +901,19 @@ class LoanController extends Controller
     /**
      * Parse the loan queue filters from the request.
      *
-     * @return array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}
+     * @return array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}
      */
     private function loanFilters(Request $request): array
     {
         $productId = $request->integer('product');
+        $officerId = $request->integer('officer');
         $sort = $request->string('sort')->toString();
 
         return [
             'status' => LoanStatus::tryFrom($request->string('status')->toString()),
             'overdue' => $request->boolean('overdue'),
             'product' => $productId > 0 && LoanProduct::whereKey($productId)->exists() ? $productId : null,
+            'officer' => $officerId > 0 && User::whereKey($officerId)->exists() ? $officerId : null,
             'search' => trim($request->string('search')->toString()),
             'sort' => in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null,
             'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
@@ -918,7 +923,7 @@ class LoanController extends Controller
     /**
      * Apply the loan queue filters to a query.
      *
-     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
      */
     private function applyLoanFilters(Builder $query, array $filters): void
     {
@@ -928,6 +933,7 @@ class LoanController extends Controller
             ->when($filters['status'], fn (Builder $query, LoanStatus $status) => $query->ofStatus($status))
             ->when($filters['overdue'], fn (Builder $query) => $query->overdue())
             ->when($filters['product'] !== null, fn (Builder $query) => $query->where('loan_product_id', $filters['product']))
+            ->when($filters['officer'] !== null, fn (Builder $query) => $query->where('collection_officer_id', $filters['officer']))
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $query->whereHas('borrower', fn (Builder $borrower) => $borrower
@@ -943,7 +949,7 @@ class LoanController extends Controller
     /**
      * Apply the requested loan queue order, defaulting to newest first.
      *
-     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
      */
     private function applyLoanSort(Builder $query, array $filters): void
     {
@@ -1306,6 +1312,24 @@ class LoanController extends Controller
             fn (LoanStatus $status): array => ['value' => $status->value, 'label' => $status->label()],
             LoanStatus::cases(),
         );
+    }
+
+    /**
+     * Map the collection officers to filter options.
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    private function officerOptions(): array
+    {
+        return User::query()
+            ->whereIn('role', [Role::SuperAdmin->value, Role::Admin->value])
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name,
+            ])
+            ->all();
     }
 
     /**

@@ -87,8 +87,10 @@ export default function LoansIndex({
     loans,
     statuses,
     products,
+    officers,
     currentStatus,
     currentProduct,
+    currentOfficer,
     overdueOnly,
     counts,
     search,
@@ -98,8 +100,10 @@ export default function LoansIndex({
     loans: Paginated<LoanListItem>;
     statuses: LoanStatusOption[];
     products: { value: number; label: string }[];
+    officers: { value: number; label: string }[];
     currentStatus: string | null;
     currentProduct: number | null;
+    currentOfficer: number | null;
     overdueOnly: boolean;
     counts: Record<string, number>;
     search: string;
@@ -186,17 +190,20 @@ export default function LoansIndex({
         sort?: string;
         direction?: 'asc' | 'desc';
         product?: number;
+        officer?: number;
     }) => {
         const status = overrides.status ?? currentStatus ?? '';
         const overdue = overrides.overdue ?? overdueOnly;
         const sort = overrides.sort ?? currentSort ?? '';
         const direction = overrides.direction ?? currentDirection;
         const product = overrides.product ?? currentProduct ?? 0;
+        const officer = overrides.officer ?? currentOfficer ?? 0;
 
         return loansIndex({
             query: {
                 ...(status ? { status } : {}),
                 ...(product ? { product } : {}),
+                ...(officer ? { officer } : {}),
                 ...(overdue ? { overdue: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(sort ? { sort, direction } : {}),
@@ -215,14 +222,29 @@ export default function LoansIndex({
         );
     };
 
+    const changeOfficer = (value: string) => {
+        router.get(
+            withFilters({
+                officer: value === 'all' ? 0 : Number(value),
+            }).url,
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
     const selectedProduct = products.find(
         (product) => product.value === currentProduct,
+    );
+
+    const selectedOfficer = officers.find(
+        (officer) => officer.value === currentOfficer,
     );
 
     const exportUrl = exportLoans({
         query: {
             ...(currentStatus ? { status: currentStatus } : {}),
             ...(currentProduct ? { product: currentProduct } : {}),
+            ...(currentOfficer ? { officer: currentOfficer } : {}),
             ...(overdueOnly ? { overdue: '1' } : {}),
             ...(search ? { search } : {}),
             ...(currentSort
@@ -293,6 +315,33 @@ export default function LoansIndex({
                                     value={String(product.value)}
                                 >
                                     {product.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={currentOfficer ? String(currentOfficer) : 'all'}
+                        onValueChange={changeOfficer}
+                    >
+                        <SelectTrigger
+                            className="h-9 min-w-0 flex-1 sm:w-[180px] sm:flex-none"
+                            aria-label="Filter loans by collection officer"
+                        >
+                            <SelectValue placeholder="All officers">
+                                {selectedOfficer?.label ?? 'All officers'}
+                            </SelectValue>
+                        </SelectTrigger>
+
+                        <SelectContent>
+                            <SelectItem value="all">All officers</SelectItem>
+
+                            {officers.map((officer) => (
+                                <SelectItem
+                                    key={officer.value}
+                                    value={String(officer.value)}
+                                >
+                                    {officer.label}
                                 </SelectItem>
                             ))}
                         </SelectContent>

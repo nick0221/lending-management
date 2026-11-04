@@ -192,6 +192,64 @@ test('the loan list can be filtered by product', function () {
         );
 });
 
+test('the loan list can be filtered by collection officer', function () {
+    $admin = User::factory()->admin()->create();
+    $officer = User::factory()->admin()->create(['name' => 'Officer One']);
+
+    Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'principal' => 1111,
+        'collection_officer_id' => $officer->id,
+    ]);
+    Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'principal' => 2222,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['officer' => $officer->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/index')
+            ->has('loans.data', 1)
+            ->where('loans.data.0.principal', '1111.00')
+            ->where('currentOfficer', $officer->id)
+            ->where('counts.all', 1)
+            ->where('officers', fn ($officers): bool => $officers->contains(
+                fn (array $option): bool => $option['value'] === $officer->id
+                    && $option['label'] === 'Officer One',
+            ))
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['officer' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 2)
+            ->where('currentOfficer', null)
+        );
+});
+
+test('the loan book export follows the officer filter', function () {
+    $admin = User::factory()->admin()->create();
+    $officer = User::factory()->admin()->create();
+
+    $assigned = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $officer->id,
+    ]);
+    $assigned->borrower->update(['name' => 'Ada Assigned']);
+
+    $other = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $other->borrower->update(['name' => 'Bob Unassigned']);
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.loans.export', ['officer' => $officer->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Assigned')
+        ->not->toContain('Bob Unassigned');
+});
+
 test('the loan list exposes per-status counts', function () {
     $admin = User::factory()->admin()->create();
     Loan::factory()->pending()->count(2)->create();
