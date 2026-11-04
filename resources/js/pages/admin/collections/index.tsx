@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Download,
     HandCoins,
     PhoneCall,
     RotateCcw,
@@ -37,6 +38,7 @@ import { formatDateOnly, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
     index as collectionsIndex,
+    exportMethod as exportCollections,
     officer as assignCollectionOfficer,
 } from '@/routes/admin/collections';
 import { dashboard as adminDashboard } from '@/routes/admin';
@@ -140,6 +142,18 @@ export default function CollectionsIndex({
         query: loans.per_page !== 15 ? { per_page: loans.per_page } : {},
     });
 
+    const exportUrl = exportCollections({
+        query: {
+            ...(currentTab !== 'all' ? { tab: currentTab } : {}),
+            ...(currentOfficer ? { officer: currentOfficer } : {}),
+            ...(currentBucket ? { bucket: currentBucket } : {}),
+            ...(search ? { search } : {}),
+            ...(currentSort !== 'arrears' || currentDirection !== 'desc'
+                ? { sort: currentSort, direction: currentDirection }
+                : {}),
+        },
+    });
+
     const assignOfficer = (loan: CollectionQueueRow, value: string) => {
         router.patch(
             assignCollectionOfficer({ loan: loan.id }).url,
@@ -197,11 +211,19 @@ export default function CollectionsIndex({
                     title="Collections"
                     description="Work the overdue book: assign collectors, log promises and follow up."
                     actions={
-                        <Button variant="outline" asChild>
-                            <Link href={loansIndex()}>
-                                <Wallet /> All loans
-                            </Link>
-                        </Button>
+                        <>
+                            <Button variant="outline" asChild>
+                                <a href={exportUrl.url}>
+                                    <Download /> Export CSV
+                                </a>
+                            </Button>
+
+                            <Button variant="outline" asChild>
+                                <Link href={loansIndex()}>
+                                    <Wallet /> All loans
+                                </Link>
+                            </Button>
+                        </>
                     }
                 />
 

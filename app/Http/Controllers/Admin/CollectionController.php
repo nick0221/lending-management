@@ -13,6 +13,7 @@ use App\Models\CollectionContact;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\User;
+use App\Services\CsvExporter;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CollectionController extends Controller
 {
@@ -85,35 +87,8 @@ class CollectionController extends Controller
         Gate::authorize('viewAny', Loan::class);
 
         $actor = $request->user();
-        $tab = $request->string('tab')->toString();
-        $tab = in_array($tab, self::TABS, true) ? $tab : 'all';
-        $officerId = $request->integer('officer');
-        $officerId = $officerId > 0 ? $officerId : null;
-        $bucket = $request->string('bucket')->toString();
-        $bucket = array_key_exists($bucket, self::BUCKETS) ? $bucket : null;
-        $search = trim($request->string('search')->toString());
-        $sort = $request->string('sort')->toString();
-        $sort = in_array($sort, ['arrears', 'days_past_due'], true) ? $sort : 'arrears';
-        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
-
-        $applySearch = function (Builder $query) use ($search): void {
-            $query->where(function (Builder $query) use ($search): void {
-                $query->whereHas('borrower', fn (Builder $borrower) => $borrower
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%"));
-
-                if (ctype_digit($search)) {
-                    $query->orWhereKey((int) $search);
-                }
-            });
-        };
-
-        $base = Loan::query()
-            ->whereIn('status', self::OPEN_STATUSES)
-            ->where('days_past_due', '>', 0)
-            ->when($officerId !== null, fn (Builder $query) => $query->where('collection_officer_id', $officerId))
-            ->when($bucket !== null, fn (Builder $query) => $this->applyBucket($query, $bucket))
-            ->when($search !== '', fn (Builder $query) => $applySearch($query));
+        $filters = $this->queueFilters($request);
+        $base = $this->baseQuery($filters);
 
         $counts = [
             'all' => (clone $base)->count(),
@@ -129,25 +104,18 @@ class CollectionController extends Controller
                 ->count(),
         ];
 
-        $loans = $base
+        $loansQuery = $this->baseQuery($filters)
             ->with([
                 'borrower:id,name,phone',
                 'loanProduct:id,name',
                 'collectionOfficer:id,name',
                 'collectionContacts.user:id,name',
                 'installments.allocations',
-            ])
-            ->when($tab === 'unassigned', fn (Builder $query) => $query->whereNull('collection_officer_id'))
-            ->when($tab === 'promised', fn (Builder $query) => $query
-                ->whereHas('collectionContacts', fn (Builder $query) => $query
-                    ->promises()
-                    ->whereDate('promised_at', '>=', today())))
-            ->when($tab === 'follow_up', fn (Builder $query) => $query
-                ->whereHas('collectionContacts', fn (Builder $query) => $query
-                    ->whereDate('follow_up_at', '<=', today())))
-            ->when($sort === 'arrears', fn (Builder $query) => $query->orderByArrears($direction))
-            ->when($sort === 'days_past_due', fn (Builder $query) => $query->orderBy('days_past_due', $direction))
-            ->orderByDesc('loans.id')
+            ]);
+        $this->applyTab($loansQuery, $filters['tab']);
+        $this->applyQueueSort($loansQuery, $filters);
+
+        $loans = $loansQuery
             ->paginate($this->perPage($request))
             ->withQueryString()
             ->through(fn (Loan $loan): array => $this->toPayload($loan, $actor));
@@ -171,13 +139,39 @@ class CollectionController extends Controller
                 ['value' => '61_90', 'label' => '61–90 days'],
                 ['value' => 'over_90', 'label' => '90+ days'],
             ],
-            'currentTab' => $tab,
-            'currentOfficer' => $officerId,
-            'currentBucket' => $bucket,
-            'currentSort' => $sort,
-            'currentDirection' => $direction,
-            'search' => $search,
+            'currentTab' => $filters['tab'],
+            'currentOfficer' => $filters['officer'],
+            'currentBucket' => $filters['bucket'],
+            'currentSort' => $filters['sort'],
+            'currentDirection' => $filters['direction'],
+            'search' => $filters['search'],
         ]);
+    }
+
+    /**
+     * Stream the filtered collections queue as a CSV download.
+     */
+    public function export(Request $request, CsvExporter $csvExporter): StreamedResponse
+    {
+        Gate::authorize('viewAny', Loan::class);
+
+        $filters = $this->queueFilters($request);
+
+        $query = $this->baseQuery($filters)
+            ->with([
+                'borrower:id,name,phone',
+                'loanProduct:id,name',
+                'collectionOfficer:id,name',
+                'collectionContacts.user:id,name',
+                'installments.allocations',
+            ]);
+        $this->applyTab($query, $filters['tab']);
+        $this->applyQueueSort($query, $filters);
+
+        return $csvExporter->stream(
+            'collections-'.now()->format('Y-m-d').'.csv',
+            $this->queueExportRows($query->lazy(200), $request->user()),
+        );
     }
 
     /**
@@ -204,6 +198,139 @@ class CollectionController extends Controller
 
         $query->where('days_past_due', '>=', $from)
             ->when($to !== null, fn (Builder $query) => $query->where('days_past_due', '<=', $to));
+    }
+
+    /**
+     * Parse the collections queue filters from the request.
+     *
+     * @return array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     */
+    private function queueFilters(Request $request): array
+    {
+        $tab = $request->string('tab')->toString();
+        $officerId = $request->integer('officer');
+        $bucket = $request->string('bucket')->toString();
+        $sort = $request->string('sort')->toString();
+
+        return [
+            'tab' => in_array($tab, self::TABS, true) ? $tab : 'all',
+            'officer' => $officerId > 0 ? $officerId : null,
+            'bucket' => array_key_exists($bucket, self::BUCKETS) ? $bucket : null,
+            'search' => trim($request->string('search')->toString()),
+            'sort' => in_array($sort, ['arrears', 'days_past_due'], true) ? $sort : 'arrears',
+            'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
+        ];
+    }
+
+    /**
+     * The overdue loans that survive the officer, aging and search filters.
+     *
+     * @param  array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     */
+    private function baseQuery(array $filters): Builder
+    {
+        return Loan::query()
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->where('days_past_due', '>', 0)
+            ->when($filters['officer'] !== null, fn (Builder $query) => $query->where('collection_officer_id', $filters['officer']))
+            ->when($filters['bucket'] !== null, fn (Builder $query) => $this->applyBucket($query, $filters['bucket']))
+            ->when($filters['search'] !== '', fn (Builder $query) => $this->applySearch($query, $filters['search']));
+    }
+
+    /**
+     * Narrow the queue to the borrower name, phone or loan number.
+     */
+    private function applySearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $query) use ($search): void {
+            $query->whereHas('borrower', fn (Builder $borrower) => $borrower
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('phone', 'like', "%{$search}%"));
+
+            if (ctype_digit($search)) {
+                $query->orWhereKey((int) $search);
+            }
+        });
+    }
+
+    /**
+     * Narrow the queue to the selected tab.
+     */
+    private function applyTab(Builder $query, string $tab): void
+    {
+        $query
+            ->when($tab === 'unassigned', fn (Builder $query) => $query->whereNull('collection_officer_id'))
+            ->when($tab === 'promised', fn (Builder $query) => $query
+                ->whereHas('collectionContacts', fn (Builder $query) => $query
+                    ->promises()
+                    ->whereDate('promised_at', '>=', today())))
+            ->when($tab === 'follow_up', fn (Builder $query) => $query
+                ->whereHas('collectionContacts', fn (Builder $query) => $query
+                    ->whereDate('follow_up_at', '<=', today())));
+    }
+
+    /**
+     * Apply the requested queue order, breaking ties by newest loan.
+     *
+     * @param  array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     */
+    private function applyQueueSort(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['sort'] === 'arrears', fn (Builder $query) => $query->orderByArrears($filters['direction']))
+            ->when($filters['sort'] === 'days_past_due', fn (Builder $query) => $query->orderBy('days_past_due', $filters['direction']))
+            ->orderByDesc('loans.id');
+    }
+
+    /**
+     * Build the collections CSV rows lazily so a long queue streams in chunks.
+     *
+     * @param  iterable<int, Loan>  $loans
+     * @return \Generator<int, array<int, string|int|null>>
+     */
+    private function queueExportRows(iterable $loans, User $actor): \Generator
+    {
+        yield [
+            'Loan #',
+            'Borrower',
+            'Phone',
+            'Product',
+            'Status',
+            'Arrears',
+            'Outstanding',
+            'Days late',
+            'Officer',
+            'Last contact',
+            'Last outcome',
+            'Promise amount',
+            'Promise date',
+            'Next follow-up',
+        ];
+
+        foreach ($loans as $loan) {
+            $row = $this->toPayload($loan, $actor);
+
+            yield [
+                $row['id'],
+                $row['borrower_name'],
+                $row['borrower_phone'],
+                $row['loan_product_name'],
+                $row['status_label'],
+                $row['arrears'],
+                $row['outstanding'],
+                $row['days_past_due'],
+                $row['collection_officer'] ?? 'Unassigned',
+                $row['last_contact'] === null
+                    ? null
+                    : ($row['last_contact']['contacted_at'] === null
+                        ? null
+                        : substr($row['last_contact']['contacted_at'], 0, 10)),
+                $row['last_contact']['outcome_label'] ?? null,
+                $row['promise']['amount'] ?? null,
+                $row['promise']['promised_at'] ?? null,
+                $row['next_follow_up'],
+            ];
+        }
     }
 
     /**

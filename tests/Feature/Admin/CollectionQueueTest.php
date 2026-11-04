@@ -243,3 +243,45 @@ test('the queue offers the contact channels and outcomes needed to log a call', 
             ->where('collectionOutcomes.0.label', 'Promised to pay')
         );
 });
+
+test('the collections queue exports the filtered work list as a CSV', function () {
+    $admin = User::factory()->admin()->create();
+
+    $promised = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'days_past_due' => 10,
+        'collection_officer_id' => $admin->id,
+    ]);
+    overdueInstallment($promised, '5000.00');
+    $promised->borrower->update([
+        'name' => 'Ada Promised',
+        'phone' => '+1-555-0100',
+    ]);
+
+    CollectionContact::factory()->for($promised)->promised('2500.00')->create([
+        'user_id' => $admin->id,
+        'follow_up_at' => today()->addWeek()->toDateString(),
+    ]);
+
+    $other = Loan::factory()->withStatus(LoanStatus::Defaulted)->create(['days_past_due' => 40]);
+    overdueInstallment($other, '1000.00', 40);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.collections.export', ['tab' => 'promised']));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Promise amount')
+        ->toContain('Next follow-up')
+        ->toContain('Ada Promised')
+        ->toContain('+1-555-0100')
+        ->toContain('2500.00')
+        ->toContain($admin->name)
+        ->not->toContain($other->borrower->name);
+
+    expect(array_filter(explode("\n", trim($content))))->toHaveCount(2);
+});

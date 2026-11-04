@@ -113,6 +113,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->name('loans.statement.download');
 
         Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
+        Route::get('collections/export', [CollectionController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('collections.export');
         Route::patch('collections/{loan}/officer', [CollectionController::class, 'assignOfficer'])
             ->name('collections.officer');
 
