@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
+use App\Models\Borrower;
 use App\Models\Payment;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -70,6 +71,7 @@ class PaymentController extends Controller
             'currentMethod' => $filters['method']?->value,
             'dateFrom' => $filters['from'],
             'dateTo' => $filters['to'],
+            'currentBorrower' => $this->borrowerFilter($filters['borrower']),
             'search' => $filters['search'],
             'currentSort' => $filters['sort'],
             'currentDirection' => $filters['direction'],
@@ -99,7 +101,7 @@ class PaymentController extends Controller
     /**
      * Parse the payment register filters from the request.
      *
-     * @return array{status: string, method: PaymentMethod|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     * @return array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
      */
     private function filters(Request $request): array
     {
@@ -110,10 +112,14 @@ class PaymentController extends Controller
 
         $status = $request->string('status')->toString();
         $sort = $request->string('sort')->toString();
+        $borrowerId = $request->integer('borrower');
 
         return [
             'status' => in_array($status, self::TABS, true) ? $status : 'all',
             'method' => PaymentMethod::tryFrom($request->string('method')->toString()),
+            'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
+                ? $borrowerId
+                : null,
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
             'search' => trim($request->string('search')->toString()),
@@ -123,15 +129,39 @@ class PaymentController extends Controller
     }
 
     /**
-     * The payments that survive the method, date and search filters.
+     * The borrower a filtered register is narrowed to, if any.
      *
-     * @param  array{status: string, method: PaymentMethod|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @return array{id: int, name: string}|null
+     */
+    private function borrowerFilter(?int $borrowerId): ?array
+    {
+        if ($borrowerId === null) {
+            return null;
+        }
+
+        $borrower = Borrower::query()
+            ->whereKey($borrowerId)
+            ->first(['id', 'name']);
+
+        return $borrower === null
+            ? null
+            : ['id' => $borrower->id, 'name' => $borrower->name];
+    }
+
+    /**
+     * The payments that survive the borrower, method, date and search filters.
+     *
+     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function baseQuery(array $filters): Builder
     {
         $search = $filters['search'];
 
         return Payment::query()
+            ->when($filters['borrower'] !== null, fn (Builder $query) => $query->whereHas(
+                'loan',
+                fn (Builder $loan) => $loan->where('borrower_id', $filters['borrower']),
+            ))
             ->when($filters['method'], fn (Builder $query, PaymentMethod $method) => $query->where('method', $method))
             ->when($filters['from'] !== null, fn (Builder $query) => $query->whereDate('payment_date', '>=', $filters['from']))
             ->when($filters['to'] !== null, fn (Builder $query) => $query->whereDate('payment_date', '<=', $filters['to']))
@@ -165,7 +195,7 @@ class PaymentController extends Controller
     /**
      * Apply the requested order, breaking ties by newest payment.
      *
-     * @param  array{status: string, method: PaymentMethod|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function applySort(Builder $query, array $filters): void
     {

@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, HandCoins, Receipt, RotateCcw, Wallet } from 'lucide-react';
+import {
+    Download,
+    HandCoins,
+    Receipt,
+    RotateCcw,
+    Wallet,
+    X,
+} from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { EmptyState } from '@/components/empty-state';
@@ -62,6 +69,7 @@ export default function PaymentsIndex({
     currentMethod,
     dateFrom,
     dateTo,
+    currentBorrower,
     search,
     currentSort,
     currentDirection,
@@ -74,6 +82,7 @@ export default function PaymentsIndex({
     currentMethod: PaymentMethod | null;
     dateFrom: string | null;
     dateTo: string | null;
+    currentBorrower: { id: number; name: string } | null;
     search: string;
     currentSort: string;
     currentDirection: 'asc' | 'desc';
@@ -81,6 +90,7 @@ export default function PaymentsIndex({
     const withFilters = (overrides: {
         status?: PaymentTab;
         method?: PaymentMethod | null;
+        borrower?: number | null;
         from?: string | null;
         to?: string | null;
         sort?: string;
@@ -89,6 +99,10 @@ export default function PaymentsIndex({
         const status = overrides.status ?? currentStatus;
         const method =
             overrides.method !== undefined ? overrides.method : currentMethod;
+        const borrower =
+            overrides.borrower !== undefined
+                ? overrides.borrower
+                : (currentBorrower?.id ?? null);
         const from = overrides.from !== undefined ? overrides.from : dateFrom;
         const to = overrides.to !== undefined ? overrides.to : dateTo;
         const sort = overrides.sort ?? currentSort;
@@ -98,6 +112,7 @@ export default function PaymentsIndex({
             query: {
                 ...(status !== 'all' ? { status } : {}),
                 ...(method ? { method } : {}),
+                ...(borrower ? { borrower } : {}),
                 ...(from ? { from } : {}),
                 ...(to ? { to } : {}),
                 ...(search ? { search } : {}),
@@ -135,6 +150,7 @@ export default function PaymentsIndex({
         query: {
             ...(currentStatus !== 'all' ? { status: currentStatus } : {}),
             ...(currentMethod ? { method: currentMethod } : {}),
+            ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
             ...(dateFrom ? { from: dateFrom } : {}),
             ...(dateTo ? { to: dateTo } : {}),
             ...(search ? { search } : {}),
@@ -148,6 +164,7 @@ export default function PaymentsIndex({
         search !== '' ||
         currentStatus !== 'all' ||
         currentMethod !== null ||
+        currentBorrower !== null ||
         dateFrom !== null ||
         dateTo !== null;
 
@@ -158,7 +175,11 @@ export default function PaymentsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Payments"
-                    description="Every repayment recorded against the book, newest first."
+                    description={
+                        currentBorrower
+                            ? `Repayments recorded for ${currentBorrower.name}, newest first.`
+                            : 'Every repayment recorded against the book, newest first.'
+                    }
                     actions={
                         <>
                             <Button variant="outline" asChild>
@@ -243,6 +264,34 @@ export default function PaymentsIndex({
                         to={dateTo}
                         onChange={changeRange}
                     />
+
+                    {currentBorrower && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="text-muted-foreground">
+                                Borrower
+                            </span>
+
+                            <span className="font-medium">
+                                {currentBorrower.name}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ borrower: null })}
+                                    aria-label="Clear the borrower filter"
+                                    title="Clear the borrower filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -277,9 +326,11 @@ export default function PaymentsIndex({
                             icon={Receipt}
                             title="No payments found"
                             description={
-                                hasFilters
-                                    ? 'No payments match these filters. Try another method, date range or status.'
-                                    : 'Record a repayment from a loan file and it appears here.'
+                                currentBorrower
+                                    ? `No payments are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
+                                    : hasFilters
+                                      ? 'No payments match these filters. Try another method, date range or status.'
+                                      : 'Record a repayment from a loan file and it appears here.'
                             }
                             action={
                                 hasFilters && (

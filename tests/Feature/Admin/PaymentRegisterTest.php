@@ -2,6 +2,7 @@
 
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\Payment;
 use App\Models\User;
@@ -169,6 +170,54 @@ test('the register export honours the active filters', function () {
         ->not->toContain('CASH-EXPORT-2');
 
     expect(array_filter(explode("\n", trim($content))))->toHaveCount(2);
+});
+
+test('the register can be narrowed to one borrower and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $borrower = Borrower::factory()->create(['name' => 'Ada Ledger']);
+    $borrowerLoan = Loan::factory()->for($borrower)->withStatus(LoanStatus::Active)->create();
+    $borrowerPayment = Payment::factory()->for($borrowerLoan)->create(['amount' => 300]);
+
+    $otherLoan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $otherLoan->borrower->update(['name' => 'Grace Other']);
+    Payment::factory()->for($otherLoan)->create(['amount' => 900]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payments.data', 1)
+            ->where('payments.data.0.id', $borrowerPayment->id)
+            ->where('currentBorrower.id', $borrower->id)
+            ->where('currentBorrower.name', 'Ada Ledger')
+            ->where('counts.all', 1)
+            ->where('summary.received', '300.00')
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.payments.export', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Ledger')
+        ->toContain('300.00')
+        ->not->toContain('Grace Other')
+        ->not->toContain('900.00');
+});
+
+test('an unknown borrower filter is ignored', function () {
+    $admin = User::factory()->admin()->create();
+    Payment::factory()->create(['amount' => 125]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payments.data', 1)
+            ->where('currentBorrower', null)
+        );
 });
 
 test('regular users cannot open or export the payments register', function () {

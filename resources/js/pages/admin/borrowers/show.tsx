@@ -43,6 +43,7 @@ import {
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
 import { receipt as receiptForPayment } from '@/routes/admin/loans/payments';
 import { download as downloadStatement } from '@/routes/admin/loans/statement';
+import { index as paymentsIndex } from '@/routes/admin/payments';
 import type {
     BorrowerActivity,
     BorrowerDetail,
@@ -429,6 +430,18 @@ export default function ShowBorrower({
                         <SectionCard
                             title="Payment history"
                             description="The latest payments recorded against these loans."
+                            actions={
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                        href={paymentsIndex({
+                                            query: { borrower: borrower.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Receipt /> All payments
+                                    </Link>
+                                </Button>
+                            }
                         >
                             {summary.payments.length === 0 ? (
                                 <p className="p-6 text-sm text-muted-foreground">
