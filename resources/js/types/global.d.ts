@@ -11,6 +11,9 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            account: {
+                has_borrower_profile: boolean;
+            };
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
