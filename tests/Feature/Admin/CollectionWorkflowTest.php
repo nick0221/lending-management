@@ -120,6 +120,19 @@ test('the loan file shows the contact history and open promise', function () {
         );
 });
 
+test('the loan file accepts the collections tab', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', ['loan' => $loan, 'tab' => 'collections']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/show')
+            ->where('currentTab', 'collections')
+        );
+});
+
 test('a promise whose date has passed is not shown as open', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();

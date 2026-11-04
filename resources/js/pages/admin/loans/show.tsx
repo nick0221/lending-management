@@ -77,6 +77,7 @@ import type {
 
 const tabs = [
     'overview',
+    'collections',
     'schedule',
     'payments',
     'disbursements',
@@ -102,6 +103,164 @@ function DetailField({ label, value }: { label: string; value: ReactNode }) {
             <dt className="text-xs text-muted-foreground uppercase">{label}</dt>
             <dd className="text-sm font-medium break-words">{value}</dd>
         </div>
+    );
+}
+
+function CollectionsPanel({
+    title,
+    description,
+    contacts,
+    officer,
+    promise,
+    nextFollowUp,
+    canLogContact,
+    onLogContact,
+    limit,
+    onViewAll,
+}: {
+    title: string;
+    description: string;
+    contacts: CollectionContact[];
+    officer: string | null;
+    promise: CollectionPromise | null;
+    nextFollowUp: string | null;
+    canLogContact: boolean;
+    onLogContact: () => void;
+    limit?: number;
+    onViewAll?: () => void;
+}) {
+    const visible = limit ? contacts.slice(0, limit) : contacts;
+
+    return (
+        <SectionCard
+            title={title}
+            description={description}
+            actions={
+                canLogContact && (
+                    <Button size="sm" variant="outline" onClick={onLogContact}>
+                        <PhoneCall /> Log contact
+                    </Button>
+                )
+            }
+            contentClassName="p-6"
+        >
+            <div className="space-y-5">
+                <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+                    <DetailField
+                        label="Collection officer"
+                        value={officer ?? 'Unassigned'}
+                    />
+                    <DetailField
+                        label="Last contact"
+                        value={
+                            contacts[0]
+                                ? `${contacts[0].channel_label} · ${formatDateTime(contacts[0].contacted_at)}`
+                                : 'No contact logged'
+                        }
+                    />
+                    <DetailField
+                        label="Next follow-up"
+                        value={
+                            nextFollowUp ? formatDateOnly(nextFollowUp) : '—'
+                        }
+                    />
+                </dl>
+
+                {promise && (
+                    <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+                        <p className="font-medium">
+                            Promised {formatMoney(promise.amount)} by{' '}
+                            {formatDateOnly(promise.promised_at)}
+                        </p>
+
+                        <p className="text-muted-foreground">
+                            {promise.days_until === 0
+                                ? 'Due today'
+                                : promise.days_until === 1
+                                  ? 'Due tomorrow'
+                                  : `${promise.days_until} days to go`}
+                            {promise.recorded_by
+                                ? ` · logged by ${promise.recorded_by}`
+                                : ''}
+                        </p>
+                    </div>
+                )}
+
+                {contacts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                        {canLogContact
+                            ? 'No contact logged yet. Record the first call, message or visit.'
+                            : 'No contact has been logged against this loan.'}
+                    </p>
+                ) : (
+                    <>
+                        <ul className="divide-y rounded-lg border">
+                            {visible.map((contact) => (
+                                <li key={contact.id} className="px-4 py-3">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge variant="outline">
+                                            {contact.channel_label}
+                                        </Badge>
+                                        <span className="text-sm font-medium">
+                                            {contact.outcome_label}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {formatDateTime(
+                                                contact.contacted_at,
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {contact.promised_at && (
+                                        <p className="mt-1 text-sm">
+                                            Promised{' '}
+                                            {formatMoney(
+                                                contact.promised_amount,
+                                            )}{' '}
+                                            by{' '}
+                                            {formatDateOnly(
+                                                contact.promised_at,
+                                            )}
+                                        </p>
+                                    )}
+
+                                    {contact.follow_up_at && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Follow up{' '}
+                                            {formatDateOnly(
+                                                contact.follow_up_at,
+                                            )}
+                                        </p>
+                                    )}
+
+                                    {contact.notes && (
+                                        <p className="mt-1 text-sm whitespace-pre-line">
+                                            {contact.notes}
+                                        </p>
+                                    )}
+
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        by {contact.recorded_by ?? 'System'}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+
+                        {limit &&
+                            contacts.length > visible.length &&
+                            onViewAll && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={onViewAll}
+                                >
+                                    View all {contacts.length} contacts
+                                </Button>
+                            )}
+                    </>
+                )}
+            </div>
+        </SectionCard>
     );
 }
 
@@ -384,7 +543,6 @@ export default function ShowLoan({
             .map((contact) => contact.follow_up_at)
             .filter((date): date is string => date !== null && date >= today)
             .sort()[0] ?? null;
-    const recentContacts = collectionContacts.slice(0, 5);
 
     return (
         <>
@@ -455,6 +613,15 @@ export default function ShowLoan({
                             className="h-auto max-w-full justify-start overflow-x-auto"
                         >
                             <TabsTrigger value="overview">Overview</TabsTrigger>
+                            {(collectionContacts.length > 0 ||
+                                can.log_contact) && (
+                                <TabsTrigger value="collections">
+                                    Collections
+                                    <TabCount
+                                        value={collectionContacts.length}
+                                    />
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger value="schedule">
                                 Schedule
                                 <TabCount value={installments.length} />
@@ -673,158 +840,31 @@ export default function ShowLoan({
                             )}
                         </SectionCard>
 
-                        <SectionCard
+                        <CollectionsPanel
                             title="Collections"
                             description="Contact history, promises to pay and the next follow-up."
-                            actions={
-                                can.log_contact && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setContactOpen(true)}
-                                    >
-                                        <PhoneCall /> Log contact
-                                    </Button>
-                                )
-                            }
-                            contentClassName="p-6"
-                        >
-                            <div className="space-y-5">
-                                <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
-                                    <DetailField
-                                        label="Collection officer"
-                                        value={
-                                            collectionOfficer ?? 'Unassigned'
-                                        }
-                                    />
-                                    <DetailField
-                                        label="Last contact"
-                                        value={
-                                            collectionContacts[0]
-                                                ? `${collectionContacts[0].channel_label} · ${formatDateTime(collectionContacts[0].contacted_at)}`
-                                                : 'No contact logged'
-                                        }
-                                    />
-                                    <DetailField
-                                        label="Next follow-up"
-                                        value={
-                                            nextFollowUp
-                                                ? formatDateOnly(nextFollowUp)
-                                                : '—'
-                                        }
-                                    />
-                                </dl>
+                            contacts={collectionContacts}
+                            officer={collectionOfficer}
+                            promise={collectionPromise}
+                            nextFollowUp={nextFollowUp}
+                            canLogContact={can.log_contact}
+                            onLogContact={() => setContactOpen(true)}
+                            limit={5}
+                            onViewAll={() => changeTab('collections')}
+                        />
+                    </TabsContent>
 
-                                {collectionPromise && (
-                                    <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-                                        <p className="font-medium">
-                                            Promised{' '}
-                                            {formatMoney(
-                                                collectionPromise.amount,
-                                            )}{' '}
-                                            by{' '}
-                                            {formatDateOnly(
-                                                collectionPromise.promised_at,
-                                            )}
-                                        </p>
-
-                                        <p className="text-muted-foreground">
-                                            {collectionPromise.days_until === 0
-                                                ? 'Due today'
-                                                : collectionPromise.days_until ===
-                                                    1
-                                                  ? 'Due tomorrow'
-                                                  : `${collectionPromise.days_until} days to go`}
-                                            {collectionPromise.recorded_by
-                                                ? ` · logged by ${collectionPromise.recorded_by}`
-                                                : ''}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {recentContacts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        {can.log_contact
-                                            ? 'No contact logged yet. Record the first call, message or visit.'
-                                            : 'No contact has been logged against this loan.'}
-                                    </p>
-                                ) : (
-                                    <>
-                                        <ul className="divide-y rounded-lg border">
-                                            {recentContacts.map((contact) => (
-                                                <li
-                                                    key={contact.id}
-                                                    className="px-4 py-3"
-                                                >
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <Badge variant="outline">
-                                                            {
-                                                                contact.channel_label
-                                                            }
-                                                        </Badge>
-                                                        <span className="text-sm font-medium">
-                                                            {
-                                                                contact.outcome_label
-                                                            }
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {formatDateTime(
-                                                                contact.contacted_at,
-                                                            )}
-                                                        </span>
-                                                    </div>
-
-                                                    {contact.promised_at && (
-                                                        <p className="mt-1 text-sm">
-                                                            Promised{' '}
-                                                            {formatMoney(
-                                                                contact.promised_amount,
-                                                            )}{' '}
-                                                            by{' '}
-                                                            {formatDateOnly(
-                                                                contact.promised_at,
-                                                            )}
-                                                        </p>
-                                                    )}
-
-                                                    {contact.follow_up_at && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Follow up{' '}
-                                                            {formatDateOnly(
-                                                                contact.follow_up_at,
-                                                            )}
-                                                        </p>
-                                                    )}
-
-                                                    {contact.notes && (
-                                                        <p className="mt-1 text-sm whitespace-pre-line">
-                                                            {contact.notes}
-                                                        </p>
-                                                    )}
-
-                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                        by{' '}
-                                                        {contact.recorded_by ??
-                                                            'System'}
-                                                    </p>
-                                                </li>
-                                            ))}
-                                        </ul>
-
-                                        {collectionContacts.length >
-                                            recentContacts.length && (
-                                            <p className="text-xs text-muted-foreground">
-                                                Showing the{' '}
-                                                {recentContacts.length} most
-                                                recent of{' '}
-                                                {collectionContacts.length}{' '}
-                                                contacts.
-                                            </p>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </SectionCard>
+                    <TabsContent value="collections">
+                        <CollectionsPanel
+                            title="Contact history"
+                            description={`Every call, message, email and visit logged against this loan, newest first (${collectionContacts.length} in total).`}
+                            contacts={collectionContacts}
+                            officer={collectionOfficer}
+                            promise={collectionPromise}
+                            nextFollowUp={nextFollowUp}
+                            canLogContact={can.log_contact}
+                            onLogContact={() => setContactOpen(true)}
+                        />
                     </TabsContent>
 
                     <TabsContent value="schedule">

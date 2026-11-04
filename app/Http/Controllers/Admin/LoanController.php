@@ -291,7 +291,7 @@ class LoanController extends Controller
 
         $actor = $request->user();
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['overview', 'schedule', 'payments', 'disbursements', 'notifications', 'activity'], true)
+        $currentTab = in_array($currentTab, ['overview', 'collections', 'schedule', 'payments', 'disbursements', 'notifications', 'activity'], true)
             ? $currentTab
             : 'overview';
 
