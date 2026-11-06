@@ -82,6 +82,43 @@ test('the user list can be filtered by role', function () {
         );
 });
 
+test('the user list can be narrowed to unverified accounts', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $pending = User::factory()->admin()->unverified()->create([
+        'name' => 'Pending Person',
+        'email' => 'pending@example.com',
+    ]);
+
+    User::factory()->create([
+        'name' => 'Verified Person',
+        'email' => 'verified@example.com',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['unverified' => '1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $pending->id)
+            ->where('unverified', true)
+            ->where('roleCounts.admin', 1)
+            ->where('roleCounts.user', 0)
+            ->where('roleCounts.all', 1)
+        );
+
+    $content = $this->actingAs($superAdmin)
+        ->get(route('admin.users.export', ['unverified' => '1']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Pending Person')
+        ->toContain('pending@example.com')
+        ->not->toContain('Verified Person')
+        ->not->toContain($superAdmin->email);
+});
+
 test('creating a user sends a verification email', function () {
     Notification::fake();
 

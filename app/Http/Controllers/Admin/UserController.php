@@ -30,15 +30,23 @@ class UserController extends Controller
         $actor = $request->user();
         $search = trim($request->string('search')->toString());
         $role = Role::tryFrom($request->string('role')->toString());
+        $unverified = $request->boolean('unverified');
 
-        $applySearch = fn ($query) => $query->whereAny(
-            ['name', 'email'],
-            'like',
-            "%{$search}%",
-        );
+        $applyFilters = fn ($query) => $query
+            ->when(
+                $unverified,
+                fn ($query) => $query->whereNull('email_verified_at'),
+            )
+            ->when(
+                $search !== '',
+                fn ($query) => $query->whereAny(
+                    ['name', 'email'],
+                    'like',
+                    "%{$search}%",
+                ),
+            );
 
-        $counts = User::query()
-            ->when($search !== '', $applySearch)
+        $counts = $applyFilters(User::query())
             ->selectRaw('role, count(*) as aggregate')
             ->groupBy('role')
             ->toBase()
@@ -47,9 +55,8 @@ class UserController extends Controller
                 $row->role => (int) $row->aggregate,
             ]);
 
-        $users = User::query()
+        $users = $applyFilters(User::query())
             ->when($role, fn ($query) => $query->where('role', $role))
-            ->when($search !== '', $applySearch)
             ->orderBy('name')
             ->paginate($this->perPage($request))
             ->withQueryString()
@@ -66,6 +73,7 @@ class UserController extends Controller
             'roles' => $this->roleOptions(Role::cases()),
             'currentRole' => $role?->value,
             'search' => $search,
+            'unverified' => $unverified,
             'roleCounts' => [
                 'all' => (int) $counts->sum(),
                 ...collect(Role::cases())
@@ -86,10 +94,11 @@ class UserController extends Controller
 
         $search = trim($request->string('search')->toString());
         $role = Role::tryFrom($request->string('role')->toString());
+        $unverified = $request->boolean('unverified');
 
         return $this->csvExporter->stream(
             'users-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($role, $search),
+            $this->csvRows($role, $search, $unverified),
         );
     }
 
@@ -248,7 +257,7 @@ class UserController extends Controller
      *
      * @return \Generator<int, array<int, string|null>>
      */
-    private function csvRows(?Role $role, string $search): \Generator
+    private function csvRows(?Role $role, string $search, bool $unverified = false): \Generator
     {
         yield [
             'Name',
@@ -261,6 +270,10 @@ class UserController extends Controller
 
         $users = User::query()
             ->when($role, fn ($query) => $query->where('role', $role))
+            ->when(
+                $unverified,
+                fn ($query) => $query->whereNull('email_verified_at'),
+            )
             ->when(
                 $search !== '',
                 fn ($query) => $query->whereAny(

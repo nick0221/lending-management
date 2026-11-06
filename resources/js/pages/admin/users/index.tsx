@@ -26,6 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Toggle } from '@/components/ui/toggle';
 import { formatDate } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as rolesIndex } from '@/routes/admin/roles';
@@ -42,32 +43,49 @@ export default function UsersIndex({
     roles,
     currentRole,
     search,
+    unverified,
     roleCounts,
 }: {
     users: Paginated<AdminUserListItem>;
     roles: RoleOption[];
     currentRole: Role | null;
     search: string;
+    unverified: boolean;
     roleCounts: Record<string, number>;
 }) {
-    const withFilters = (role?: Role) =>
-        usersIndex({
+    const withFilters = (
+        overrides: {
+            role?: Role | null;
+            unverified?: boolean;
+        } = {},
+    ) => {
+        const role =
+            overrides.role !== undefined ? overrides.role : currentRole;
+        const unverifiedOnly =
+            overrides.unverified !== undefined
+                ? overrides.unverified
+                : unverified;
+
+        return usersIndex({
             query: {
                 ...(role ? { role } : {}),
+                ...(unverifiedOnly ? { unverified: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(users.per_page !== 15 ? { per_page: users.per_page } : {}),
             },
         });
+    };
 
     const clearFilters = usersIndex({
         query: users.per_page !== 15 ? { per_page: users.per_page } : undefined,
     });
 
-    const isFiltered = search !== '' || currentRole !== null;
+    const isFiltered = search !== '' || currentRole !== null || unverified;
 
     const exportHref = exportUsers({
         query: {
             ...(currentRole ? { role: currentRole } : {}),
+            ...(unverified ? { unverified: '1' } : {}),
             ...(search ? { search } : {}),
         },
     });
@@ -125,13 +143,29 @@ export default function UsersIndex({
                                 value: role.value,
                                 label: role.label,
                                 count: roleCounts[role.value] ?? 0,
-                                href: withFilters(role.value),
+                                href: withFilters({ role: role.value }),
                             })),
                         ]}
                         value={currentRole ?? 'all'}
                         label="Filter users by role"
                         className="min-w-0 flex-1 basis-full lg:basis-auto"
                     />
+
+                    <Toggle
+                        asChild
+                        variant="outline"
+                        pressed={unverified}
+                        className="h-9 shrink-0 gap-2 px-3"
+                    >
+                        <Link
+                            href={withFilters({ unverified: !unverified })}
+                            preserveScroll
+                            prefetch
+                        >
+                            <Clock />
+                            Unverified
+                        </Link>
+                    </Toggle>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -144,9 +178,11 @@ export default function UsersIndex({
                                     : 'No users yet'
                             }
                             description={
-                                isFiltered
-                                    ? 'No accounts match the current search and role filter.'
-                                    : 'Create the first account to give someone access to the admin panel.'
+                                unverified
+                                    ? 'No unverified accounts match the current search and role filter. Turn off the unverified filter to see everyone.'
+                                    : isFiltered
+                                      ? 'No accounts match the current search and role filter.'
+                                      : 'Create the first account to give someone access to the admin panel.'
                             }
                             action={
                                 isFiltered ? (
