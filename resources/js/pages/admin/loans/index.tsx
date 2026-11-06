@@ -8,6 +8,7 @@ import {
     RotateCcw,
     Send,
     TriangleAlert,
+    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LoanRowActions } from '@/components/admin/loan-row-actions';
@@ -91,6 +92,7 @@ export default function LoansIndex({
     currentStatus,
     currentProduct,
     currentOfficer,
+    currentBorrower,
     overdueOnly,
     counts,
     search,
@@ -104,6 +106,7 @@ export default function LoansIndex({
     currentStatus: string | null;
     currentProduct: number | null;
     currentOfficer: number | null;
+    currentBorrower: { id: number; name: string } | null;
     overdueOnly: boolean;
     counts: Record<string, number>;
     search: string;
@@ -191,6 +194,7 @@ export default function LoansIndex({
         direction?: 'asc' | 'desc';
         product?: number;
         officer?: number;
+        borrower?: number | null;
     }) => {
         const status = overrides.status ?? currentStatus ?? '';
         const overdue = overrides.overdue ?? overdueOnly;
@@ -198,12 +202,17 @@ export default function LoansIndex({
         const direction = overrides.direction ?? currentDirection;
         const product = overrides.product ?? currentProduct ?? 0;
         const officer = overrides.officer ?? currentOfficer ?? 0;
+        const borrower =
+            overrides.borrower !== undefined
+                ? overrides.borrower
+                : (currentBorrower?.id ?? null);
 
         return loansIndex({
             query: {
                 ...(status ? { status } : {}),
                 ...(product ? { product } : {}),
                 ...(officer ? { officer } : {}),
+                ...(borrower ? { borrower } : {}),
                 ...(overdue ? { overdue: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(sort ? { sort, direction } : {}),
@@ -245,6 +254,7 @@ export default function LoansIndex({
             ...(currentStatus ? { status: currentStatus } : {}),
             ...(currentProduct ? { product: currentProduct } : {}),
             ...(currentOfficer ? { officer: currentOfficer } : {}),
+            ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
             ...(overdueOnly ? { overdue: '1' } : {}),
             ...(search ? { search } : {}),
             ...(currentSort
@@ -260,7 +270,11 @@ export default function LoansIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Loans"
-                    description="Originate and review loan applications."
+                    description={
+                        currentBorrower
+                            ? `Loans for ${currentBorrower.name}.`
+                            : 'Originate and review loan applications.'
+                    }
                     actions={
                         <div className="flex flex-wrap items-center justify-end gap-2">
                             <Button variant="outline" asChild>
@@ -362,6 +376,34 @@ export default function LoansIndex({
                             Overdue only
                         </Link>
                     </Toggle>
+
+                    {currentBorrower && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="text-muted-foreground">
+                                Borrower
+                            </span>
+
+                            <span className="font-medium">
+                                {currentBorrower.name}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ borrower: null })}
+                                    aria-label="Clear the borrower filter"
+                                    title="Clear the borrower filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -435,12 +477,17 @@ export default function LoansIndex({
                             description={
                                 search
                                     ? `No loans match "${search}". Try another term or clear the search.`
-                                    : currentStatus || overdueOnly
-                                      ? 'No loans match these filters. Try another status or turn off the overdue filter.'
-                                      : 'Originate the first loan to start building the portfolio.'
+                                    : currentBorrower
+                                      ? `No loans are recorded for ${currentBorrower.name}. Clear the borrower filter to see every loan.`
+                                      : currentStatus || overdueOnly
+                                        ? 'No loans match these filters. Try another status or turn off the overdue filter.'
+                                        : 'Originate the first loan to start building the portfolio.'
                             }
                             action={
-                                search || currentStatus || overdueOnly ? (
+                                search ||
+                                currentStatus ||
+                                overdueOnly ||
+                                currentBorrower ? (
                                     <div className="flex flex-wrap items-center justify-center gap-2">
                                         <Button
                                             asChild

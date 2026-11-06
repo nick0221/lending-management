@@ -116,6 +116,7 @@ class LoanController extends Controller
             'currentStatus' => $filters['status']?->value,
             'currentProduct' => $filters['product'],
             'currentOfficer' => $filters['officer'],
+            'currentBorrower' => $this->borrowerFilter($filters['borrower']),
             'officers' => $this->officerOptions(),
             'overdueOnly' => $filters['overdue'],
             'search' => $filters['search'],
@@ -901,12 +902,13 @@ class LoanController extends Controller
     /**
      * Parse the loan queue filters from the request.
      *
-     * @return array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}
+     * @return array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, borrower: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}
      */
     private function loanFilters(Request $request): array
     {
         $productId = $request->integer('product');
         $officerId = $request->integer('officer');
+        $borrowerId = $request->integer('borrower');
         $sort = $request->string('sort')->toString();
 
         return [
@@ -914,6 +916,7 @@ class LoanController extends Controller
             'overdue' => $request->boolean('overdue'),
             'product' => $productId > 0 && LoanProduct::whereKey($productId)->exists() ? $productId : null,
             'officer' => $officerId > 0 && User::whereKey($officerId)->exists() ? $officerId : null,
+            'borrower' => $borrowerId > 0 && Borrower::whereKey($borrowerId)->exists() ? $borrowerId : null,
             'search' => trim($request->string('search')->toString()),
             'sort' => in_array($sort, ['principal', 'applied_at', 'arrears'], true) ? $sort : null,
             'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
@@ -921,9 +924,29 @@ class LoanController extends Controller
     }
 
     /**
+     * The borrower a filtered queue is narrowed to, if any.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function borrowerFilter(?int $borrowerId): ?array
+    {
+        if ($borrowerId === null) {
+            return null;
+        }
+
+        $borrower = Borrower::query()
+            ->whereKey($borrowerId)
+            ->first(['id', 'name']);
+
+        return $borrower === null
+            ? null
+            : ['id' => $borrower->id, 'name' => $borrower->name];
+    }
+
+    /**
      * Apply the loan queue filters to a query.
      *
-     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, borrower: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
      */
     private function applyLoanFilters(Builder $query, array $filters): void
     {
@@ -934,6 +957,7 @@ class LoanController extends Controller
             ->when($filters['overdue'], fn (Builder $query) => $query->overdue())
             ->when($filters['product'] !== null, fn (Builder $query) => $query->where('loan_product_id', $filters['product']))
             ->when($filters['officer'] !== null, fn (Builder $query) => $query->where('collection_officer_id', $filters['officer']))
+            ->when($filters['borrower'] !== null, fn (Builder $query) => $query->where('borrower_id', $filters['borrower']))
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $query->whereHas('borrower', fn (Builder $borrower) => $borrower
@@ -949,7 +973,7 @@ class LoanController extends Controller
     /**
      * Apply the requested loan queue order, defaulting to newest first.
      *
-     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: LoanStatus|null, overdue: bool, product: int|null, officer: int|null, borrower: int|null, search: string, sort: string|null, direction: 'asc'|'desc'}  $filters
      */
     private function applyLoanSort(Builder $query, array $filters): void
     {

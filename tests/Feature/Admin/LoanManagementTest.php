@@ -228,6 +228,48 @@ test('the loan list can be filtered by collection officer', function () {
         );
 });
 
+test('the loan list can be filtered by borrower and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Ada Borrower']);
+    $other = Borrower::factory()->create(['name' => 'Bob Other']);
+
+    Loan::factory()->for($borrower)->create(['principal' => 1111]);
+    Loan::factory()->for($borrower)->create([
+        'principal' => 2222,
+        'status' => LoanStatus::Approved,
+    ]);
+    Loan::factory()->for($other)->create(['principal' => 3333]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/loans/index')
+            ->has('loans.data', 2)
+            ->where('currentBorrower.id', $borrower->id)
+            ->where('currentBorrower.name', 'Ada Borrower')
+            ->where('counts.all', 2)
+            ->where('counts.approved', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 3)
+            ->where('currentBorrower', null)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.loans.export', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Borrower')
+        ->not->toContain('Bob Other');
+});
+
 test('the loan book export follows the officer filter', function () {
     $admin = User::factory()->admin()->create();
     $officer = User::factory()->admin()->create();

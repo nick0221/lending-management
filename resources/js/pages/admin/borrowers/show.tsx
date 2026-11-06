@@ -5,6 +5,7 @@ import {
     CalendarClock,
     Check,
     Download,
+    FileText,
     Pencil,
     Plus,
     Receipt,
@@ -42,7 +43,11 @@ import {
     index as borrowersIndex,
     show as showBorrower,
 } from '@/routes/admin/borrowers';
-import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
+import {
+    create as createLoan,
+    index as loansIndex,
+    show as showLoan,
+} from '@/routes/admin/loans';
 import { receipt as receiptForPayment } from '@/routes/admin/loans/payments';
 import { download as downloadStatement } from '@/routes/admin/loans/statement';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
@@ -192,16 +197,33 @@ export default function ShowBorrower({
                             title="Loans"
                             description="Every loan filed for this borrower."
                             actions={
-                                <Button size="sm" asChild>
-                                    <Link
-                                        href={createLoan({
-                                            query: { borrower: borrower.id },
-                                        })}
-                                        prefetch
-                                    >
-                                        <Plus /> New loan
-                                    </Link>
-                                </Button>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Button size="sm" variant="outline" asChild>
+                                        <Link
+                                            href={loansIndex({
+                                                query: {
+                                                    borrower: borrower.id,
+                                                },
+                                            })}
+                                            prefetch
+                                        >
+                                            <FileText /> All loans
+                                        </Link>
+                                    </Button>
+
+                                    <Button size="sm" asChild>
+                                        <Link
+                                            href={createLoan({
+                                                query: {
+                                                    borrower: borrower.id,
+                                                },
+                                            })}
+                                            prefetch
+                                        >
+                                            <Plus /> New loan
+                                        </Link>
+                                    </Button>
+                                </div>
                             }
                         >
                             {summary.loans.length === 0 ? (
