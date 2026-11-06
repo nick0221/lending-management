@@ -34,6 +34,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { create as createBorrower } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
+import { index as adminPayments } from '@/routes/admin/payments';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminUsers } from '@/routes/admin/users';
 import type {
@@ -378,6 +379,13 @@ export default function AdminDashboard({
                         title="Recent payments"
                         description="The latest payments recorded across the portfolio."
                         className="lg:col-span-2"
+                        actions={
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={adminPayments()} prefetch>
+                                    All payments <ArrowRight />
+                                </Link>
+                            </Button>
+                        }
                     >
                         <Table>
                             <TableHeader>
