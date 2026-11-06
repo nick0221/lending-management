@@ -6,6 +6,7 @@ import {
     Check,
     Download,
     FileText,
+    History,
     Pencil,
     Plus,
     Receipt,
@@ -36,6 +37,7 @@ import {
     formatMoney,
 } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as activityIndex } from '@/routes/admin/activity';
 import { index as collectionsIndex } from '@/routes/admin/collections';
 import {
     destroy as destroyBorrower,
@@ -760,6 +762,26 @@ export default function ShowBorrower({
                             <SectionCard
                                 title="Activity"
                                 description="Audit entries for this borrower and their loans."
+                                actions={
+                                    activityCount > 0 ? (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            asChild
+                                        >
+                                            <Link
+                                                href={activityIndex({
+                                                    query: {
+                                                        borrower: borrower.id,
+                                                    },
+                                                })}
+                                                prefetch
+                                            >
+                                                <History /> All activity
+                                            </Link>
+                                        </Button>
+                                    ) : undefined
+                                }
                             >
                                 {activity.length === 0 ? (
                                     <p className="p-6 text-sm text-muted-foreground">

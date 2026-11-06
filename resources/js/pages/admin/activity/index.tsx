@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Download, Eye, Filter, RotateCcw } from 'lucide-react';
+import { Download, Eye, Filter, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { DataPagination } from '@/components/data-pagination';
@@ -67,12 +67,14 @@ export default function ActivityIndex({
     events,
     types,
     users,
+    currentBorrower,
 }: {
     logs: Paginated<ActivityLogRow>;
     filters: ActivityLogFilters;
     events: EventOption[];
     types: string[];
     users: UserOption[];
+    currentBorrower: { id: number; name: string } | null;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [event, setEvent] = useState(filters.event ?? ALL);
@@ -116,6 +118,18 @@ export default function ActivityIndex({
 
     const exportHref = exportActivity({ query: exportQuery });
 
+    const borrowerClearHref = activityIndex({
+        query: {
+            ...(filters.search ? { search: filters.search } : {}),
+            ...(filters.event ? { event: filters.event } : {}),
+            ...(filters.type ? { type: filters.type } : {}),
+            ...(filters.user ? { user: filters.user } : {}),
+            ...(filters.from ? { from: filters.from } : {}),
+            ...(filters.to ? { to: filters.to } : {}),
+            ...(perPage ? { per_page: perPage } : {}),
+        },
+    });
+
     const applyFilters = (formEvent: FormEvent<HTMLFormElement>) => {
         formEvent.preventDefault();
 
@@ -126,6 +140,7 @@ export default function ActivityIndex({
                 ...(event !== ALL ? { event } : {}),
                 ...(type !== ALL ? { type } : {}),
                 ...(user !== ALL ? { user } : {}),
+                ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
                 ...(range.from ? { from: range.from } : {}),
                 ...(range.to ? { to: range.to } : {}),
                 ...(perPage ? { per_page: perPage } : {}),
@@ -150,6 +165,32 @@ export default function ActivityIndex({
                         </Button>
                     }
                 />
+
+                {currentBorrower && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                        <span className="text-muted-foreground">Borrower</span>
+
+                        <span className="font-medium">
+                            {currentBorrower.name}
+                        </span>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6"
+                            asChild
+                        >
+                            <Link
+                                href={borrowerClearHref}
+                                aria-label="Clear the borrower filter"
+                                title="Clear the borrower filter"
+                                preserveScroll
+                            >
+                                <X />
+                            </Link>
+                        </Button>
+                    </div>
+                )}
 
                 <SectionCard
                     title="Filters"

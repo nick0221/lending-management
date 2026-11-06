@@ -218,6 +218,37 @@ test('the audit trail can be filtered by event, record type, user and date', fun
         ->assertInertia(fn ($page) => $page->has('logs.data', 0));
 });
 
+test('the audit trail can be narrowed to one borrower and the export follows', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin);
+
+    $borrower = Borrower::factory()->create(['name' => 'Filtered Borrower']);
+    $loan = Loan::factory()->for($borrower)->create();
+    $other = Borrower::factory()->create(['name' => 'Other Borrower']);
+    Loan::factory()->for($other)->create();
+
+    $this->get(route('admin.activity.index', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentBorrower.id', $borrower->id)
+            ->where('currentBorrower.name', 'Filtered Borrower')
+            ->where('logs.data', fn ($logs): bool => collect($logs)->isNotEmpty()
+                && collect($logs)->every(fn (array $log): bool => ($log['subject_type'] === 'Borrower' && $log['subject_id'] === $borrower->id)
+                    || ($log['subject_type'] === 'Loan' && $log['subject_id'] === $loan->id))
+                && collect($logs)->contains(fn (array $log): bool => $log['subject_type'] === 'Loan')
+            )
+        );
+
+    $content = $this->get(route('admin.activity.export', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Filtered Borrower')
+        ->not->toContain('Other Borrower');
+});
+
 test('the audit trail can be searched by actor and record id', function () {
     $superAdmin = User::factory()->superAdmin()->create([
         'name' => 'Unique Auditor',

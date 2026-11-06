@@ -732,6 +732,7 @@ export type ActivityLogFilters = {
     event: string | null;
     type: string | null;
     user: number | null;
+    borrower: number | null;
     from: string | null;
     to: string | null;
 };

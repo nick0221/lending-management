@@ -82,6 +82,7 @@ class ActivityController extends Controller
                 'event' => $filters['event'] ?? null,
                 'type' => $filters['type'] ?? null,
                 'user' => $filters['user'] ?? null,
+                'borrower' => isset($filters['borrower']) ? (int) $filters['borrower'] : null,
                 'from' => $filters['from'] ?? null,
                 'to' => $filters['to'] ?? null,
             ],
@@ -92,6 +93,9 @@ class ActivityController extends Controller
                 ])
                 ->all(),
             'types' => array_keys(self::SUBJECT_TYPES),
+            'currentBorrower' => $this->borrowerFilter(
+                isset($filters['borrower']) ? (int) $filters['borrower'] : null,
+            ),
             'users' => User::query()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -145,9 +149,30 @@ class ActivityController extends Controller
             'event' => ['nullable', Rule::in($this->events())],
             'type' => ['nullable', Rule::in(array_keys(self::SUBJECT_TYPES))],
             'user' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'borrower' => ['nullable', 'integer', Rule::exists('borrowers', 'id')],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
+    }
+
+    /**
+     * The borrower a filtered trail is narrowed to, if any.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function borrowerFilter(?int $borrowerId): ?array
+    {
+        if ($borrowerId === null) {
+            return null;
+        }
+
+        $borrower = Borrower::query()
+            ->whereKey($borrowerId)
+            ->first(['id', 'name']);
+
+        return $borrower === null
+            ? null
+            : ['id' => $borrower->id, 'name' => $borrower->name];
     }
 
     /**
@@ -182,6 +207,21 @@ class ActivityController extends Controller
                 fn (Builder $query, string $type) => $query->where('subject_type', self::SUBJECT_TYPES[$type]),
             )
             ->when($filters['user'] ?? null, fn (Builder $query, int $userId) => $query->where('user_id', $userId))
+            ->when($filters['borrower'] ?? null, function (Builder $query, int $borrowerId): void {
+                $loanIds = Loan::query()
+                    ->where('borrower_id', $borrowerId)
+                    ->select('id');
+
+                $query->where(function (Builder $query) use ($borrowerId, $loanIds): void {
+                    $query
+                        ->where(fn (Builder $query) => $query
+                            ->where('subject_type', Borrower::class)
+                            ->where('subject_id', $borrowerId))
+                        ->orWhere(fn (Builder $query) => $query
+                            ->where('subject_type', Loan::class)
+                            ->whereIn('subject_id', $loanIds));
+                });
+            })
             ->when($filters['from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '<=', $date));
     }
