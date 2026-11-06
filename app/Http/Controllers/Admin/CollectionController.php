@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignCollectionOfficerRequest;
 use App\Http\Requests\Admin\BulkAssignCollectionOfficerRequest;
 use App\Http\Requests\Admin\LogCollectionContactRequest;
+use App\Models\Borrower;
 use App\Models\CollectionContact;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
@@ -143,6 +144,7 @@ class CollectionController extends Controller
             'currentTab' => $filters['tab'],
             'currentOfficer' => $filters['officer'],
             'currentBucket' => $filters['bucket'],
+            'currentBorrower' => $this->borrowerFilter($filters['borrower']),
             'currentSort' => $filters['sort'],
             'currentDirection' => $filters['direction'],
             'search' => $filters['search'],
@@ -237,7 +239,7 @@ class CollectionController extends Controller
     /**
      * Parse the collections queue filters from the request.
      *
-     * @return array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     * @return array{tab: string, officer: int|null, bucket: string|null, borrower: int|null, search: string, sort: string, direction: 'asc'|'desc'}
      */
     private function queueFilters(Request $request): array
     {
@@ -245,11 +247,15 @@ class CollectionController extends Controller
         $officerId = $request->integer('officer');
         $bucket = $request->string('bucket')->toString();
         $sort = $request->string('sort')->toString();
+        $borrowerId = $request->integer('borrower');
 
         return [
             'tab' => in_array($tab, self::TABS, true) ? $tab : 'all',
             'officer' => $officerId > 0 ? $officerId : null,
             'bucket' => array_key_exists($bucket, self::BUCKETS) ? $bucket : null,
+            'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
+                ? $borrowerId
+                : null,
             'search' => trim($request->string('search')->toString()),
             'sort' => in_array($sort, ['arrears', 'days_past_due'], true) ? $sort : 'arrears',
             'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
@@ -257,9 +263,29 @@ class CollectionController extends Controller
     }
 
     /**
-     * The overdue loans that survive the officer, aging and search filters.
+     * The borrower a filtered queue is narrowed to, if any.
      *
-     * @param  array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @return array{id: int, name: string}|null
+     */
+    private function borrowerFilter(?int $borrowerId): ?array
+    {
+        if ($borrowerId === null) {
+            return null;
+        }
+
+        $borrower = Borrower::query()
+            ->whereKey($borrowerId)
+            ->first(['id', 'name']);
+
+        return $borrower === null
+            ? null
+            : ['id' => $borrower->id, 'name' => $borrower->name];
+    }
+
+    /**
+     * The overdue loans that survive the officer, aging, borrower and search filters.
+     *
+     * @param  array{tab: string, officer: int|null, bucket: string|null, borrower: int|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function baseQuery(array $filters): Builder
     {
@@ -267,6 +293,7 @@ class CollectionController extends Controller
             ->whereIn('status', self::OPEN_STATUSES)
             ->where('days_past_due', '>', 0)
             ->when($filters['officer'] !== null, fn (Builder $query) => $query->where('collection_officer_id', $filters['officer']))
+            ->when($filters['borrower'] !== null, fn (Builder $query) => $query->where('borrower_id', $filters['borrower']))
             ->when($filters['bucket'] !== null, fn (Builder $query) => $this->applyBucket($query, $filters['bucket']))
             ->when($filters['search'] !== '', fn (Builder $query) => $this->applySearch($query, $filters['search']));
     }
@@ -306,7 +333,7 @@ class CollectionController extends Controller
     /**
      * Apply the requested queue order, breaking ties by newest loan.
      *
-     * @param  array{tab: string, officer: int|null, bucket: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{tab: string, officer: int|null, bucket: string|null, borrower: int|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function applyQueueSort(Builder $query, array $filters): void
     {

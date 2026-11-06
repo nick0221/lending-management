@@ -35,6 +35,7 @@ import {
     formatMoney,
 } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as collectionsIndex } from '@/routes/admin/collections';
 import {
     destroy as destroyBorrower,
     edit as editBorrower,
@@ -161,6 +162,13 @@ export default function ShowBorrower({
                                 : 'Nothing overdue'
                         }
                         icon={TriangleAlert}
+                        href={
+                            summary.arrears > 0
+                                ? collectionsIndex({
+                                      query: { borrower: borrower.id },
+                                  })
+                                : undefined
+                        }
                     />
                     <StatCard
                         title="Next due"

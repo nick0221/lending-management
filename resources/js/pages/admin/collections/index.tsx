@@ -8,6 +8,7 @@ import {
     UserRound,
     Users,
     Wallet,
+    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LogCollectionContactDialog } from '@/components/admin/log-collection-contact-dialog';
@@ -73,6 +74,7 @@ export default function CollectionsIndex({
     currentTab,
     currentOfficer,
     currentBucket,
+    currentBorrower,
     currentSort,
     currentDirection,
     search,
@@ -87,6 +89,7 @@ export default function CollectionsIndex({
     currentTab: CollectionTab;
     currentOfficer: number | null;
     currentBucket: string | null;
+    currentBorrower: { id: number; name: string } | null;
     currentSort: string;
     currentDirection: 'asc' | 'desc';
     search: string;
@@ -141,6 +144,7 @@ export default function CollectionsIndex({
         tab?: CollectionTab;
         officer?: number | null;
         bucket?: string | null;
+        borrower?: number | null;
         sort?: string;
         direction?: 'asc' | 'desc';
     }) => {
@@ -151,6 +155,10 @@ export default function CollectionsIndex({
                 : currentOfficer;
         const bucket =
             overrides.bucket !== undefined ? overrides.bucket : currentBucket;
+        const borrower =
+            overrides.borrower !== undefined
+                ? overrides.borrower
+                : (currentBorrower?.id ?? null);
         const sort = overrides.sort ?? currentSort;
         const direction = overrides.direction ?? currentDirection;
 
@@ -159,6 +167,7 @@ export default function CollectionsIndex({
                 ...(tab !== 'all' ? { tab } : {}),
                 ...(officer ? { officer } : {}),
                 ...(bucket ? { bucket } : {}),
+                ...(borrower ? { borrower } : {}),
                 ...(search ? { search } : {}),
                 ...(sort !== 'arrears' || direction !== 'desc'
                     ? { sort, direction }
@@ -195,6 +204,7 @@ export default function CollectionsIndex({
             ...(currentTab !== 'all' ? { tab: currentTab } : {}),
             ...(currentOfficer ? { officer: currentOfficer } : {}),
             ...(currentBucket ? { bucket: currentBucket } : {}),
+            ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
             ...(search ? { search } : {}),
             ...(currentSort !== 'arrears' || currentDirection !== 'desc'
                 ? { sort: currentSort, direction: currentDirection }
@@ -248,7 +258,8 @@ export default function CollectionsIndex({
         search !== '' ||
         currentTab !== 'all' ||
         currentOfficer !== null ||
-        currentBucket !== null;
+        currentBucket !== null ||
+        currentBorrower !== null;
 
     return (
         <>
@@ -257,7 +268,11 @@ export default function CollectionsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <PageHeader
                     title="Collections"
-                    description="Work the overdue book: assign collectors, log promises and follow up."
+                    description={
+                        currentBorrower
+                            ? `Overdue loans for ${currentBorrower.name}, most in arrears first.`
+                            : 'Work the overdue book: assign collectors, log promises and follow up.'
+                    }
                     actions={
                         <>
                             <Button variant="outline" asChild>
@@ -390,6 +405,34 @@ export default function CollectionsIndex({
                             My queue
                         </Link>
                     </Toggle>
+
+                    {currentBorrower && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="text-muted-foreground">
+                                Borrower
+                            </span>
+
+                            <span className="font-medium">
+                                {currentBorrower.name}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ borrower: null })}
+                                    aria-label="Clear the borrower filter"
+                                    title="Clear the borrower filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -484,11 +527,13 @@ export default function CollectionsIndex({
                             icon={PhoneCall}
                             title="Nothing to collect"
                             description={
-                                isMyQueue
-                                    ? 'No overdue loans are assigned to you right now. Switch off My queue to see the whole overdue book.'
-                                    : hasFilters
-                                      ? 'No overdue loans match these filters. Try another officer, aging bucket or tab.'
-                                      : 'No loan is overdue right now. New arrears appear here after the nightly overdue check.'
+                                currentBorrower
+                                    ? `No overdue loans are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole book.`
+                                    : isMyQueue
+                                      ? 'No overdue loans are assigned to you right now. Switch off My queue to see the whole overdue book.'
+                                      : hasFilters
+                                        ? 'No overdue loans match these filters. Try another officer, aging bucket or tab.'
+                                        : 'No loan is overdue right now. New arrears appear here after the nightly overdue check.'
                             }
                             action={
                                 hasFilters && (

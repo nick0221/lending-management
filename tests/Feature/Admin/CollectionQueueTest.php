@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\LoanStatus;
+use App\Models\Borrower;
 use App\Models\CollectionContact;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
@@ -381,4 +382,57 @@ test('the dashboard reports the overdue loans assigned to the signed-in officer'
         ->get(route('admin.dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('myQueue', 1));
+});
+
+test('the collections queue can be narrowed to one borrower and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $borrower = Borrower::factory()->create(['name' => 'Ada Overdue']);
+
+    $first = Loan::factory()->for($borrower)->withStatus(LoanStatus::Active)->create([
+        'days_past_due' => 10,
+    ]);
+    overdueInstallment($first, '500.00');
+
+    $second = Loan::factory()->for($borrower)->withStatus(LoanStatus::Defaulted)->create([
+        'days_past_due' => 45,
+    ]);
+    overdueInstallment($second, '900.00', 45);
+
+    $other = Loan::factory()->withStatus(LoanStatus::Active)->create(['days_past_due' => 20]);
+    overdueInstallment($other, '300.00', 20);
+
+    $this->actingAs($admin)
+        ->get(route('admin.collections.index', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 2)
+            ->where('currentBorrower.id', $borrower->id)
+            ->where('currentBorrower.name', 'Ada Overdue')
+            ->where('summary.loans', 2)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.collections.export', ['borrower' => $borrower->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Overdue')
+        ->not->toContain($other->borrower->name);
+});
+
+test('an unknown borrower filter is ignored by the collections queue', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create(['days_past_due' => 10]);
+    overdueInstallment($loan, '100.00');
+
+    $this->actingAs($admin)
+        ->get(route('admin.collections.index', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('currentBorrower', null)
+        );
 });
