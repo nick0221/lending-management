@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
+    History,
     MoreHorizontal,
     PhoneCall,
     ReceiptText,
@@ -53,6 +54,7 @@ import {
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as activityIndex } from '@/routes/admin/activity';
 import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import { resend as resendLoanNotification } from '@/routes/admin/loans/notifications';
@@ -1622,6 +1624,18 @@ export default function ShowLoan({
                         <SectionCard
                             title="Status timeline"
                             description={`${events.length} event${events.length === 1 ? '' : 's'} from application to today.`}
+                            actions={
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={activityIndex({
+                                            query: { loan: loan.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <History /> Audit trail
+                                    </Link>
+                                </Button>
+                            }
                         >
                             <LoanTimeline events={events} />
                         </SectionCard>

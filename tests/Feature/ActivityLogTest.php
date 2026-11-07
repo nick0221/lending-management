@@ -247,6 +247,44 @@ test('the audit trail can be narrowed to one borrower and the export follows', f
     expect($content)
         ->toContain('Filtered Borrower')
         ->not->toContain('Other Borrower');
+
+    $this->get(route('admin.activity.index', ['borrower' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('currentBorrower', null));
+});
+
+test('the audit trail can be narrowed to one loan and the export follows', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin);
+
+    $loan = Loan::factory()->create(['principal' => 1111]);
+    $other = Loan::factory()->create(['principal' => 2222]);
+
+    $loan->update(['notes' => 'Audited loan note']);
+
+    $this->get(route('admin.activity.index', ['loan' => $loan->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentLoan.id', $loan->id)
+            ->where('currentLoan.label', fn (string $label): bool => str_contains($label, "Loan #{$loan->id}"))
+            ->where('logs.data', fn ($logs): bool => collect($logs)->isNotEmpty()
+                && collect($logs)->every(fn (array $log): bool => $log['subject_type'] === 'Loan' && $log['subject_id'] === $loan->id)
+            )
+        );
+
+    $content = $this->get(route('admin.activity.export', ['loan' => $loan->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Audited loan note')
+        ->toContain("Loan #{$loan->id}")
+        ->not->toContain("Loan #{$other->id}");
+
+    $this->get(route('admin.activity.index', ['loan' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('currentLoan', null));
 });
 
 test('the audit trail can be searched by actor and record id', function () {

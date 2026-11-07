@@ -48,8 +48,10 @@ class ActivityController extends Controller
         Gate::authorize('viewAny', ActivityLog::class);
 
         $events = $this->events();
-        $filters = $this->validatedFilters($request);
+        $filters = $this->filters($request);
         $search = trim($filters['search'] ?? '');
+        $currentBorrower = $this->borrowerFilter($filters['borrower']);
+        $currentLoan = $this->loanFilter($filters['loan']);
 
         $logs = $this->filteredQuery($filters)
             ->with('user')
@@ -82,7 +84,8 @@ class ActivityController extends Controller
                 'event' => $filters['event'] ?? null,
                 'type' => $filters['type'] ?? null,
                 'user' => $filters['user'] ?? null,
-                'borrower' => isset($filters['borrower']) ? (int) $filters['borrower'] : null,
+                'borrower' => $filters['borrower'],
+                'loan' => $filters['loan'],
                 'from' => $filters['from'] ?? null,
                 'to' => $filters['to'] ?? null,
             ],
@@ -93,9 +96,8 @@ class ActivityController extends Controller
                 ])
                 ->all(),
             'types' => array_keys(self::SUBJECT_TYPES),
-            'currentBorrower' => $this->borrowerFilter(
-                isset($filters['borrower']) ? (int) $filters['borrower'] : null,
-            ),
+            'currentBorrower' => $currentBorrower,
+            'currentLoan' => $currentLoan,
             'users' => User::query()
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -116,7 +118,7 @@ class ActivityController extends Controller
 
         return $this->csvExporter->stream(
             'activity-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($this->validatedFilters($request)),
+            $this->csvRows($this->filters($request)),
         );
     }
 
@@ -149,10 +151,33 @@ class ActivityController extends Controller
             'event' => ['nullable', Rule::in($this->events())],
             'type' => ['nullable', Rule::in(array_keys(self::SUBJECT_TYPES))],
             'user' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            'borrower' => ['nullable', 'integer', Rule::exists('borrowers', 'id')],
+            'borrower' => ['nullable', 'integer'],
+            'loan' => ['nullable', 'integer'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
+    }
+
+    /**
+     * Validate the filters and resolve any pinned records, ignoring stale ids.
+     *
+     * @return array<string, mixed>
+     */
+    private function filters(Request $request): array
+    {
+        $filters = $this->validatedFilters($request);
+
+        $borrower = $this->borrowerFilter(
+            isset($filters['borrower']) ? (int) $filters['borrower'] : null,
+        );
+        $loan = $this->loanFilter(
+            isset($filters['loan']) ? (int) $filters['loan'] : null,
+        );
+
+        $filters['borrower'] = $borrower['id'] ?? null;
+        $filters['loan'] = $loan['id'] ?? null;
+
+        return $filters;
     }
 
     /**
@@ -173,6 +198,32 @@ class ActivityController extends Controller
         return $borrower === null
             ? null
             : ['id' => $borrower->id, 'name' => $borrower->name];
+    }
+
+    /**
+     * The loan a filtered trail is narrowed to, if any.
+     *
+     * @return array{id: int, label: string}|null
+     */
+    private function loanFilter(?int $loanId): ?array
+    {
+        if ($loanId === null) {
+            return null;
+        }
+
+        $loan = Loan::query()
+            ->with('borrower:id,name')
+            ->whereKey($loanId)
+            ->first(['id', 'borrower_id']);
+
+        if ($loan === null) {
+            return null;
+        }
+
+        return [
+            'id' => $loan->id,
+            'label' => 'Loan #'.$loan->id.' · '.($loan->borrower?->name ?? 'Unknown borrower'),
+        ];
     }
 
     /**
@@ -220,6 +271,27 @@ class ActivityController extends Controller
                         ->orWhere(fn (Builder $query) => $query
                             ->where('subject_type', Loan::class)
                             ->whereIn('subject_id', $loanIds));
+                });
+            })
+            ->when($filters['loan'] ?? null, function (Builder $query, int $loanId): void {
+                $paymentIds = Payment::query()
+                    ->where('loan_id', $loanId)
+                    ->select('id');
+                $disbursementIds = Disbursement::query()
+                    ->where('loan_id', $loanId)
+                    ->select('id');
+
+                $query->where(function (Builder $query) use ($loanId, $paymentIds, $disbursementIds): void {
+                    $query
+                        ->where(fn (Builder $query) => $query
+                            ->where('subject_type', Loan::class)
+                            ->where('subject_id', $loanId))
+                        ->orWhere(fn (Builder $query) => $query
+                            ->where('subject_type', Payment::class)
+                            ->whereIn('subject_id', $paymentIds))
+                        ->orWhere(fn (Builder $query) => $query
+                            ->where('subject_type', Disbursement::class)
+                            ->whereIn('subject_id', $disbursementIds));
                 });
             })
             ->when($filters['from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '>=', $date))

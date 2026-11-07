@@ -68,6 +68,7 @@ export default function ActivityIndex({
     types,
     users,
     currentBorrower,
+    currentLoan,
 }: {
     logs: Paginated<ActivityLogRow>;
     filters: ActivityLogFilters;
@@ -75,6 +76,7 @@ export default function ActivityIndex({
     types: string[];
     users: UserOption[];
     currentBorrower: { id: number; name: string } | null;
+    currentLoan: { id: number; label: string } | null;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [event, setEvent] = useState(filters.event ?? ALL);
@@ -124,6 +126,20 @@ export default function ActivityIndex({
             ...(filters.event ? { event: filters.event } : {}),
             ...(filters.type ? { type: filters.type } : {}),
             ...(filters.user ? { user: filters.user } : {}),
+            ...(filters.loan ? { loan: filters.loan } : {}),
+            ...(filters.from ? { from: filters.from } : {}),
+            ...(filters.to ? { to: filters.to } : {}),
+            ...(perPage ? { per_page: perPage } : {}),
+        },
+    });
+
+    const loanClearHref = activityIndex({
+        query: {
+            ...(filters.search ? { search: filters.search } : {}),
+            ...(filters.event ? { event: filters.event } : {}),
+            ...(filters.type ? { type: filters.type } : {}),
+            ...(filters.user ? { user: filters.user } : {}),
+            ...(filters.borrower ? { borrower: filters.borrower } : {}),
             ...(filters.from ? { from: filters.from } : {}),
             ...(filters.to ? { to: filters.to } : {}),
             ...(perPage ? { per_page: perPage } : {}),
@@ -141,6 +157,7 @@ export default function ActivityIndex({
                 ...(type !== ALL ? { type } : {}),
                 ...(user !== ALL ? { user } : {}),
                 ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
+                ...(currentLoan ? { loan: currentLoan.id } : {}),
                 ...(range.from ? { from: range.from } : {}),
                 ...(range.to ? { to: range.to } : {}),
                 ...(perPage ? { per_page: perPage } : {}),
@@ -166,29 +183,59 @@ export default function ActivityIndex({
                     }
                 />
 
-                {currentBorrower && (
-                    <div className="flex flex-wrap items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
-                        <span className="text-muted-foreground">Borrower</span>
+                {(currentBorrower || currentLoan) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {currentBorrower && (
+                            <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                                <span className="text-muted-foreground">
+                                    Borrower
+                                </span>
 
-                        <span className="font-medium">
-                            {currentBorrower.name}
-                        </span>
+                                <span className="font-medium">
+                                    {currentBorrower.name}
+                                </span>
 
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-6"
-                            asChild
-                        >
-                            <Link
-                                href={borrowerClearHref}
-                                aria-label="Clear the borrower filter"
-                                title="Clear the borrower filter"
-                                preserveScroll
-                            >
-                                <X />
-                            </Link>
-                        </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-6"
+                                    asChild
+                                >
+                                    <Link
+                                        href={borrowerClearHref}
+                                        aria-label="Clear the borrower filter"
+                                        title="Clear the borrower filter"
+                                        preserveScroll
+                                    >
+                                        <X />
+                                    </Link>
+                                </Button>
+                            </div>
+                        )}
+
+                        {currentLoan && (
+                            <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                                <span className="font-medium">
+                                    {currentLoan.label}
+                                </span>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-6"
+                                    asChild
+                                >
+                                    <Link
+                                        href={loanClearHref}
+                                        aria-label="Clear the loan filter"
+                                        title="Clear the loan filter"
+                                        preserveScroll
+                                    >
+                                        <X />
+                                    </Link>
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
 

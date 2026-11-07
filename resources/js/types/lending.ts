@@ -733,6 +733,7 @@ export type ActivityLogFilters = {
     type: string | null;
     user: number | null;
     borrower: number | null;
+    loan: number | null;
     from: string | null;
     to: string | null;
 };
