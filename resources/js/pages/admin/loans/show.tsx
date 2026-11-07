@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
+    Bell,
     History,
     MoreHorizontal,
     PhoneCall,
@@ -57,6 +58,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
 import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
+import { index as notificationsIndex } from '@/routes/admin/notifications';
 import { resend as resendLoanNotification } from '@/routes/admin/loans/notifications';
 import type {
     CollectionChannelOption,
@@ -1510,6 +1512,18 @@ export default function ShowLoan({
                             description={`${notifications.length} notification${
                                 notifications.length === 1 ? '' : 's'
                             } recorded for ${loan.borrower_name}.`}
+                            actions={
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={notificationsIndex({
+                                            query: { loan: loan.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Bell /> All deliveries
+                                    </Link>
+                                </Button>
+                            }
                         >
                             {notifications.length === 0 ? (
                                 <p className="p-6 text-sm text-muted-foreground">

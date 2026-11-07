@@ -247,6 +247,54 @@ test('an unknown borrower filter is ignored by the notification register', funct
         );
 });
 
+test('the notification register can be narrowed to one loan and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = Loan::factory()->create();
+    $loan->borrower->update(['name' => 'Ada Loan', 'phone' => '+1-555-0101']);
+
+    $matching = deliveryLog($loan, ['status' => NotificationLog::STATUS_SENT]);
+
+    $otherLoan = Loan::factory()->create();
+    $otherLoan->borrower->update(['name' => 'Grace Loan']);
+    deliveryLog($otherLoan, ['status' => NotificationLog::STATUS_FAILED]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.notifications.index', ['loan' => $loan->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.id', $matching->id)
+            ->where('currentLoan.id', $loan->id)
+            ->where('currentLoan.label', fn (string $label): bool => str_contains($label, "Loan #{$loan->id}"))
+            ->where('counts.all', 1)
+            ->where('counts.sent', 1)
+            ->where('counts.failed', 0)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.notifications.export', ['loan' => $loan->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Loan')
+        ->not->toContain('Grace Loan');
+});
+
+test('an unknown loan filter is ignored by the notification register', function () {
+    $admin = User::factory()->admin()->create();
+    deliveryLog(Loan::factory()->create(), ['status' => NotificationLog::STATUS_SENT]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.notifications.index', ['loan' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('currentLoan', null)
+        );
+});
+
 test('regular users cannot open or export the notification register', function () {
     $user = User::factory()->create();
 

@@ -78,6 +78,7 @@ export default function NotificationsIndex({
     currentChannel,
     currentType,
     currentBorrower,
+    currentLoan,
     search,
     from,
     to,
@@ -91,6 +92,7 @@ export default function NotificationsIndex({
     currentChannel: string | null;
     currentType: string | null;
     currentBorrower: { id: number; name: string } | null;
+    currentLoan: { id: number; label: string } | null;
     search: string;
     from: string | null;
     to: string | null;
@@ -100,6 +102,7 @@ export default function NotificationsIndex({
         channel?: string | null;
         type?: string | null;
         borrower?: number | null;
+        loan?: number | null;
         from?: string | null;
         to?: string | null;
     }) => {
@@ -115,6 +118,10 @@ export default function NotificationsIndex({
             overrides.borrower !== undefined
                 ? overrides.borrower
                 : (currentBorrower?.id ?? null);
+        const loan =
+            overrides.loan !== undefined
+                ? overrides.loan
+                : (currentLoan?.id ?? null);
         const rangeFrom = overrides.from !== undefined ? overrides.from : from;
         const rangeTo = overrides.to !== undefined ? overrides.to : to;
 
@@ -124,6 +131,7 @@ export default function NotificationsIndex({
                 ...(channel ? { channel } : {}),
                 ...(type ? { type } : {}),
                 ...(borrower ? { borrower } : {}),
+                ...(loan ? { loan } : {}),
                 ...(rangeFrom ? { from: rangeFrom } : {}),
                 ...(rangeTo ? { to: rangeTo } : {}),
                 ...(search ? { search } : {}),
@@ -181,6 +189,7 @@ export default function NotificationsIndex({
             ...(currentChannel ? { channel: currentChannel } : {}),
             ...(currentType ? { type: currentType } : {}),
             ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
+            ...(currentLoan ? { loan: currentLoan.id } : {}),
             ...(from ? { from } : {}),
             ...(to ? { to } : {}),
             ...(search ? { search } : {}),
@@ -193,6 +202,7 @@ export default function NotificationsIndex({
         currentChannel !== null ||
         currentType !== null ||
         currentBorrower !== null ||
+        currentLoan !== null ||
         from !== null ||
         to !== null;
 
@@ -209,9 +219,11 @@ export default function NotificationsIndex({
                 <PageHeader
                     title="Notifications"
                     description={
-                        currentBorrower
-                            ? `Every email and SMS delivery recorded for ${currentBorrower.name}, newest first.`
-                            : 'Every email and SMS delivery recorded against the book, newest first.'
+                        currentLoan
+                            ? `Every email and SMS delivery recorded for ${currentLoan.label}, newest first.`
+                            : currentBorrower
+                              ? `Every email and SMS delivery recorded for ${currentBorrower.name}, newest first.`
+                              : 'Every email and SMS delivery recorded against the book, newest first.'
                     }
                     actions={
                         <Button variant="outline" asChild>
@@ -343,6 +355,30 @@ export default function NotificationsIndex({
                             </Button>
                         </div>
                     )}
+
+                    {currentLoan && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="font-medium">
+                                {currentLoan.label}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ loan: null })}
+                                    aria-label="Clear the loan filter"
+                                    title="Clear the loan filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -373,11 +409,13 @@ export default function NotificationsIndex({
                             icon={Bell}
                             title="No notifications found"
                             description={
-                                currentBorrower
-                                    ? `No deliveries are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
-                                    : hasFilters
-                                      ? 'No deliveries match these filters. Try another channel, type, date range or status.'
-                                      : 'Reminders, overdue notices, receipts and statements appear here once they are sent.'
+                                currentLoan
+                                    ? `No deliveries are recorded for ${currentLoan.label}. Clear the loan filter to see the whole register.`
+                                    : currentBorrower
+                                      ? `No deliveries are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
+                                      : hasFilters
+                                        ? 'No deliveries match these filters. Try another channel, type, date range or status.'
+                                        : 'Reminders, overdue notices, receipts and statements appear here once they are sent.'
                             }
                             action={
                                 hasFilters && (

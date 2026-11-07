@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Borrower;
+use App\Models\Loan;
 use App\Models\NotificationLog;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -133,6 +134,7 @@ class NotificationController extends Controller
             'currentChannel' => $filters['channel'] ?? null,
             'currentType' => $filters['type'] ?? null,
             'currentBorrower' => $this->borrowerFilter($filters['borrower'] ?? null),
+            'currentLoan' => $this->loanFilter($filters['loan'] ?? null),
             'search' => $filters['search'] ?? '',
             'from' => $filters['from'] ?? null,
             'to' => $filters['to'] ?? null,
@@ -167,9 +169,11 @@ class NotificationController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'borrower' => ['nullable', 'integer', 'min:1'],
+            'loan' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $borrowerId = (int) ($validated['borrower'] ?? 0);
+        $loanId = (int) ($validated['loan'] ?? 0);
 
         return [
             'search' => trim((string) ($validated['search'] ?? '')),
@@ -180,6 +184,9 @@ class NotificationController extends Controller
             'to' => $validated['to'] ?? null,
             'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
                 ? $borrowerId
+                : null,
+            'loan' => $loanId > 0 && Loan::query()->whereKey($loanId)->exists()
+                ? $loanId
                 : null,
         ];
     }
@@ -205,7 +212,33 @@ class NotificationController extends Controller
     }
 
     /**
-     * Apply the borrower, channel, type, search and date filters to the delivery log.
+     * The loan a filtered register is narrowed to, if any.
+     *
+     * @return array{id: int, label: string}|null
+     */
+    private function loanFilter(?int $loanId): ?array
+    {
+        if ($loanId === null) {
+            return null;
+        }
+
+        $loan = Loan::query()
+            ->with('borrower:id,name')
+            ->whereKey($loanId)
+            ->first(['id', 'borrower_id']);
+
+        if ($loan === null) {
+            return null;
+        }
+
+        return [
+            'id' => $loan->id,
+            'label' => 'Loan #'.$loan->id.' · '.($loan->borrower?->name ?? 'Unknown borrower'),
+        ];
+    }
+
+    /**
+     * Apply the borrower, loan, channel, type, search and date filters to the delivery log.
      *
      * @param  array<string, string|int|null>  $filters
      */
@@ -217,6 +250,10 @@ class NotificationController extends Controller
             ->when(
                 $filters['borrower'] ?? null,
                 fn (Builder $query, int $borrowerId) => $query->where('borrower_id', $borrowerId),
+            )
+            ->when(
+                $filters['loan'] ?? null,
+                fn (Builder $query, int $loanId) => $query->where('loan_id', $loanId),
             )
             ->when(
                 $filters['channel'] ?? null,
