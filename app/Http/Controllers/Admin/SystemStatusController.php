@@ -45,6 +45,7 @@ class SystemStatusController extends Controller
                 'mailer' => config('mail.default'),
                 'from_address' => config('mail.from.address'),
                 'from_name' => config('mail.from.name'),
+                ...$this->deliveryHealth(NotificationLog::CHANNEL_MAIL),
             ],
             'sms' => $this->smsStatus(),
             'storage' => $this->storageStatus(),
@@ -244,27 +245,6 @@ class SystemStatusController extends Controller
     private function smsStatus(): array
     {
         $sms = app(Settings::class)->smsConfig();
-        $windowDays = 7;
-        $since = now()->subDays($windowDays);
-
-        $counts = NotificationLog::query()
-            ->where('channel', NotificationLog::CHANNEL_SMS)
-            ->where('created_at', '>=', $since)
-            ->selectRaw('status, count(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
-
-        $lastSent = NotificationLog::query()
-            ->where('channel', NotificationLog::CHANNEL_SMS)
-            ->whereNotNull('sent_at')
-            ->latest('sent_at')
-            ->first();
-
-        $lastFailure = NotificationLog::query()
-            ->where('channel', NotificationLog::CHANNEL_SMS)
-            ->where('status', NotificationLog::STATUS_FAILED)
-            ->latest('created_at')
-            ->first();
 
         return [
             'driver' => $sms['driver'],
@@ -273,6 +253,40 @@ class SystemStatusController extends Controller
             'method' => $sms['http']['method'],
             'format' => $sms['http']['format'],
             'from' => $sms['from'],
+            ...$this->deliveryHealth(NotificationLog::CHANNEL_SMS),
+        ];
+    }
+
+    /**
+     * Recent delivery counts and the last outcome for one notification channel.
+     *
+     * @return array<string, mixed>
+     */
+    private function deliveryHealth(string $channel): array
+    {
+        $windowDays = 7;
+        $since = now()->subDays($windowDays);
+
+        $counts = NotificationLog::query()
+            ->where('channel', $channel)
+            ->where('created_at', '>=', $since)
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $lastSent = NotificationLog::query()
+            ->where('channel', $channel)
+            ->whereNotNull('sent_at')
+            ->latest('sent_at')
+            ->first();
+
+        $lastFailure = NotificationLog::query()
+            ->where('channel', $channel)
+            ->where('status', NotificationLog::STATUS_FAILED)
+            ->latest('created_at')
+            ->first();
+
+        return [
             'window_days' => $windowDays,
             'deliveries' => [
                 'sent' => (int) ($counts[NotificationLog::STATUS_SENT] ?? 0),

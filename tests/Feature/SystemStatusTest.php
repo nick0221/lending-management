@@ -91,6 +91,37 @@ test('the system status reports the SMS gateway and recent delivery counts', fun
         );
 });
 
+test('the system status reports mail delivery health', function () {
+    NotificationLog::create([
+        'key' => 'mail-health-sent',
+        'type' => NotificationLog::TYPE_RECEIPT,
+        'channel' => NotificationLog::CHANNEL_MAIL,
+        'status' => NotificationLog::STATUS_SENT,
+        'sent_at' => now()->subMinutes(5),
+    ]);
+
+    NotificationLog::create([
+        'key' => 'mail-health-failed',
+        'type' => NotificationLog::TYPE_OVERDUE,
+        'channel' => NotificationLog::CHANNEL_MAIL,
+        'status' => NotificationLog::STATUS_FAILED,
+        'error' => 'SMTP timeout.',
+    ]);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.system.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('mail.window_days', 7)
+            ->where('mail.deliveries.sent', 1)
+            ->where('mail.deliveries.failed', 1)
+            ->where('mail.deliveries.skipped', 0)
+            ->where('mail.deliveries.queued', 0)
+            ->where('mail.last_failure.message', 'SMTP timeout.')
+            ->whereNot('mail.last_sent_at', null)
+        );
+});
+
 test('the system status flags an HTTP gateway without an endpoint', function () {
     $settings = app(Settings::class);
     $settings->current()->update([

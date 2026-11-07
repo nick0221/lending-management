@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Bell,
     Check,
     Copy,
     RefreshCw,
@@ -40,6 +41,7 @@ import { useClipboard } from '@/hooks/use-clipboard';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as notificationsIndex } from '@/routes/admin/notifications';
 import { index as systemIndex } from '@/routes/admin/system';
 import {
     destroy as forgetFailedJob,
@@ -112,6 +114,18 @@ export default function SystemStatus({
         mailer: string;
         from_address: string | null;
         from_name: string | null;
+        window_days: number;
+        deliveries: {
+            sent: number;
+            failed: number;
+            skipped: number;
+            queued: number;
+        };
+        last_sent_at: string | null;
+        last_failure: {
+            message: string;
+            at: string | null;
+        } | null;
     };
     sms: {
         driver: string;
@@ -402,8 +416,20 @@ export default function SystemStatus({
 
                     <SectionCard
                         title="Mail"
-                        description="Outgoing mail configuration for borrower notifications."
-                        contentClassName="p-4"
+                        description="Outgoing mail configuration and delivery health from the notification log."
+                        contentClassName="space-y-4 p-4"
+                        actions={
+                            <Button size="sm" variant="outline" asChild>
+                                <Link
+                                    href={notificationsIndex({
+                                        query: { channel: 'mail' },
+                                    })}
+                                    prefetch
+                                >
+                                    <Bell /> All mail
+                                </Link>
+                            </Button>
+                        }
                     >
                         <dl className="divide-y">
                             <DetailRow label="Mailer" value={mail.mailer} />
@@ -417,11 +443,47 @@ export default function SystemStatus({
                             />
                         </dl>
 
-                        <p className="mt-4 text-xs text-muted-foreground">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Metric label="Sent" value={mail.deliveries.sent} />
+                            <Metric
+                                label="Failed"
+                                value={mail.deliveries.failed}
+                                tone={
+                                    mail.deliveries.failed > 0
+                                        ? 'bad'
+                                        : undefined
+                                }
+                            />
+                            <Metric
+                                label="Skipped"
+                                value={mail.deliveries.skipped}
+                            />
+                            <Metric
+                                label="Queued"
+                                value={mail.deliveries.queued}
+                            />
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            Counts cover the last {mail.window_days} days.
                             Emails are queued when a queue connection is
                             configured, so the queue worker also affects mail
                             delivery.
                         </p>
+
+                        {mail.last_failure && (
+                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+                                <p className="text-xs font-medium text-destructive">
+                                    Last failure
+                                    {mail.last_failure.at
+                                        ? ` · ${formatRelativeTime(mail.last_failure.at)}`
+                                        : ''}
+                                </p>
+                                <p className="mt-1 text-xs break-words text-muted-foreground">
+                                    {mail.last_failure.message}
+                                </p>
+                            </div>
+                        )}
                     </SectionCard>
 
                     <SectionCard
@@ -429,6 +491,18 @@ export default function SystemStatus({
                         description="Gateway configuration and delivery health from the notification log."
                         className="lg:col-span-2"
                         contentClassName="space-y-4 p-4"
+                        actions={
+                            <Button size="sm" variant="outline" asChild>
+                                <Link
+                                    href={notificationsIndex({
+                                        query: { channel: 'sms' },
+                                    })}
+                                    prefetch
+                                >
+                                    <Bell /> All SMS
+                                </Link>
+                            </Button>
+                        }
                     >
                         <dl className="divide-y">
                             <DetailRow
