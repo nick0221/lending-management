@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\Borrower;
+use App\Models\Loan;
 use App\Models\Payment;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -72,6 +73,7 @@ class PaymentController extends Controller
             'dateFrom' => $filters['from'],
             'dateTo' => $filters['to'],
             'currentBorrower' => $this->borrowerFilter($filters['borrower']),
+            'currentLoan' => $this->loanFilter($filters['loan']),
             'search' => $filters['search'],
             'currentSort' => $filters['sort'],
             'currentDirection' => $filters['direction'],
@@ -101,7 +103,7 @@ class PaymentController extends Controller
     /**
      * Parse the payment register filters from the request.
      *
-     * @return array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     * @return array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
      */
     private function filters(Request $request): array
     {
@@ -113,12 +115,16 @@ class PaymentController extends Controller
         $status = $request->string('status')->toString();
         $sort = $request->string('sort')->toString();
         $borrowerId = $request->integer('borrower');
+        $loanId = $request->integer('loan');
 
         return [
             'status' => in_array($status, self::TABS, true) ? $status : 'all',
             'method' => PaymentMethod::tryFrom($request->string('method')->toString()),
             'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
                 ? $borrowerId
+                : null,
+            'loan' => $loanId > 0 && Loan::query()->whereKey($loanId)->exists()
+                ? $loanId
                 : null,
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
@@ -149,9 +155,35 @@ class PaymentController extends Controller
     }
 
     /**
-     * The payments that survive the borrower, method, date and search filters.
+     * The loan a filtered register is narrowed to, if any.
      *
-     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @return array{id: int, label: string}|null
+     */
+    private function loanFilter(?int $loanId): ?array
+    {
+        if ($loanId === null) {
+            return null;
+        }
+
+        $loan = Loan::query()
+            ->with('borrower:id,name')
+            ->whereKey($loanId)
+            ->first(['id', 'borrower_id']);
+
+        if ($loan === null) {
+            return null;
+        }
+
+        return [
+            'id' => $loan->id,
+            'label' => 'Loan #'.$loan->id.' · '.($loan->borrower?->name ?? 'Unknown borrower'),
+        ];
+    }
+
+    /**
+     * The payments that survive the borrower, loan, method, date and search filters.
+     *
+     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function baseQuery(array $filters): Builder
     {
@@ -162,6 +194,7 @@ class PaymentController extends Controller
                 'loan',
                 fn (Builder $loan) => $loan->where('borrower_id', $filters['borrower']),
             ))
+            ->when($filters['loan'] !== null, fn (Builder $query) => $query->where('loan_id', $filters['loan']))
             ->when($filters['method'], fn (Builder $query, PaymentMethod $method) => $query->where('method', $method))
             ->when($filters['from'] !== null, fn (Builder $query) => $query->whereDate('payment_date', '>=', $filters['from']))
             ->when($filters['to'] !== null, fn (Builder $query) => $query->whereDate('payment_date', '<=', $filters['to']))
@@ -195,7 +228,7 @@ class PaymentController extends Controller
     /**
      * Apply the requested order, breaking ties by newest payment.
      *
-     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function applySort(Builder $query, array $filters): void
     {

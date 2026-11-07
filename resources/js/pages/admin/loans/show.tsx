@@ -59,6 +59,7 @@ import { index as activityIndex } from '@/routes/admin/activity';
 import { show as showBorrower } from '@/routes/admin/borrowers';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
+import { index as paymentsIndex } from '@/routes/admin/payments';
 import { resend as resendLoanNotification } from '@/routes/admin/loans/notifications';
 import type {
     CollectionChannelOption,
@@ -1084,6 +1085,18 @@ export default function ShowLoan({
                                 hasPaymentFilters
                                     ? `${payments.length} of ${paymentCount} payments match the filters.`
                                     : `${paymentCount} payment${paymentCount === 1 ? '' : 's'} recorded.`
+                            }
+                            actions={
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={paymentsIndex({
+                                            query: { loan: loan.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <ReceiptText /> All payments
+                                    </Link>
+                                </Button>
                             }
                         >
                             {paymentCount > 0 && (

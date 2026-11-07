@@ -71,6 +71,7 @@ export default function PaymentsIndex({
     dateFrom,
     dateTo,
     currentBorrower,
+    currentLoan,
     search,
     currentSort,
     currentDirection,
@@ -84,6 +85,7 @@ export default function PaymentsIndex({
     dateFrom: string | null;
     dateTo: string | null;
     currentBorrower: { id: number; name: string } | null;
+    currentLoan: { id: number; label: string } | null;
     search: string;
     currentSort: string;
     currentDirection: 'asc' | 'desc';
@@ -92,6 +94,7 @@ export default function PaymentsIndex({
         status?: PaymentTab;
         method?: PaymentMethod | null;
         borrower?: number | null;
+        loan?: number | null;
         from?: string | null;
         to?: string | null;
         sort?: string;
@@ -104,6 +107,10 @@ export default function PaymentsIndex({
             overrides.borrower !== undefined
                 ? overrides.borrower
                 : (currentBorrower?.id ?? null);
+        const loan =
+            overrides.loan !== undefined
+                ? overrides.loan
+                : (currentLoan?.id ?? null);
         const from = overrides.from !== undefined ? overrides.from : dateFrom;
         const to = overrides.to !== undefined ? overrides.to : dateTo;
         const sort = overrides.sort ?? currentSort;
@@ -114,6 +121,7 @@ export default function PaymentsIndex({
                 ...(status !== 'all' ? { status } : {}),
                 ...(method ? { method } : {}),
                 ...(borrower ? { borrower } : {}),
+                ...(loan ? { loan } : {}),
                 ...(from ? { from } : {}),
                 ...(to ? { to } : {}),
                 ...(search ? { search } : {}),
@@ -152,6 +160,7 @@ export default function PaymentsIndex({
             ...(currentStatus !== 'all' ? { status: currentStatus } : {}),
             ...(currentMethod ? { method: currentMethod } : {}),
             ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
+            ...(currentLoan ? { loan: currentLoan.id } : {}),
             ...(dateFrom ? { from: dateFrom } : {}),
             ...(dateTo ? { to: dateTo } : {}),
             ...(search ? { search } : {}),
@@ -166,6 +175,7 @@ export default function PaymentsIndex({
         currentStatus !== 'all' ||
         currentMethod !== null ||
         currentBorrower !== null ||
+        currentLoan !== null ||
         dateFrom !== null ||
         dateTo !== null;
 
@@ -177,9 +187,11 @@ export default function PaymentsIndex({
                 <PageHeader
                     title="Payments"
                     description={
-                        currentBorrower
-                            ? `Repayments recorded for ${currentBorrower.name}, newest first.`
-                            : 'Every repayment recorded against the book, newest first.'
+                        currentLoan
+                            ? `Repayments recorded for ${currentLoan.label}, newest first.`
+                            : currentBorrower
+                              ? `Repayments recorded for ${currentBorrower.name}, newest first.`
+                              : 'Every repayment recorded against the book, newest first.'
                     }
                     actions={
                         <>
@@ -293,6 +305,30 @@ export default function PaymentsIndex({
                             </Button>
                         </div>
                     )}
+
+                    {currentLoan && (
+                        <div className="flex items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+                            <span className="font-medium">
+                                {currentLoan.label}
+                            </span>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-6"
+                                asChild
+                            >
+                                <Link
+                                    href={withFilters({ loan: null })}
+                                    aria-label="Clear the loan filter"
+                                    title="Clear the loan filter"
+                                    preserveScroll
+                                >
+                                    <X />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <FilterTabs
@@ -327,11 +363,13 @@ export default function PaymentsIndex({
                             icon={Receipt}
                             title="No payments found"
                             description={
-                                currentBorrower
-                                    ? `No payments are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
-                                    : hasFilters
-                                      ? 'No payments match these filters. Try another method, date range or status.'
-                                      : 'Record a repayment from a loan file and it appears here.'
+                                currentLoan
+                                    ? `No payments are recorded for ${currentLoan.label}. Clear the loan filter to see the whole register.`
+                                    : currentBorrower
+                                      ? `No payments are recorded for ${currentBorrower.name}. Clear the borrower filter to see the whole register.`
+                                      : hasFilters
+                                        ? 'No payments match these filters. Try another method, date range or status.'
+                                        : 'Record a repayment from a loan file and it appears here.'
                             }
                             action={
                                 hasFilters && (

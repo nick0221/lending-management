@@ -220,6 +220,54 @@ test('an unknown borrower filter is ignored', function () {
         );
 });
 
+test('the register can be narrowed to one loan and the export follows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $loan->borrower->update(['name' => 'Ada Loan']);
+    $loanPayment = Payment::factory()->for($loan)->create(['amount' => 320]);
+
+    $otherLoan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $otherLoan->borrower->update(['name' => 'Grace Loan']);
+    Payment::factory()->for($otherLoan)->create(['amount' => 640]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index', ['loan' => $loan->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payments.data', 1)
+            ->where('payments.data.0.id', $loanPayment->id)
+            ->where('currentLoan.id', $loan->id)
+            ->where('currentLoan.label', fn (string $label): bool => str_contains($label, "Loan #{$loan->id}"))
+            ->where('counts.all', 1)
+            ->where('summary.received', '320.00')
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.payments.export', ['loan' => $loan->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Ada Loan')
+        ->toContain('320.00')
+        ->not->toContain('Grace Loan')
+        ->not->toContain('640.00');
+});
+
+test('an unknown loan filter is ignored', function () {
+    $admin = User::factory()->admin()->create();
+    Payment::factory()->create(['amount' => 125]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index', ['loan' => 999999]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payments.data', 1)
+            ->where('currentLoan', null)
+        );
+});
+
 test('regular users cannot open or export the payments register', function () {
     $user = User::factory()->create();
 
