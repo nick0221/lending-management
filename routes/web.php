@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BorrowerController;
 use App\Http\Controllers\Admin\BorrowerImportController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DisbursementController;
 use App\Http\Controllers\Admin\LoanController;
 use App\Http\Controllers\Admin\LoanProductController;
 use App\Http\Controllers\Admin\NotificationController;
@@ -119,6 +120,12 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('payments/export', [PaymentController::class, 'export'])
             ->middleware('throttle:reports')
             ->name('payments.export');
+
+        Route::get('disbursements', [DisbursementController::class, 'index'])
+            ->name('disbursements.index');
+        Route::get('disbursements/export', [DisbursementController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('disbursements.export');
 
         Route::get('notifications', [NotificationController::class, 'index'])
             ->name('notifications.index');

@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
+    Banknote,
     Bell,
     History,
     MoreHorizontal,
@@ -57,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
 import { show as showBorrower } from '@/routes/admin/borrowers';
+import { index as disbursementsIndex } from '@/routes/admin/disbursements';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
 import { index as paymentsIndex } from '@/routes/admin/payments';
@@ -1436,6 +1438,18 @@ export default function ShowLoan({
                         <SectionCard
                             title="Disbursements"
                             description={`${disbursements.length} payout${disbursements.length === 1 ? '' : 's'} recorded.`}
+                            actions={
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={disbursementsIndex({
+                                            query: { loan: loan.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Banknote /> All disbursements
+                                    </Link>
+                                </Button>
+                            }
                         >
                             {disbursements.length === 0 ? (
                                 <p className="p-6 text-sm text-muted-foreground">

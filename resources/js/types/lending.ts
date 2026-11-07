@@ -370,6 +370,20 @@ export type PaymentRegisterRow = {
     reversal_reason: string | null;
 };
 
+export type DisbursementRegisterRow = {
+    id: number;
+    loan_id: number;
+    borrower_id: number;
+    borrower_name: string;
+    borrower_phone: string;
+    amount: string;
+    method: DisbursementMethod;
+    method_label: string;
+    reference: string | null;
+    disbursed_at: string;
+    recorded_by: string | null;
+};
+
 export type PaymentAging = {
     current: string;
     days_1_30: string;
