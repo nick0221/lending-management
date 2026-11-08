@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments', 'cash_flow'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -28,7 +28,7 @@ class ReportController extends Controller
     public function index(Request $request): Response
     {
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers'], true)
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers', 'cashflow'], true)
             ? $currentTab
             : 'portfolio';
 
@@ -40,6 +40,7 @@ class ReportController extends Controller
             'risk' => $this->reporting->portfolioAtRisk(),
             'collections' => $this->reporting->collections(),
             'collections_trend' => $this->reporting->collectionsTrend(),
+            'cash_flow_trend' => $this->reporting->cashFlowTrend(),
             'loans' => $this->reporting->loanRows()->values()->all(),
             'products' => $this->reporting->productPerformance()->all(),
             'officers' => $this->reporting->officerPerformance()->all(),
@@ -84,6 +85,7 @@ class ReportController extends Controller
             'products' => $this->exportProducts(),
             'officers' => $this->exportOfficers(),
             'payments' => $this->exportPayments(),
+            'cash_flow' => $this->exportCashFlow(),
         };
     }
 
@@ -309,6 +311,30 @@ class ReportController extends Controller
             'Penalties outstanding',
             'Arrears',
             'Days past due',
+        ], $rows);
+    }
+
+    private function exportCashFlow(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = collect($this->reporting->cashFlowTrend())
+            ->map(fn (array $point): array => [
+                $point['label'],
+                $point['payments'],
+                $money($point['collected']),
+                $point['payouts'],
+                $money($point['disbursed']),
+                $money($point['net']),
+            ]);
+
+        return $this->csv('cash-flow.csv', [
+            'Month',
+            'Payments',
+            'Collected',
+            'Payouts',
+            'Disbursed',
+            'Net',
         ], $rows);
     }
 

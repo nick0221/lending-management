@@ -188,6 +188,82 @@ class ReportingService
     }
 
     /**
+     * Money collected and disbursed per month, newest month last. Reversed
+     * payments are excluded. Without an explicit period the trend covers the
+     * last six months including the current one.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function cashFlowTrend(int $months = 6): array
+    {
+        $end = $this->to ?? Date::now()->endOfDay();
+        $start = $this->from ?? $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
+
+        $payments = Payment::query()
+            ->whereNull('reversed_at')
+            ->whereDate('payment_date', '>=', $start->toDateString())
+            ->whereDate('payment_date', '<=', $end->toDateString())
+            ->get(['amount', 'payment_date']);
+
+        $disbursements = Disbursement::query()
+            ->whereDate('disbursed_at', '>=', $start->toDateString())
+            ->whereDate('disbursed_at', '<=', $end->toDateString())
+            ->get(['amount', 'disbursed_at']);
+
+        $buckets = [];
+
+        for (
+            $cursor = $start->copy()->startOfMonth();
+            $cursor->lte($end);
+            $cursor = $cursor->copy()->addMonthNoOverflow()
+        ) {
+            $key = $cursor->format('Y-m');
+
+            $buckets[$key] = [
+                'month' => $key,
+                'label' => $cursor->format('M Y'),
+                'collected' => 0.0,
+                'payments' => 0,
+                'disbursed' => 0.0,
+                'payouts' => 0,
+            ];
+        }
+
+        foreach ($payments as $payment) {
+            $key = $payment->payment_date->format('Y-m');
+
+            if (! isset($buckets[$key])) {
+                continue;
+            }
+
+            $buckets[$key]['collected'] += (float) $payment->amount;
+            $buckets[$key]['payments']++;
+        }
+
+        foreach ($disbursements as $disbursement) {
+            $key = $disbursement->disbursed_at->format('Y-m');
+
+            if (! isset($buckets[$key])) {
+                continue;
+            }
+
+            $buckets[$key]['disbursed'] += (float) $disbursement->amount;
+            $buckets[$key]['payouts']++;
+        }
+
+        return collect($buckets)
+            ->map(function (array $bucket): array {
+                $bucket['collected'] = round($bucket['collected'], 2);
+                $bucket['disbursed'] = round($bucket['disbursed'], 2);
+                $bucket['net'] = round($bucket['collected'] - $bucket['disbursed'], 2);
+
+                return $bucket;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Payments received per method inside the report period.
      *
      * The period narrows payments by the date they were received rather than

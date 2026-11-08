@@ -626,6 +626,16 @@ export type CollectionsTrendPoint = {
     count: number;
 };
 
+export type CashFlowPoint = {
+    month: string;
+    label: string;
+    collected: number;
+    payments: number;
+    disbursed: number;
+    payouts: number;
+    net: number;
+};
+
 export type ReportLoanRow = {
     id: number;
     borrower_id: number;

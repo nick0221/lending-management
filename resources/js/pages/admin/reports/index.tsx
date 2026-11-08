@@ -43,6 +43,7 @@ import {
 } from '@/routes/admin/reports';
 import type {
     AgingBuckets,
+    CashFlowPoint,
     Collections,
     CollectionsTrendPoint,
     OfficerPerformance,
@@ -70,6 +71,7 @@ type ReportsTab =
     | 'portfolio'
     | 'aging'
     | 'collections'
+    | 'cashflow'
     | 'arrears'
     | 'products'
     | 'officers';
@@ -467,6 +469,7 @@ export default function ReportsIndex({
     risk,
     collections,
     collections_trend: collectionsTrend,
+    cash_flow_trend: cashFlowTrend,
     loans,
     products,
     officers,
@@ -479,6 +482,7 @@ export default function ReportsIndex({
     risk: PortfolioRisk;
     collections: Collections;
     collections_trend: CollectionsTrendPoint[];
+    cash_flow_trend: CashFlowPoint[];
     loans: ReportLoanRow[];
     products: ProductPerformance[];
     officers: OfficerPerformance[];
@@ -592,6 +596,26 @@ export default function ReportsIndex({
         (total, point) => total + point.count,
         0,
     );
+
+    const cashFlowTotals = cashFlowTrend.reduce(
+        (totals, point) => ({
+            collected: totals.collected + point.collected,
+            payments: totals.payments + point.payments,
+            disbursed: totals.disbursed + point.disbursed,
+            payouts: totals.payouts + point.payouts,
+            net: totals.net + point.net,
+        }),
+        { collected: 0, payments: 0, disbursed: 0, payouts: 0, net: 0 },
+    );
+
+    const cashFlowChartData: ReportBarDatum[] = cashFlowTrend.map((point) => ({
+        label: point.label,
+        value: point.net,
+        color: point.net >= 0 ? 'var(--chart-2)' : 'var(--destructive)',
+    }));
+
+    const hasCashFlow =
+        cashFlowTotals.collected > 0 || cashFlowTotals.disbursed > 0;
 
     const collectionRows = [
         ...collections.overdue_installments,
@@ -745,6 +769,18 @@ export default function ReportsIndex({
                     <a
                         href={
                             download(
+                                { report: 'cash_flow' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Cash flow
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
                                 { report: 'products' },
                                 { query: periodQuery },
                             ).url
@@ -837,6 +873,16 @@ export default function ReportsIndex({
                             href: reportsIndex({
                                 query: {
                                     tab: 'collections',
+                                    ...periodQuery,
+                                },
+                            }),
+                        },
+                        {
+                            value: 'cashflow',
+                            label: 'Cash flow',
+                            href: reportsIndex({
+                                query: {
+                                    tab: 'cashflow',
                                     ...periodQuery,
                                 },
                             }),
@@ -1338,6 +1384,172 @@ export default function ReportsIndex({
                                     )
                                 }
                             />
+                        </SectionCard>
+                    </>
+                )}
+
+                {currentTab === 'cashflow' && (
+                    <>
+                        <section className="grid gap-4 sm:grid-cols-3">
+                            <StatCard
+                                title="Collected"
+                                value={formatMoney(cashFlowTotals.collected)}
+                                hint={`${cashFlowTotals.payments} payment${
+                                    cashFlowTotals.payments === 1 ? '' : 's'
+                                } ${
+                                    periodLabel
+                                        ? 'in this period'
+                                        : 'in the last six months'
+                                }`}
+                                tone={
+                                    cashFlowTotals.collected > 0
+                                        ? 'success'
+                                        : 'default'
+                                }
+                            />
+                            <StatCard
+                                title="Disbursed"
+                                value={formatMoney(cashFlowTotals.disbursed)}
+                                hint={`${cashFlowTotals.payouts} payout${
+                                    cashFlowTotals.payouts === 1 ? '' : 's'
+                                } ${
+                                    periodLabel
+                                        ? 'in this period'
+                                        : 'in the last six months'
+                                }`}
+                            />
+                            <StatCard
+                                title="Net"
+                                value={formatMoney(cashFlowTotals.net)}
+                                hint={
+                                    cashFlowTotals.net >= 0
+                                        ? 'More collected than paid out'
+                                        : 'More paid out than collected'
+                                }
+                                tone={
+                                    cashFlowTotals.net >= 0
+                                        ? 'success'
+                                        : 'danger'
+                                }
+                            />
+                        </section>
+
+                        <SectionCard
+                            title="Cash flow by month"
+                            description={`Money collected against money disbursed ${
+                                periodLabel
+                                    ? 'in this period'
+                                    : 'over the last six months'
+                            }. Reversed payments are excluded.`}
+                        >
+                            {!hasCashFlow ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No payments or payouts were recorded in this
+                                    period.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="border-b p-4">
+                                        <ReportBarChart
+                                            data={cashFlowChartData}
+                                            ariaLabel="Net cash flow by month"
+                                            valueLabel="Net"
+                                        />
+                                    </div>
+
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Month</TableHead>
+                                                <TableHead className="hidden text-right sm:table-cell">
+                                                    Payments
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Collected
+                                                </TableHead>
+                                                <TableHead className="hidden text-right sm:table-cell">
+                                                    Payouts
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Disbursed
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Net
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {cashFlowTrend.map((point) => (
+                                                <TableRow key={point.month}>
+                                                    <TableCell className="font-medium">
+                                                        {point.label}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                        {point.payments}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            point.collected,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                        {point.payouts}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            point.disbursed,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        className={cn(
+                                                            'text-right font-medium tabular-nums',
+                                                            point.net < 0 &&
+                                                                'text-destructive',
+                                                        )}
+                                                    >
+                                                        {formatMoney(point.net)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell>Total</TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {cashFlowTotals.payments}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        cashFlowTotals.collected,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {cashFlowTotals.payouts}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        cashFlowTotals.disbursed,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell
+                                                    className={cn(
+                                                        'text-right font-medium tabular-nums',
+                                                        cashFlowTotals.net <
+                                                            0 &&
+                                                            'text-destructive',
+                                                    )}
+                                                >
+                                                    {formatMoney(
+                                                        cashFlowTotals.net,
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </>
+                            )}
                         </SectionCard>
                     </>
                 )}

@@ -219,6 +219,54 @@ test('the reports page exposes the portfolio figures', function () {
         );
 });
 
+test('the cash flow trend compares collections with payouts by month', function () {
+    $this->travelTo('2026-06-01');
+
+    reportingFixture();
+
+    $trend = collect(app(ReportingService::class)->cashFlowTrend())->keyBy('month');
+
+    expect($trend['2026-05']['collected'])->toBe(125.0)
+        ->and($trend['2026-05']['payments'])->toBe(1)
+        ->and($trend['2026-05']['disbursed'])->toBe(0.0)
+        ->and($trend['2026-05']['net'])->toBe(125.0)
+        ->and($trend['2026-06']['collected'])->toBe(0.0)
+        ->and($trend['2026-06']['disbursed'])->toBe(1000.0)
+        ->and($trend['2026-06']['payouts'])->toBe(1)
+        ->and($trend['2026-06']['net'])->toBe(-1000.0);
+});
+
+test('the cash flow report is exposed and exports as a CSV', function () {
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    reportingFixture();
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['tab' => 'cashflow']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/reports/index')
+            ->where('currentTab', 'cashflow')
+            ->has('cash_flow_trend', 6)
+            ->where('cash_flow_trend.4.month', '2026-05')
+            ->where('cash_flow_trend.4.collected', 125)
+            ->where('cash_flow_trend.5.disbursed', 1000)
+            ->where('cash_flow_trend.5.net', -1000)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.reports.download', ['report' => 'cash_flow']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Month,Payments,Collected,Payouts,Disbursed,Net')
+        ->toContain('"May 2026",1,125.00,0,0.00,125.00')
+        ->toContain('"Jun 2026",0,0.00,1,1000.00,-1000.00');
+});
+
 test('the report period narrows every report to loans applied inside it', function () {
     $this->travelTo('2026-06-01');
 
