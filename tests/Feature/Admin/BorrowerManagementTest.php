@@ -4,6 +4,7 @@ use App\Enums\KycStatus;
 use App\Enums\LoanStatus;
 use App\Models\ActivityLog;
 use App\Models\Borrower;
+use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\Payment;
@@ -333,6 +334,11 @@ test('the borrower detail page shows their loans, payments and abilities', funct
         'amount' => 500,
     ]);
 
+    $disbursement = Disbursement::factory()->for($loan)->create([
+        'amount' => 5000,
+        'disbursed_at' => today(),
+    ]);
+
     $this->actingAs($admin)
         ->get(route('admin.borrowers.show', $borrower))
         ->assertOk()
@@ -348,9 +354,33 @@ test('the borrower detail page shows their loans, payments and abilities', funct
             ->where('summary.payments.0.id', $payment->id)
             ->where('summary.payment_count', 1)
             ->where('summary.upcoming_count', 0)
+            ->has('recentDisbursements', 1)
+            ->where('recentDisbursements.0.id', $disbursement->id)
+            ->where('recentDisbursements.0.loan_id', $loan->id)
+            ->where('recentDisbursements.0.amount', 5000)
             ->where('can.update', true)
             ->where('can.delete', true)
             ->where('can.viewActivity', false)
+        );
+});
+
+test('the borrower payout history only lists that borrower', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create();
+    $otherBorrower = Borrower::factory()->create();
+
+    $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
+    $otherLoan = Loan::factory()->create(['borrower_id' => $otherBorrower->id]);
+
+    $ownPayout = Disbursement::factory()->for($loan)->create(['disbursed_at' => today()]);
+    Disbursement::factory()->for($otherLoan)->create(['disbursed_at' => today()]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.show', $borrower))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('recentDisbursements', 1)
+            ->where('recentDisbursements.0.id', $ownPayout->id)
         );
 });
 

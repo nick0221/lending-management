@@ -184,6 +184,7 @@ class BorrowerController extends Controller
         return Inertia::render('admin/borrowers/show', [
             'borrower' => $this->detailPayload($borrower),
             'summary' => $reportingService->borrowerSummary($borrower, 10),
+            'recentDisbursements' => $reportingService->recentDisbursements(5, $borrower->id),
             'activity' => $activity,
             'activityCount' => $activityCount,
             'can' => [

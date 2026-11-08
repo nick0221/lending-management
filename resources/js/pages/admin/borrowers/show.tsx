@@ -61,6 +61,7 @@ import type {
     BorrowerDetail,
     BorrowerLoanSummary,
     BorrowerPayment,
+    RecentDisbursement,
     UpcomingInstallment,
 } from '@/types';
 
@@ -89,12 +90,14 @@ function DetailField({ label, value }: { label: string; value: ReactNode }) {
 export default function ShowBorrower({
     borrower,
     summary,
+    recentDisbursements,
     activity,
     activityCount,
     can,
 }: {
     borrower: BorrowerDetail;
     summary: BorrowerSummary;
+    recentDisbursements: RecentDisbursement[];
     activity: BorrowerActivity[];
     activityCount: number;
     can: {
@@ -629,6 +632,138 @@ export default function ShowBorrower({
                                         </p>
                                     )}
                                 </>
+                            )}
+                        </SectionCard>
+
+                        <SectionCard
+                            title="Payout history"
+                            description="The latest payouts recorded against these loans."
+                            actions={
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                        href={disbursementsIndex({
+                                            query: { borrower: borrower.id },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Banknote /> All payouts
+                                    </Link>
+                                </Button>
+                            }
+                        >
+                            {recentDisbursements.length === 0 ? (
+                                <p className="p-6 text-sm text-muted-foreground">
+                                    No payouts recorded yet.
+                                </p>
+                            ) : (
+                                <Table containerClassName="max-h-[32rem] overflow-y-auto overscroll-contain">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Loan
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Amount
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Method
+                                            </TableHead>
+                                            <TableHead className="hidden md:table-cell">
+                                                Recorded by
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {recentDisbursements.map(
+                                            (disbursement) => (
+                                                <TableRow key={disbursement.id}>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {formatDateOnly(
+                                                            disbursement.disbursed_at,
+                                                        )}
+
+                                                        <div className="mt-1 flex flex-col gap-0.5 text-xs md:hidden">
+                                                            <Link
+                                                                href={showLoan(
+                                                                    disbursement.loan_id,
+                                                                    {
+                                                                        query: {
+                                                                            tab: 'disbursements',
+                                                                        },
+                                                                    },
+                                                                )}
+                                                                className="font-medium text-foreground hover:underline"
+                                                                prefetch
+                                                            >
+                                                                Loan #
+                                                                {
+                                                                    disbursement.loan_id
+                                                                }
+                                                            </Link>
+
+                                                            <span>
+                                                                {
+                                                                    disbursement.method_label
+                                                                }
+                                                            </span>
+
+                                                            {disbursement.recorded_by && (
+                                                                <span>
+                                                                    by{' '}
+                                                                    {
+                                                                        disbursement.recorded_by
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="hidden md:table-cell">
+                                                        <Link
+                                                            href={showLoan(
+                                                                disbursement.loan_id,
+                                                                {
+                                                                    query: {
+                                                                        tab: 'disbursements',
+                                                                    },
+                                                                },
+                                                            )}
+                                                            className="font-medium hover:underline"
+                                                            prefetch
+                                                        >
+                                                            Loan #
+                                                            {
+                                                                disbursement.loan_id
+                                                            }
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            disbursement.amount,
+                                                        )}
+                                                        {disbursement.reference && (
+                                                            <div className="text-xs text-muted-foreground">
+                                                                {
+                                                                    disbursement.reference
+                                                                }
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                        {
+                                                            disbursement.method_label
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                        {disbursement.recorded_by ??
+                                                            '—'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ),
+                                        )}
+                                    </TableBody>
+                                </Table>
                             )}
                         </SectionCard>
                     </div>
