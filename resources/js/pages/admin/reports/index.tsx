@@ -53,6 +53,7 @@ import type {
     ProductPerformance,
     ReportFilters,
     ReportLoanRow,
+    WriteOffRow,
 } from '@/types';
 
 const agingRows: {
@@ -74,7 +75,8 @@ type ReportsTab =
     | 'cashflow'
     | 'arrears'
     | 'products'
-    | 'officers';
+    | 'officers'
+    | 'writeoffs';
 
 const REPORT_ROWS_PER_PAGE = 50;
 
@@ -470,6 +472,7 @@ export default function ReportsIndex({
     collections,
     collections_trend: collectionsTrend,
     cash_flow_trend: cashFlowTrend,
+    write_offs: writeOffs,
     loans,
     products,
     officers,
@@ -483,6 +486,7 @@ export default function ReportsIndex({
     collections: Collections;
     collections_trend: CollectionsTrendPoint[];
     cash_flow_trend: CashFlowPoint[];
+    write_offs: WriteOffRow[];
     loans: ReportLoanRow[];
     products: ProductPerformance[];
     officers: OfficerPerformance[];
@@ -616,6 +620,15 @@ export default function ReportsIndex({
 
     const hasCashFlow =
         cashFlowTotals.collected > 0 || cashFlowTotals.disbursed > 0;
+
+    const writeOffTotals = writeOffs.reduce(
+        (totals, row) => ({
+            principal: totals.principal + row.principal,
+            paid: totals.paid + row.paid,
+            written_off: totals.written_off + row.written_off,
+        }),
+        { principal: 0, paid: 0, written_off: 0 },
+    );
 
     const collectionRows = [
         ...collections.overdue_installments,
@@ -801,6 +814,18 @@ export default function ReportsIndex({
                         Officer performance
                     </a>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
+                                { report: 'write_offs' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Write-offs
+                    </a>
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -909,6 +934,14 @@ export default function ReportsIndex({
                             count: officers.length,
                             href: reportsIndex({
                                 query: { tab: 'officers', ...periodQuery },
+                            }),
+                        },
+                        {
+                            value: 'writeoffs',
+                            label: 'Write-offs',
+                            count: writeOffs.length,
+                            href: reportsIndex({
+                                query: { tab: 'writeoffs', ...periodQuery },
                             }),
                         },
                     ]}
@@ -1881,6 +1914,182 @@ export default function ReportsIndex({
                                                 <TableCell className="hidden text-right tabular-nums lg:table-cell">
                                                     {officerTotals.no_answer}
                                                 </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </div>
+                            )}
+                        </SectionCard>
+                    </>
+                )}
+
+                {currentTab === 'writeoffs' && (
+                    <>
+                        <section className="grid gap-4 sm:grid-cols-3">
+                            <StatCard
+                                title="Loans written off"
+                                value={String(writeOffs.length)}
+                                hint={
+                                    writeOffs.length === 1
+                                        ? 'One loan removed from the book'
+                                        : 'Loans removed from the book'
+                                }
+                                tone={
+                                    writeOffs.length > 0 ? 'warning' : 'default'
+                                }
+                            />
+                            <StatCard
+                                title="Balance written off"
+                                value={formatMoney(writeOffTotals.written_off)}
+                                hint="Unpaid balance cleared by the write-off"
+                                tone={
+                                    writeOffTotals.written_off > 0
+                                        ? 'danger'
+                                        : 'default'
+                                }
+                            />
+                            <StatCard
+                                title="Recovered before write-off"
+                                value={formatMoney(writeOffTotals.paid)}
+                                hint={`Against ${formatMoney(
+                                    writeOffTotals.principal,
+                                )} principal`}
+                            />
+                        </section>
+
+                        <SectionCard
+                            title="Written-off loans"
+                            description="Each loan leaves the active book when it is written off. The balance below is the amount still unpaid at that point."
+                        >
+                            {writeOffs.length === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No loans were written off in this period.
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Loan</TableHead>
+                                                <TableHead>Borrower</TableHead>
+                                                <TableHead className="hidden md:table-cell">
+                                                    Product
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Written off
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Paid
+                                                </TableHead>
+                                                <TableHead className="hidden md:table-cell">
+                                                    Written off on
+                                                </TableHead>
+                                                <TableHead className="hidden lg:table-cell">
+                                                    By
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {writeOffs.map((row) => (
+                                                <TableRow key={row.id}>
+                                                    <TableCell>
+                                                        <Link
+                                                            href={showLoan(
+                                                                row.id,
+                                                            )}
+                                                            className="font-medium hover:underline"
+                                                            prefetch
+                                                        >
+                                                            #{row.id}
+                                                        </Link>
+
+                                                        <div className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground md:hidden">
+                                                            {row.product && (
+                                                                <span>
+                                                                    {
+                                                                        row.product
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            <span>
+                                                                {formatMoney(
+                                                                    row.paid,
+                                                                )}{' '}
+                                                                paid
+                                                            </span>
+                                                            <span>
+                                                                {row.written_off_at
+                                                                    ? formatDateOnly(
+                                                                          row.written_off_at,
+                                                                      )
+                                                                    : 'Date not recorded'}
+                                                                {row.written_off_by
+                                                                    ? ` · ${row.written_off_by}`
+                                                                    : ''}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {row.borrower ? (
+                                                            <Link
+                                                                href={showBorrower(
+                                                                    row.borrower_id,
+                                                                )}
+                                                                className="hover:underline"
+                                                                prefetch
+                                                            >
+                                                                {row.borrower}
+                                                            </Link>
+                                                        ) : (
+                                                            '—'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                        {row.product ?? '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium tabular-nums">
+                                                        {formatMoney(
+                                                            row.written_off,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(row.paid)}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-muted-foreground md:table-cell">
+                                                        {row.written_off_at
+                                                            ? formatDateOnly(
+                                                                  row.written_off_at,
+                                                              )
+                                                            : '—'}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                                                        {row.written_off_by ??
+                                                            '—'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell colSpan={3}>
+                                                    Total
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium tabular-nums">
+                                                    {formatMoney(
+                                                        writeOffTotals.written_off,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        writeOffTotals.paid,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell
+                                                    className="hidden md:table-cell"
+                                                    colSpan={2}
+                                                />
                                             </TableRow>
                                         </TableFooter>
                                     </Table>

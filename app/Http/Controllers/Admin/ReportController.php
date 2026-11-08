@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments', 'cash_flow'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments', 'cash_flow', 'write_offs'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -28,7 +28,7 @@ class ReportController extends Controller
     public function index(Request $request): Response
     {
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers', 'cashflow'], true)
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers', 'cashflow', 'writeoffs'], true)
             ? $currentTab
             : 'portfolio';
 
@@ -41,6 +41,7 @@ class ReportController extends Controller
             'collections' => $this->reporting->collections(),
             'collections_trend' => $this->reporting->collectionsTrend(),
             'cash_flow_trend' => $this->reporting->cashFlowTrend(),
+            'write_offs' => $this->reporting->writeOffs()->all(),
             'loans' => $this->reporting->loanRows()->values()->all(),
             'products' => $this->reporting->productPerformance()->all(),
             'officers' => $this->reporting->officerPerformance()->all(),
@@ -86,6 +87,7 @@ class ReportController extends Controller
             'officers' => $this->exportOfficers(),
             'payments' => $this->exportPayments(),
             'cash_flow' => $this->exportCashFlow(),
+            'write_offs' => $this->exportWriteOffs(),
         };
     }
 
@@ -311,6 +313,34 @@ class ReportController extends Controller
             'Penalties outstanding',
             'Arrears',
             'Days past due',
+        ], $rows);
+    }
+
+    private function exportWriteOffs(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = collect($this->reporting->writeOffs())
+            ->map(fn (array $row): array => [
+                $row['id'],
+                $row['borrower'],
+                $row['product'],
+                $money($row['principal']),
+                $money($row['paid']),
+                $money($row['written_off']),
+                $row['written_off_at'],
+                $row['written_off_by'],
+            ]);
+
+        return $this->csv('write-offs.csv', [
+            'Loan',
+            'Borrower',
+            'Product',
+            'Principal',
+            'Paid',
+            'Written off',
+            'Written off on',
+            'Written off by',
         ], $rows);
     }
 

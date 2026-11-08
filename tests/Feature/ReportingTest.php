@@ -6,6 +6,7 @@ use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\LoanService;
 use App\Services\ReportingService;
 use Carbon\CarbonImmutable;
 
@@ -265,6 +266,59 @@ test('the cash flow report is exposed and exports as a CSV', function () {
         ->toContain('Month,Payments,Collected,Payouts,Disbursed,Net')
         ->toContain('"May 2026",1,125.00,0,0.00,125.00')
         ->toContain('"Jun 2026",0,0.00,1,1000.00,-1000.00');
+});
+
+test('the write-off report lists written-off loans with the cleared balance', function () {
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    [$settled] = reportingFixture();
+
+    app(LoanService::class)->writeOff($settled, $admin);
+
+    $rows = app(ReportingService::class)->writeOffs();
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['id'])->toBe($settled->id)
+        ->and($rows[0]['borrower'])->toBe($settled->borrower->name)
+        ->and($rows[0]['principal'])->toBe(200.0)
+        ->and($rows[0]['paid'])->toBe(125.0)
+        ->and($rows[0]['written_off'])->toBe(125.0)
+        ->and($rows[0]['written_off_at'])->toBe('2026-06-01')
+        ->and($rows[0]['written_off_by'])->toBe($admin->name);
+});
+
+test('the write-off report is exposed and exports as a CSV', function () {
+    $this->travelTo('2026-06-01');
+
+    $admin = User::factory()->admin()->create();
+
+    [$settled] = reportingFixture();
+
+    app(LoanService::class)->writeOff($settled, $admin);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['tab' => 'writeoffs']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/reports/index')
+            ->where('currentTab', 'writeoffs')
+            ->has('write_offs', 1)
+            ->where('write_offs.0.id', $settled->id)
+            ->where('write_offs.0.written_off', 125)
+            ->where('write_offs.0.written_off_by', $admin->name)
+        );
+
+    $content = $this->actingAs($admin)
+        ->get(route('admin.reports.download', ['report' => 'write_offs']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Loan,Borrower,Product,Principal,Paid,"Written off","Written off on","Written off by"')
+        ->toContain("{$settled->id},")
+        ->toContain('125.00');
 });
 
 test('the report period narrows every report to loans applied inside it', function () {

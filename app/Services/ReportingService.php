@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CollectionOutcome;
+use App\Enums\LoanEventType;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Borrower;
@@ -389,6 +390,61 @@ class ReportingService
             'collected_fee' => round((float) ($collected->fee ?? 0), 2),
             'collected_penalty' => round((float) ($collected->penalty ?? 0), 2),
         ];
+    }
+
+    /**
+     * Loans written off inside the report period, with the balance that was
+     * cleared and the officer who made the call.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function writeOffs(): Collection
+    {
+        return Loan::query()
+            ->with([
+                'borrower:id,name',
+                'loanProduct:id,name',
+                'installments.allocations',
+                'payments',
+                'events.user:id,name',
+            ])
+            ->where('status', LoanStatus::WrittenOff->value)
+            ->when(
+                $this->from !== null,
+                fn ($query) => $query->whereDate('applied_at', '>=', $this->from->toDateString()),
+            )
+            ->when(
+                $this->to !== null,
+                fn ($query) => $query->whereDate('applied_at', '<=', $this->to->toDateString()),
+            )
+            ->get()
+            ->map(function (Loan $loan): array {
+                $event = $loan->events
+                    ->where('action', LoanEventType::WrittenOff)
+                    ->sortByDesc('created_at')
+                    ->first();
+
+                $writtenOff = $loan->installments->sum(
+                    fn (LoanInstallment $installment): float => round(
+                        $installment->outstandingDue() + $installment->outstandingPenalty(),
+                        2,
+                    ),
+                );
+
+                return [
+                    'id' => $loan->id,
+                    'borrower_id' => $loan->borrower_id,
+                    'borrower' => $loan->borrower?->name,
+                    'product' => $loan->loanProduct?->name,
+                    'principal' => round((float) $loan->principal, 2),
+                    'paid' => round((float) $loan->payments->whereNull('reversed_at')->sum('amount'), 2),
+                    'written_off' => round((float) $writtenOff, 2),
+                    'written_off_at' => $event?->created_at?->toDateString(),
+                    'written_off_by' => $event?->user?->name,
+                ];
+            })
+            ->sortByDesc(fn (array $row): string => $row['written_off_at'] ?? '')
+            ->values();
     }
 
     /**

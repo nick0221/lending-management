@@ -637,6 +637,18 @@ export type CashFlowPoint = {
     net: number;
 };
 
+export type WriteOffRow = {
+    id: number;
+    borrower_id: number;
+    borrower: string | null;
+    product: string | null;
+    principal: number;
+    paid: number;
+    written_off: number;
+    written_off_at: string | null;
+    written_off_by: string | null;
+};
+
 export type ReportLoanRow = {
     id: number;
     borrower_id: number;
