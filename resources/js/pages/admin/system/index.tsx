@@ -6,6 +6,7 @@ import {
     RefreshCw,
     RotateCcw,
     ScrollText,
+    Send,
     Trash2,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -42,7 +43,7 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
-import { index as systemIndex } from '@/routes/admin/system';
+import { index as systemIndex, mailTest } from '@/routes/admin/system';
 import {
     destroy as forgetFailedJob,
     retry as retryFailedJob,
@@ -419,16 +420,34 @@ export default function SystemStatus({
                         description="Outgoing mail configuration and delivery health from the notification log."
                         contentClassName="space-y-4 p-4"
                         actions={
-                            <Button size="sm" variant="outline" asChild>
-                                <Link
-                                    href={notificationsIndex({
-                                        query: { channel: 'mail' },
-                                    })}
-                                    prefetch
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.post(
+                                            mailTest().url,
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                            },
+                                        )
+                                    }
                                 >
-                                    <Bell /> All mail
-                                </Link>
-                            </Button>
+                                    <Send /> Send test
+                                </Button>
+
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link
+                                        href={notificationsIndex({
+                                            query: { channel: 'mail' },
+                                        })}
+                                        prefetch
+                                    >
+                                        <Bell /> All mail
+                                    </Link>
+                                </Button>
+                            </div>
                         }
                     >
                         <dl className="divide-y">

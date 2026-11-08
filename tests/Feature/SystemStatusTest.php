@@ -1,8 +1,10 @@
 <?php
 
+use App\Mail\TestMail;
 use App\Models\NotificationLog;
 use App\Models\User;
 use App\Services\Settings;
+use Illuminate\Support\Facades\Mail;
 
 test('super admins can see the system status', function () {
     $superAdmin = User::factory()->superAdmin()->create();
@@ -138,6 +140,29 @@ test('the system status flags an HTTP gateway without an endpoint', function () 
             ->where('sms.configured', false)
             ->where('sms.endpoint', null)
         );
+});
+
+test('super admins can send a test email from the system status page', function () {
+    Mail::fake();
+
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin)
+        ->post(route('admin.system.mail-test'))
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash): bool => $flash['toast']['type'] === 'success');
+
+    Mail::assertSent(TestMail::class, fn (TestMail $mail): bool => $mail->hasTo($superAdmin->email));
+});
+
+test('admins cannot send a test email', function () {
+    Mail::fake();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.system.mail-test'))
+        ->assertForbidden();
+
+    Mail::assertNothingSent();
 });
 
 test('admins cannot see the system status', function () {

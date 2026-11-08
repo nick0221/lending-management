@@ -157,6 +157,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->middleware('throttle:reports')
             ->name('activity.export');
         Route::get('system', [SystemStatusController::class, 'index'])->name('system.index');
+        Route::post('system/mail-test', [SystemStatusController::class, 'sendTestMail'])
+            ->middleware('throttle:reminders')
+            ->name('system.mail-test');
         Route::post('system/failed-jobs/{uuid}/retry', [SystemStatusController::class, 'retryFailedJob'])
             ->name('system.failed-jobs.retry');
         Route::delete('system/failed-jobs/{uuid}', [SystemStatusController::class, 'forgetFailedJob'])

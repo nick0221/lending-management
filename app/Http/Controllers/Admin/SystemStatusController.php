@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TestMail;
 use App\Models\NotificationLog;
 use App\Services\OpsHeartbeat;
 use App\Services\Settings;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,6 +52,40 @@ class SystemStatusController extends Controller
             'sms' => $this->smsStatus(),
             'storage' => $this->storageStatus(),
         ]);
+    }
+
+    /**
+     * Send a test email to the signed-in super admin.
+     */
+    public function sendTestMail(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        $user = $request->user();
+
+        try {
+            Mail::to($user->email)->send(
+                new TestMail(app(Settings::class)->organisationName()),
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('Test email failed: :error', [
+                    'error' => Str::limit($exception->getMessage(), 300),
+                ]),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Test email sent to :email.', ['email' => $user->email]),
+        ]);
+
+        return back();
     }
 
     /**
