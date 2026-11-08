@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Borrower;
+use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\Payment;
 use App\Models\User;
@@ -47,6 +48,7 @@ test('a blank search returns no results', function () {
             'borrowers' => [],
             'loans' => [],
             'payments' => [],
+            'disbursements' => [],
         ]);
 });
 
@@ -109,6 +111,46 @@ test('a reversed payment is flagged in search results', function () {
         ->getJson(route('admin.search', ['q' => 'PAY-REVERSED']))
         ->assertOk()
         ->assertJsonPath('payments.0.reversed', true);
+});
+
+test('staff can find a payout by its reference and open the disbursements tab', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Grace Mwangi']);
+    $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
+
+    $disbursement = Disbursement::factory()->for($loan)->create([
+        'reference' => 'DSB-4242',
+        'amount' => '1500.00',
+        'disbursed_at' => today(),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->getJson(route('admin.search', ['q' => 'DSB-4242']))
+        ->assertOk()
+        ->assertJsonCount(1, 'disbursements')
+        ->assertJsonPath('disbursements.0.id', $disbursement->id)
+        ->assertJsonPath('disbursements.0.amount', 1500)
+        ->assertJsonPath('disbursements.0.reference', 'DSB-4242')
+        ->assertJsonPath('disbursements.0.borrower', 'Grace Mwangi')
+        ->assertJsonPath('disbursements.0.loan_id', $loan->id);
+
+    expect($response->json('disbursements.0.url'))
+        ->toContain("loans/{$loan->id}")
+        ->toContain('tab=disbursements');
+});
+
+test('staff can find a payout by its number', function () {
+    $admin = User::factory()->admin()->create();
+    $disbursement = Disbursement::factory()->create();
+
+    $response = $this->actingAs($admin)
+        ->getJson(route('admin.search', ['q' => "#{$disbursement->id}"]))
+        ->assertOk()
+        ->assertJsonPath('disbursements.0.id', $disbursement->id);
+
+    expect($response->json('disbursements.0.url'))
+        ->toContain("loans/{$disbursement->loan_id}")
+        ->toContain('tab=disbursements');
 });
 
 test('non-staff cannot use global search', function () {

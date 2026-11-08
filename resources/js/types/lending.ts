@@ -798,11 +798,23 @@ export type PaymentSearchResult = {
     url: string;
 };
 
+export type DisbursementSearchResult = {
+    id: number;
+    amount: number;
+    reference: string | null;
+    method_label: string;
+    disbursed_at: string;
+    borrower: string | null;
+    loan_id: number;
+    url: string;
+};
+
 export type GlobalSearchResults = {
     query: string;
     borrowers: BorrowerSearchResult[];
     loans: LoanSearchResult[];
     payments: PaymentSearchResult[];
+    disbursements: DisbursementSearchResult[];
 };
 
 export type AppSettings = {

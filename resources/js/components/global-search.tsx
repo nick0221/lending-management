@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
+    Banknote,
     Bell,
     FileBarChart,
     HandCoins,
@@ -37,6 +38,7 @@ import {
 import { index as activityIndex } from '@/routes/admin/activity';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import { index as collectionsIndex } from '@/routes/admin/collections';
+import { index as disbursementsIndex } from '@/routes/admin/disbursements';
 import { index as loanProductsIndex } from '@/routes/admin/loan-products';
 import { index as loansIndex } from '@/routes/admin/loans';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
@@ -52,9 +54,10 @@ const EMPTY_RESULTS: GlobalSearchResults = {
     borrowers: [],
     loans: [],
     payments: [],
+    disbursements: [],
 };
 
-/** Global borrower, loan and payment search, opened with Ctrl/⌘ K. */
+/** Global borrower, loan, payment and payout search, opened with Ctrl/⌘ K. */
 export function GlobalSearch() {
     const { auth } = usePage().props;
     const [open, setOpen] = useState(false);
@@ -101,6 +104,12 @@ export function GlobalSearch() {
             label: 'Payments',
             url: paymentsIndex().url,
             icon: Receipt,
+        },
+        {
+            value: 'go-disbursements',
+            label: 'Disbursements',
+            url: disbursementsIndex().url,
+            icon: Banknote,
         },
         {
             value: 'go-notifications',
@@ -235,7 +244,8 @@ export function GlobalSearch() {
     const hasResults =
         results.borrowers.length > 0 ||
         results.loans.length > 0 ||
-        results.payments.length > 0;
+        results.payments.length > 0 ||
+        results.disbursements.length > 0;
 
     if (!canSearch) {
         return null;
@@ -247,7 +257,7 @@ export function GlobalSearch() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Search borrowers, loans and payments"
+                aria-label="Search borrowers, loans, payments and payouts"
                 onClick={() => setOpen(true)}
                 className="gap-2 font-normal text-muted-foreground"
             >
@@ -261,8 +271,8 @@ export function GlobalSearch() {
             <CommandDialog
                 open={open}
                 onOpenChange={handleOpenChange}
-                title="Search borrowers, loans and payments"
-                description="Find a borrower by name, phone or national ID, open a loan by number, or find a payment by reference or number."
+                title="Search borrowers, loans, payments and payouts"
+                description="Find a borrower by name, phone or national ID, open a loan by number, or find a payment or payout by reference or number."
                 shouldFilter={false}
                 contentClassName="sm:max-w-xl"
             >
@@ -270,7 +280,7 @@ export function GlobalSearch() {
                     <CommandInput
                         value={query}
                         onValueChange={setQuery}
-                        placeholder="Search borrowers, loans and payments..."
+                        placeholder="Search borrowers, loans, payments and payouts..."
                     />
 
                     {loading && (
@@ -282,10 +292,10 @@ export function GlobalSearch() {
                     {!hasResults && (
                         <CommandEmpty>
                             {query.trim() === ''
-                                ? 'Type a name, phone, national ID, loan number or payment reference.'
+                                ? 'Type a name, phone, national ID, loan number, payment or payout reference.'
                                 : loading
                                   ? 'Searching...'
-                                  : 'No borrowers, loans or payments found.'}
+                                  : 'No borrowers, loans, payments or payouts found.'}
                         </CommandEmpty>
                     )}
 
@@ -383,6 +393,36 @@ export function GlobalSearch() {
                                             {payment.reversed
                                                 ? ' · Reversed'
                                                 : ''}
+                                        </span>
+                                    </div>
+                                    <ArrowRight className="ml-auto opacity-50" />
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    )}
+                    {results.disbursements.length > 0 && (
+                        <CommandGroup heading="Disbursements">
+                            {results.disbursements.map((disbursement) => (
+                                <CommandItem
+                                    key={`disbursement-${disbursement.id}`}
+                                    value={`disbursement-${disbursement.id}`}
+                                    onSelect={() => go(disbursement.url)}
+                                >
+                                    <Banknote />
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="truncate">
+                                            {disbursement.reference ||
+                                                `Payout #${disbursement.id}`}
+                                            {disbursement.borrower
+                                                ? ` · ${disbursement.borrower}`
+                                                : ''}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {disbursement.method_label} ·{' '}
+                                            {formatDateOnly(
+                                                disbursement.disbursed_at,
+                                            )}{' '}
+                                            · {formatMoney(disbursement.amount)}
                                         </span>
                                     </div>
                                     <ArrowRight className="ml-auto opacity-50" />

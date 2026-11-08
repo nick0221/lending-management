@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Borrower;
+use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,7 @@ use Illuminate\Support\Collection;
 class SearchController extends Controller
 {
     /**
-     * Return the borrowers, loans and payments matching a global search query.
+     * Return the borrowers, loans, payments and payouts matching a global search query.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -25,6 +26,7 @@ class SearchController extends Controller
                 'borrowers' => [],
                 'loans' => [],
                 'payments' => [],
+                'disbursements' => [],
             ]);
         }
 
@@ -81,6 +83,7 @@ class SearchController extends Controller
             'borrowers' => $borrowers,
             'loans' => $loans,
             'payments' => $this->payments($like, $numericId),
+            'disbursements' => $this->disbursements($like, $numericId),
         ]);
     }
 
@@ -116,6 +119,41 @@ class SearchController extends Controller
                 'url' => route('admin.loans.show', [
                     'loan' => $payment->loan_id,
                     'tab' => 'payments',
+                ]),
+            ]);
+    }
+
+    /**
+     * Find payouts by reference or number, with the loan they belong to.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function disbursements(string $like, ?int $disbursementId): Collection
+    {
+        return Disbursement::query()
+            ->with('loan.borrower:id,name')
+            ->where(function ($builder) use ($like, $disbursementId): void {
+                $builder->where('reference', 'like', $like);
+
+                if ($disbursementId !== null) {
+                    $builder->orWhereKey($disbursementId);
+                }
+            })
+            ->latest('disbursed_at')
+            ->latest('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (Disbursement $disbursement): array => [
+                'id' => $disbursement->id,
+                'amount' => (float) $disbursement->amount,
+                'reference' => $disbursement->reference,
+                'method_label' => $disbursement->method->label(),
+                'disbursed_at' => $disbursement->disbursed_at->toDateString(),
+                'borrower' => $disbursement->loan?->borrower?->name,
+                'loan_id' => $disbursement->loan_id,
+                'url' => route('admin.loans.show', [
+                    'loan' => $disbursement->loan_id,
+                    'tab' => 'disbursements',
                 ]),
             ]);
     }
