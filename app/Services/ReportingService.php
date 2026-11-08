@@ -465,6 +465,36 @@ class ReportingService
     }
 
     /**
+     * The most recent payouts recorded across the portfolio or one borrower.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function recentDisbursements(int $limit = 5, ?int $borrowerId = null): Collection
+    {
+        return Disbursement::query()
+            ->with(['loan.borrower:id,name', 'recordedBy:id,name'])
+            ->when(
+                $borrowerId !== null,
+                fn ($query) => $query->whereHas('loan', fn ($loan) => $loan->where('borrower_id', $borrowerId)),
+            )
+            ->orderByDesc('disbursed_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Disbursement $disbursement): array => [
+                'id' => $disbursement->id,
+                'loan_id' => $disbursement->loan_id,
+                'borrower' => $disbursement->loan?->borrower?->name,
+                'amount' => round((float) $disbursement->amount, 2),
+                'method' => $disbursement->method->value,
+                'method_label' => $disbursement->method->label(),
+                'reference' => $disbursement->reference,
+                'disbursed_at' => $disbursement->disbursed_at->toDateString(),
+                'recorded_by' => $disbursement->recordedBy?->name,
+            ]);
+    }
+
+    /**
      * A single borrower's loans, arrears and next amounts due.
      *
      * @return array<string, mixed>

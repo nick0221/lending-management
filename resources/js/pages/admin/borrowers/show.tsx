@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
+    Banknote,
     Bell,
     CalendarClock,
     Check,
@@ -39,6 +40,7 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
 import { index as collectionsIndex } from '@/routes/admin/collections';
+import { index as disbursementsIndex } from '@/routes/admin/disbursements';
 import {
     destroy as destroyBorrower,
     edit as editBorrower,
@@ -210,6 +212,19 @@ export default function ShowBorrower({
                                             prefetch
                                         >
                                             <FileText /> All loans
+                                        </Link>
+                                    </Button>
+
+                                    <Button size="sm" variant="outline" asChild>
+                                        <Link
+                                            href={disbursementsIndex({
+                                                query: {
+                                                    borrower: borrower.id,
+                                                },
+                                            })}
+                                            prefetch
+                                        >
+                                            <Banknote /> All payouts
                                         </Link>
                                     </Button>
 

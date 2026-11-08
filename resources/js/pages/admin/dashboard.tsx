@@ -33,6 +33,7 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { create as createBorrower } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
+import { index as adminDisbursements } from '@/routes/admin/disbursements';
 import { create as createLoan, show as showLoan } from '@/routes/admin/loans';
 import { index as adminPayments } from '@/routes/admin/payments';
 import { index as reportsIndex } from '@/routes/admin/reports';
@@ -42,6 +43,7 @@ import type {
     Collections,
     PortfolioRisk,
     PortfolioSummary,
+    RecentDisbursement,
     RecentPayment,
 } from '@/types';
 
@@ -93,6 +95,7 @@ export default function AdminDashboard({
     aging,
     risk,
     recentPayments,
+    recentDisbursements,
     myQueue,
 }: {
     stats: Stats;
@@ -101,6 +104,7 @@ export default function AdminDashboard({
     aging: AgingBuckets;
     risk: PortfolioRisk;
     recentPayments: RecentPayment[];
+    recentDisbursements: RecentDisbursement[];
     myQueue: number;
 }) {
     const { auth } = usePage().props;
@@ -441,6 +445,88 @@ export default function AdminDashboard({
                                             className="py-8 text-center text-muted-foreground"
                                         >
                                             No payments recorded yet.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </SectionCard>
+
+                    <SectionCard
+                        title="Recent disbursements"
+                        description="The latest payouts recorded across the portfolio."
+                        className="lg:col-span-3"
+                        actions={
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={adminDisbursements()} prefetch>
+                                    All disbursements <ArrowRight />
+                                </Link>
+                            </Button>
+                        }
+                    >
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Borrower</TableHead>
+                                    <TableHead className="hidden sm:table-cell">
+                                        Method
+                                    </TableHead>
+                                    <TableHead className="hidden sm:table-cell">
+                                        Date
+                                    </TableHead>
+                                    <TableHead className="text-right">
+                                        Amount
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+
+                            <TableBody>
+                                {recentDisbursements.map((disbursement) => (
+                                    <TableRow key={disbursement.id}>
+                                        <TableCell>
+                                            <Link
+                                                href={showLoan(
+                                                    disbursement.loan_id,
+                                                    {
+                                                        query: {
+                                                            tab: 'disbursements',
+                                                        },
+                                                    },
+                                                )}
+                                                prefetch
+                                                className="font-medium hover:underline"
+                                            >
+                                                {disbursement.borrower ??
+                                                    `Loan #${disbursement.loan_id}`}
+                                            </Link>
+                                            <p className="mt-1 text-xs text-muted-foreground sm:hidden">
+                                                {disbursement.method_label} ·{' '}
+                                                {formatDate(
+                                                    disbursement.disbursed_at,
+                                                )}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell className="hidden text-muted-foreground sm:table-cell">
+                                            {disbursement.method_label}
+                                        </TableCell>
+                                        <TableCell className="hidden text-muted-foreground sm:table-cell">
+                                            {formatDate(
+                                                disbursement.disbursed_at,
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium tabular-nums">
+                                            {formatMoney(disbursement.amount)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+
+                                {recentDisbursements.length === 0 && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={4}
+                                            className="py-8 text-center text-muted-foreground"
+                                        >
+                                            No payouts recorded yet.
                                         </TableCell>
                                     </TableRow>
                                 )}

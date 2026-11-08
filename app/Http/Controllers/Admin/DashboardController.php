@@ -31,6 +31,7 @@ class DashboardController extends Controller
             'aging' => $this->reporting->agingBuckets(),
             'risk' => $this->reporting->portfolioAtRisk(),
             'recentPayments' => $this->reporting->recentPayments(5),
+            'recentDisbursements' => $this->reporting->recentDisbursements(5),
             'myQueue' => $this->assignedOverdueLoans($request->user()->id),
         ]);
     }

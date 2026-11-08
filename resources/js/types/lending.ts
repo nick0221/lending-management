@@ -692,6 +692,18 @@ export type RecentPayment = {
     recorded_by: string | null;
 };
 
+export type RecentDisbursement = {
+    id: number;
+    loan_id: number;
+    borrower: string | null;
+    amount: number;
+    method: DisbursementMethod;
+    method_label: string;
+    reference: string | null;
+    disbursed_at: string;
+    recorded_by: string | null;
+};
+
 export type UpcomingInstallment = {
     loan_id: number;
     sequence: number;

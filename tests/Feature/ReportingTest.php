@@ -288,6 +288,8 @@ test('the admin dashboard exposes the portfolio overview', function () {
             ->where('risk.par.ratio', 0)
             ->has('recentPayments', 1)
             ->where('recentPayments.0.amount', 125)
+            ->has('recentDisbursements', 1)
+            ->where('recentDisbursements.0.amount', 1000)
         );
 });
 
