@@ -339,6 +339,8 @@ class LoanController extends Controller
                 'disburse' => $actor->can('disburse', $loan),
                 'pay' => $actor->can('recordPayment', $loan),
                 'log_contact' => $actor->can('logContact', $loan),
+                'remind' => $actor->can('sendReminders', Loan::class)
+                    && $loan->installments->contains(fn (LoanInstallment $installment): bool => $installment->isOverdue()),
                 'default' => $actor->can('markDefaulted', $loan),
                 'write_off' => $actor->can('writeOff', $loan),
                 'restructure' => $actor->can('restructure', $loan),

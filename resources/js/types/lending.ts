@@ -279,6 +279,7 @@ export type LoanAbilities = {
     disburse: boolean;
     pay: boolean;
     log_contact: boolean;
+    remind: boolean;
     default: boolean;
     write_off: boolean;
     restructure: boolean;

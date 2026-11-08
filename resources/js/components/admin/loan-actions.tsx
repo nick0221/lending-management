@@ -1,7 +1,8 @@
-import { Form } from '@inertiajs/react';
+import { Form, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     Ban,
+    BellRing,
     Check,
     Download,
     Mail,
@@ -34,6 +35,7 @@ import {
     destroy as destroyLoan,
     markDefault as markLoanDefault,
     reject as rejectLoan,
+    remind as remindLoan,
     writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
 import {
@@ -80,6 +82,7 @@ export function LoanActions({
 
     const hasSecondaryActions =
         can.log_contact ||
+        can.remind ||
         can.restructure ||
         can.statement ||
         can.download_statement ||
@@ -155,16 +158,31 @@ export function LoanActions({
 
                         <DropdownMenuContent align="end" className="w-52">
                             {can.log_contact && (
-                                <>
-                                    <DropdownMenuItem
-                                        onSelect={() => onLogContact()}
-                                        data-test="log-contact-button"
-                                    >
-                                        <PhoneCall /> Log contact
-                                    </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onSelect={() => onLogContact()}
+                                    data-test="log-contact-button"
+                                >
+                                    <PhoneCall /> Log contact
+                                </DropdownMenuItem>
+                            )}
 
-                                    <DropdownMenuSeparator />
-                                </>
+                            {can.remind && (
+                                <DropdownMenuItem
+                                    onSelect={() =>
+                                        router.post(
+                                            remindLoan().url,
+                                            { loans: [loan.id] },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                    data-test="send-reminder-button"
+                                >
+                                    <BellRing /> Send reminder
+                                </DropdownMenuItem>
+                            )}
+
+                            {(can.log_contact || can.remind) && (
+                                <DropdownMenuSeparator />
                             )}
 
                             {can.restructure && (

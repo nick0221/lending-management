@@ -580,6 +580,32 @@ test('the loan detail exposes the approve and reject abilities', function () {
         );
 });
 
+test('the loan detail offers a reminder only for overdue loans', function () {
+    $admin = User::factory()->admin()->create();
+
+    $overdue = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5, 'due_date' => now()->subDay()->toDateString()],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $overdue))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('can.remind', true)
+        );
+
+    $upcoming = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 20, 'fee' => 5, 'due_date' => now()->addWeek()->toDateString()],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $upcoming))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('can.remind', false)
+        );
+});
+
 test('the loan detail lists the emails sent to the borrower', function () {
     $admin = User::factory()->admin()->create();
 
