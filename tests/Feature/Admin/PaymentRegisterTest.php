@@ -69,11 +69,14 @@ test('the register tabs separate completed and reversed payments', function () {
         );
 });
 
-test('the register searches by borrower, reference and loan number', function () {
+test('the register searches by borrower, national ID, reference and loan number', function () {
     $admin = User::factory()->admin()->create();
 
     $matchingLoan = Loan::factory()->withStatus(LoanStatus::Active)->create();
-    $matchingLoan->borrower->update(['name' => 'Grace Reference']);
+    $matchingLoan->borrower->update([
+        'name' => 'Grace Reference',
+        'national_id' => 'NID-GRACE-REF',
+    ]);
 
     $matching = Payment::factory()->for($matchingLoan)->create([
         'reference' => 'PAY-GRACE-1',
@@ -82,6 +85,14 @@ test('the register searches by borrower, reference and loan number', function ()
 
     $this->actingAs($admin)
         ->get(route('admin.payments.index', ['search' => 'Grace']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('payments.data', 1)
+            ->where('payments.data.0.id', $matching->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index', ['search' => 'NID-GRACE-REF']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('payments.data', 1)

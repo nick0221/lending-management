@@ -238,18 +238,20 @@ test('the borrower list can be filtered by kyc status and exposes counts', funct
         );
 });
 
-test('the borrower list can be searched by name, email or phone and counts respect the search', function () {
+test('the borrower list can be searched by name, email, phone or national ID and counts respect the search', function () {
     $admin = User::factory()->admin()->create();
     Borrower::factory()->create([
         'name' => 'Ada Lovelace',
         'email' => 'ada@example.com',
         'phone' => '+1-555-0100',
+        'national_id' => 'NID-ADA-1',
         'kyc_status' => KycStatus::Verified->value,
     ]);
     Borrower::factory()->create([
         'name' => 'Grace Hopper',
         'email' => 'grace@example.com',
         'phone' => '+1-555-0200',
+        'national_id' => 'NID-GRACE-2',
     ]);
 
     $this->actingAs($admin)
@@ -262,6 +264,15 @@ test('the borrower list can be searched by name, email or phone and counts respe
             ->where('search', 'ada@example.com')
             ->where('kycCounts.all', 1)
             ->where('kycCounts.verified', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index', ['search' => 'NID-ADA-1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 1)
+            ->where('borrowers.data.0.name', 'Ada Lovelace')
+            ->where('kycCounts.all', 1)
         );
 });
 

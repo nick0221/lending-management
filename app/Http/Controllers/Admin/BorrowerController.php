@@ -330,7 +330,7 @@ class BorrowerController extends Controller
             ->when(
                 $search !== '',
                 fn (Builder $query) => $query->whereAny(
-                    ['name', 'email', 'phone'],
+                    ['name', 'email', 'phone', 'national_id'],
                     'like',
                     "%{$search}%",
                 ),

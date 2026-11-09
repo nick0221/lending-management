@@ -79,6 +79,8 @@ test('the queue tabs and filters scope the overdue book', function () {
         'follow_up_at' => today()->toDateString(),
     ]);
 
+    $followUp->borrower->update(['national_id' => 'NID-FOLLOW-45']);
+
     $aging = Loan::factory()->withStatus(LoanStatus::Active)->create([
         'days_past_due' => 100,
         'collection_officer_id' => $admin->id,
@@ -153,6 +155,14 @@ test('the queue tabs and filters scope the overdue book', function () {
 
     $this->actingAs($admin)
         ->get(route('admin.collections.index', ['search' => $followUp->borrower->phone]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('loans.data.0.id', $followUp->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.collections.index', ['search' => 'NID-FOLLOW-45']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('loans.data', 1)

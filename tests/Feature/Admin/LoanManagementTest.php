@@ -309,11 +309,19 @@ test('the loan list exposes per-status counts', function () {
         );
 });
 
-test('the loan list can be searched by borrower name or loan id', function () {
+test('the loan list can be searched by borrower, phone, national ID or loan id', function () {
     $admin = User::factory()->admin()->create();
-    $borrower = Borrower::factory()->create(['name' => 'Ada Lovelace']);
+    $borrower = Borrower::factory()->create([
+        'name' => 'Ada Lovelace',
+        'phone' => '+1-555-0188',
+        'national_id' => 'NID-LOAN-ANALYST',
+    ]);
     $match = Loan::factory()->create(['borrower_id' => $borrower->id]);
     $other = Loan::factory()->create();
+    $other->borrower->update([
+        'phone' => '+1-555-9999',
+        'national_id' => 'NID-OTHER-9',
+    ]);
 
     $this->actingAs($admin)
         ->get(route('admin.loans.index', ['search' => 'Ada Lovelace']))
@@ -324,6 +332,22 @@ test('the loan list can be searched by borrower name or loan id', function () {
             ->where('loans.data.0.id', $match->id)
             ->where('search', 'Ada Lovelace')
             ->where('counts.all', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['search' => 'NID-LOAN-ANALYST']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('loans.data.0.id', $match->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.index', ['search' => '+1-555-0188']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loans.data', 1)
+            ->where('loans.data.0.id', $match->id)
         );
 
     $this->actingAs($admin)

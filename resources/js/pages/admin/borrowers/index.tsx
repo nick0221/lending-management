@@ -174,7 +174,7 @@ export default function BorrowersIndex({
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchInput
                         value={search}
-                        placeholder="Search name, email or phone"
+                        placeholder="Search name, email, phone or national ID"
                         label="Search borrowers"
                     />
 

@@ -267,7 +267,7 @@ export default function NotificationsIndex({
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchInput
                         value={search}
-                        placeholder="Search borrower, phone or loan #"
+                        placeholder="Search borrower, phone, ID or loan #"
                         label="Search notifications"
                     />
 

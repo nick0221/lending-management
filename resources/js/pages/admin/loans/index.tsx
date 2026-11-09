@@ -301,7 +301,7 @@ export default function LoansIndex({
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchInput
                         value={search}
-                        placeholder="Search borrower or loan #"
+                        placeholder="Search borrower, phone, ID or loan #"
                         label="Search loans"
                     />
 

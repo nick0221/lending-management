@@ -43,7 +43,11 @@ test('the disbursements register lists every payout newest first', function () {
 test('the register filters by method, payment date and search', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
-    $loan->borrower->update(['name' => 'Ada Filter', 'phone' => '+1-555-0111']);
+    $loan->borrower->update([
+        'name' => 'Ada Filter',
+        'phone' => '+1-555-0111',
+        'national_id' => 'NID-DISBURSE-1',
+    ]);
 
     $cash = Disbursement::factory()->for($loan)->create([
         'method' => DisbursementMethod::Cash->value,
@@ -77,6 +81,13 @@ test('the register filters by method, payment date and search', function () {
         ->assertInertia(fn ($page) => $page
             ->has('disbursements.data', 1)
             ->where('disbursements.data.0.reference', 'BANK-2')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.disbursements.index', ['search' => 'NID-DISBURSE-1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('disbursements.data', 2)
         );
 });
 

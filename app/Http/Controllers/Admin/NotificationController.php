@@ -274,7 +274,7 @@ class NotificationController extends Controller
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $inner) use ($search): void {
                     $inner->whereHas('borrower', fn (Builder $borrower) => $borrower
-                        ->whereAny(['name', 'email', 'phone'], 'like', "%{$search}%"));
+                        ->whereAny(['name', 'email', 'phone', 'national_id'], 'like', "%{$search}%"));
 
                     if (ctype_digit($search)) {
                         $inner->orWhere('loan_id', (int) $search)

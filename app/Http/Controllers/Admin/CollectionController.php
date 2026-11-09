@@ -299,14 +299,17 @@ class CollectionController extends Controller
     }
 
     /**
-     * Narrow the queue to the borrower name, phone or loan number.
+     * Narrow the queue to the borrower name, phone, national ID or loan number.
      */
     private function applySearch(Builder $query, string $search): void
     {
         $query->where(function (Builder $query) use ($search): void {
             $query->whereHas('borrower', fn (Builder $borrower) => $borrower
-                ->where('name', 'like', "%{$search}%")
-                ->orWhere('phone', 'like', "%{$search}%"));
+                ->whereAny(
+                    ['name', 'phone', 'national_id'],
+                    'like',
+                    "%{$search}%",
+                ));
 
             if (ctype_digit($search)) {
                 $query->orWhereKey((int) $search);

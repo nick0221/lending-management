@@ -236,7 +236,7 @@ export default function PaymentsIndex({
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchInput
                         value={search}
-                        placeholder="Search borrower, phone, reference or loan #"
+                        placeholder="Search borrower, phone, ID or reference"
                         label="Search payments"
                     />
 

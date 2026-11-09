@@ -70,6 +70,7 @@ test('the notification register filters by status, channel, type and search', fu
     $matchingLoan->borrower->update([
         'name' => 'Ada Logs',
         'phone' => '+1-555-0100',
+        'national_id' => 'NID-NOTIFY-ADA',
     ]);
 
     $matching = deliveryLog($matchingLoan, [
@@ -116,6 +117,14 @@ test('the notification register filters by status, channel, type and search', fu
             ->has('logs.data', 1)
             ->where('logs.data.0.id', $matching->id)
             ->where('search', 'Ada')
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.notifications.index', ['search' => 'NID-NOTIFY-ADA']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('logs.data', 1)
+            ->where('logs.data.0.id', $matching->id)
         );
 });
 

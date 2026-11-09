@@ -202,8 +202,11 @@ class PaymentController extends Controller
                 $query->where(function (Builder $query) use ($search): void {
                     $query->where('reference', 'like', "%{$search}%")
                         ->orWhereHas('loan.borrower', fn (Builder $borrower) => $borrower
-                            ->where('name', 'like', "%{$search}%")
-                            ->orWhere('phone', 'like', "%{$search}%"));
+                            ->whereAny(
+                                ['name', 'phone', 'national_id'],
+                                'like',
+                                "%{$search}%",
+                            ));
 
                     $digits = ltrim($search, '#');
 

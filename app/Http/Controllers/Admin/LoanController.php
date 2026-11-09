@@ -974,7 +974,11 @@ class LoanController extends Controller
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $query->whereHas('borrower', fn (Builder $borrower) => $borrower
-                        ->where('name', 'like', "%{$search}%"));
+                        ->whereAny(
+                            ['name', 'phone', 'national_id'],
+                            'like',
+                            "%{$search}%",
+                        ));
 
                     if (ctype_digit($search)) {
                         $query->orWhereKey((int) $search);
