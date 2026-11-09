@@ -58,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
 import { show as showBorrower } from '@/routes/admin/borrowers';
+import { officer as assignCollectionOfficer } from '@/routes/admin/collections';
 import { index as disbursementsIndex } from '@/routes/admin/disbursements';
 import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
 import { index as notificationsIndex } from '@/routes/admin/notifications';
@@ -118,10 +119,14 @@ function CollectionsPanel({
     description,
     contacts,
     officer,
+    officerId,
+    officers,
     promise,
     nextFollowUp,
     canLogContact,
+    canAssignOfficer,
     onLogContact,
+    onAssignOfficer,
     limit,
     onViewAll,
 }: {
@@ -129,10 +134,14 @@ function CollectionsPanel({
     description: string;
     contacts: CollectionContact[];
     officer: string | null;
+    officerId: number | null;
+    officers: { value: number; label: string }[];
     promise: CollectionPromise | null;
     nextFollowUp: string | null;
     canLogContact: boolean;
+    canAssignOfficer: boolean;
     onLogContact: () => void;
+    onAssignOfficer: (value: string) => void;
     limit?: number;
     onViewAll?: () => void;
 }) {
@@ -153,10 +162,45 @@ function CollectionsPanel({
         >
             <div className="space-y-5">
                 <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-3">
-                    <DetailField
-                        label="Collection officer"
-                        value={officer ?? 'Unassigned'}
-                    />
+                    <div className="space-y-1">
+                        <dt className="text-xs text-muted-foreground uppercase">
+                            Collection officer
+                        </dt>
+                        <dd className="text-sm font-medium break-words">
+                            {canAssignOfficer ? (
+                                <Select
+                                    value={
+                                        officerId
+                                            ? String(officerId)
+                                            : 'unassigned'
+                                    }
+                                    onValueChange={onAssignOfficer}
+                                >
+                                    <SelectTrigger
+                                        className="h-8 w-full max-w-56"
+                                        aria-label="Assign collection officer"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="unassigned">
+                                            Unassigned
+                                        </SelectItem>
+                                        {officers.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={String(option.value)}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                (officer ?? 'Unassigned')
+                            )}
+                        </dd>
+                    </div>
                     <DetailField
                         label="Last contact"
                         value={
@@ -413,6 +457,8 @@ export default function ShowLoan({
     collectionContacts,
     collectionPromise,
     collectionOfficer,
+    collectionOfficerId,
+    collectionOfficers,
     collectionChannels,
     collectionOutcomes,
     disbursementMethods,
@@ -433,6 +479,8 @@ export default function ShowLoan({
     collectionContacts: CollectionContact[];
     collectionPromise: CollectionPromise | null;
     collectionOfficer: string | null;
+    collectionOfficerId: number | null;
+    collectionOfficers: { value: number; label: string }[];
     collectionChannels: CollectionChannelOption[];
     collectionOutcomes: CollectionOutcomeOption[];
     disbursementMethods: DisbursementMethodOption[];
@@ -471,6 +519,14 @@ export default function ShowLoan({
         }
 
         window.history.replaceState(window.history.state, '', url.toString());
+    };
+
+    const assignOfficer = (value: string) => {
+        router.patch(
+            assignCollectionOfficer({ loan: loan.id }).url,
+            { officer_id: value === 'unassigned' ? null : Number(value) },
+            { preserveScroll: true },
+        );
     };
 
     const resendNotification = (notification: NotificationLogEntry) => {
@@ -852,10 +908,14 @@ export default function ShowLoan({
                             description="Contact history, promises to pay and the next follow-up."
                             contacts={collectionContacts}
                             officer={collectionOfficer}
+                            officerId={collectionOfficerId}
+                            officers={collectionOfficers}
                             promise={collectionPromise}
                             nextFollowUp={nextFollowUp}
                             canLogContact={can.log_contact}
+                            canAssignOfficer={can.assign_officer}
                             onLogContact={() => setContactOpen(true)}
+                            onAssignOfficer={assignOfficer}
                             limit={5}
                             onViewAll={() => changeTab('collections')}
                         />
@@ -867,10 +927,14 @@ export default function ShowLoan({
                             description={`Every call, message, email and visit logged against this loan, newest first (${collectionContacts.length} in total).`}
                             contacts={collectionContacts}
                             officer={collectionOfficer}
+                            officerId={collectionOfficerId}
+                            officers={collectionOfficers}
                             promise={collectionPromise}
                             nextFollowUp={nextFollowUp}
                             canLogContact={can.log_contact}
+                            canAssignOfficer={can.assign_officer}
                             onLogContact={() => setContactOpen(true)}
+                            onAssignOfficer={assignOfficer}
                         />
                     </TabsContent>
 

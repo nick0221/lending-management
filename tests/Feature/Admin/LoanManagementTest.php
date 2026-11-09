@@ -606,6 +606,37 @@ test('the loan detail offers a reminder only for overdue loans', function () {
         );
 });
 
+test('the loan detail exposes the collection officer assignment', function () {
+    $admin = User::factory()->admin()->create();
+    $officer = User::factory()->admin()->create(['name' => 'Field Officer']);
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'collection_officer_id' => $officer->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $loan))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('collectionOfficerId', $officer->id)
+            ->where('collectionOfficer', 'Field Officer')
+            ->where('can.assign_officer', true)
+            ->where('collectionOfficers', fn ($options): bool => collect($options)->contains(
+                fn (array $option): bool => $option['value'] === $officer->id
+                    && $option['label'] === 'Field Officer',
+            ))
+        );
+
+    $pending = Loan::factory()->pending()->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.loans.show', $pending))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('can.assign_officer', false)
+        );
+});
+
 test('the loan detail lists the emails sent to the borrower', function () {
     $admin = User::factory()->admin()->create();
 

@@ -330,6 +330,16 @@ class LoanController extends Controller
             'collectionContacts' => $this->collectionContactPayload($loan),
             'collectionPromise' => $this->collectionPromisePayload($loan),
             'collectionOfficer' => $loan->collectionOfficer?->name,
+            'collectionOfficerId' => $loan->collection_officer_id,
+            'collectionOfficers' => User::query()
+                ->whereIn('role', [Role::SuperAdmin->value, Role::Admin->value])
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (User $user): array => [
+                    'value' => $user->id,
+                    'label' => $user->name,
+                ])
+                ->all(),
             'collectionChannels' => $this->enumOptions(CollectionChannel::cases()),
             'collectionOutcomes' => $this->enumOptions(CollectionOutcome::cases()),
             'currentTab' => $currentTab,
@@ -339,6 +349,7 @@ class LoanController extends Controller
                 'disburse' => $actor->can('disburse', $loan),
                 'pay' => $actor->can('recordPayment', $loan),
                 'log_contact' => $actor->can('logContact', $loan),
+                'assign_officer' => $actor->can('assignOfficer', $loan),
                 'remind' => $actor->can('sendReminders', Loan::class)
                     && $loan->installments->contains(fn (LoanInstallment $installment): bool => $installment->isOverdue()),
                 'default' => $actor->can('markDefaulted', $loan),
