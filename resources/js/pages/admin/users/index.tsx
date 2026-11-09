@@ -27,7 +27,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Toggle } from '@/components/ui/toggle';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as rolesIndex } from '@/routes/admin/roles';
 import {
@@ -218,6 +218,9 @@ export default function UsersIndex({
                                     <TableHead className="hidden xl:table-cell">
                                         Joined
                                     </TableHead>
+                                    <TableHead className="hidden xl:table-cell">
+                                        Last login
+                                    </TableHead>
                                     <TableHead className="text-right">
                                         Actions
                                     </TableHead>
@@ -248,6 +251,13 @@ export default function UsersIndex({
                                                 {user.two_factor_enabled
                                                     ? '2FA on'
                                                     : '2FA off'}
+                                            </div>
+                                            <div className="mt-1 text-xs text-muted-foreground xl:hidden">
+                                                {user.last_login_at
+                                                    ? `Last login ${formatDateTime(
+                                                          user.last_login_at,
+                                                      )}`
+                                                    : 'Never signed in'}
                                             </div>
                                         </TableCell>
                                         <TableCell className="hidden text-muted-foreground lg:table-cell">
@@ -296,6 +306,13 @@ export default function UsersIndex({
                                         </TableCell>
                                         <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
                                             {formatDate(user.created_at)}
+                                        </TableCell>
+                                        <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
+                                            {user.last_login_at
+                                                ? formatDateTime(
+                                                      user.last_login_at,
+                                                  )
+                                                : 'Never'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">

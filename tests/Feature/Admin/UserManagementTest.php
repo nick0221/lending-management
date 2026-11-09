@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -18,6 +19,7 @@ test('the user list exposes the abilities for every row', function () {
             ->has('users.data', 1)
             ->where('users.data.0.role', Role::SuperAdmin->value)
             ->where('users.data.0.two_factor_enabled', false)
+            ->where('users.data.0.last_login_at', null)
             ->where('users.data.0.can.update', true)
             ->where('users.data.0.can.delete', false)
         );
@@ -36,6 +38,29 @@ test('the user list reports whether two-factor authentication is enabled', funct
             ->has('users.data', 1)
             ->where('users.data.0.id', $user->id)
             ->where('users.data.0.two_factor_enabled', true)
+        );
+});
+
+test('the user list reports the last sign-in from the audit trail', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $user = User::factory()->create();
+
+    $this->travelTo('2026-05-01 09:30:00');
+
+    ActivityLog::create([
+        'user_id' => $user->id,
+        'event' => ActivityLog::EVENT_LOGIN,
+        'description' => 'Signed in.',
+    ]);
+
+    $this->travelBack();
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['search' => $user->email]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data.0.last_login_at', fn ($value): bool => is_string($value)
+                && str_starts_with($value, '2026-05-01T09:30:00'))
         );
 });
 
@@ -419,6 +444,7 @@ test('the user register exports a CSV with the current role and search filters',
         ->toContain('Name')
         ->toContain('Email status')
         ->toContain('Two-factor')
+        ->toContain('"Last login"')
         ->toContain('Grace User')
         ->toContain('grace@example.com')
         ->toContain('Verified')

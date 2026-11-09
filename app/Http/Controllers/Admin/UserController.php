@@ -6,8 +6,10 @@ use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Services\CsvExporter;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -55,6 +57,14 @@ class UserController extends Controller
                 $row->role => (int) $row->aggregate,
             ]);
 
+        $lastLogins = ActivityLog::query()
+            ->where('event', ActivityLog::EVENT_LOGIN)
+            ->groupBy('user_id')
+            ->selectRaw('user_id, max(created_at) as last_login_at')
+            ->toBase()
+            ->pluck('last_login_at', 'user_id')
+            ->map(fn (string $value): string => CarbonImmutable::parse($value)->toIso8601String());
+
         $users = $applyFilters(User::query())
             ->when($role, fn ($query) => $query->where('role', $role))
             ->orderBy('name')
@@ -62,6 +72,7 @@ class UserController extends Controller
             ->withQueryString()
             ->through(fn (User $user): array => [
                 ...$this->toPayload($user),
+                'last_login_at' => $lastLogins->get($user->id),
                 'can' => [
                     'update' => $actor->can('update', $user),
                     'delete' => $actor->can('delete', $user),
@@ -266,7 +277,15 @@ class UserController extends Controller
             'Email status',
             'Two-factor',
             'Joined',
+            'Last login',
         ];
+
+        $lastLogins = ActivityLog::query()
+            ->where('event', ActivityLog::EVENT_LOGIN)
+            ->groupBy('user_id')
+            ->selectRaw('user_id, max(created_at) as last_login_at')
+            ->toBase()
+            ->pluck('last_login_at', 'user_id');
 
         $users = User::query()
             ->when($role, fn ($query) => $query->where('role', $role))
@@ -293,6 +312,9 @@ class UserController extends Controller
                 $user->hasVerifiedEmail() ? 'Verified' : 'Pending',
                 $user->two_factor_confirmed_at !== null ? 'On' : 'Off',
                 $user->created_at?->toDateString(),
+                isset($lastLogins[$user->id])
+                    ? CarbonImmutable::parse($lastLogins[$user->id])->toDateTimeString()
+                    : null,
             ];
         }
     }
@@ -313,6 +335,7 @@ class UserController extends Controller
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
             'created_at' => $user->created_at?->toIso8601String(),
+            'last_login_at' => null,
         ];
     }
 
