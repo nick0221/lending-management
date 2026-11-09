@@ -5,6 +5,7 @@ import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { FilterTabs } from '@/components/filter-tabs';
 import { PageHeader } from '@/components/page-header';
+import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
@@ -16,21 +17,33 @@ import type { LoanProductListItem, Paginated } from '@/types';
 export default function LoanProductsIndex({
     loanProducts,
     currentState,
+    search,
     counts,
 }: {
     loanProducts: Paginated<LoanProductListItem>;
     currentState: 'active' | 'inactive' | null;
+    search: string;
     counts: Record<string, number>;
 }) {
     const withState = (state?: 'active' | 'inactive') =>
         loanProductsIndex({
             query: {
                 ...(state ? { state } : {}),
+                ...(search ? { search } : {}),
                 ...(loanProducts.per_page !== 15
                     ? { per_page: loanProducts.per_page }
                     : {}),
             },
         });
+
+    const clearFilters = loanProductsIndex({
+        query:
+            loanProducts.per_page !== 15
+                ? { per_page: loanProducts.per_page }
+                : undefined,
+    });
+
+    const isFiltered = search !== '' || currentState !== null;
 
     return (
         <>
@@ -49,31 +62,39 @@ export default function LoanProductsIndex({
                     }
                 />
 
-                <FilterTabs
-                    tabs={[
-                        {
-                            value: 'all',
-                            label: 'All',
-                            count: counts.all,
-                            href: withState(),
-                        },
-                        {
-                            value: 'active',
-                            label: 'Active',
-                            count: counts.active,
-                            href: withState('active'),
-                        },
-                        {
-                            value: 'inactive',
-                            label: 'Inactive',
-                            count: counts.inactive,
-                            href: withState('inactive'),
-                        },
-                    ]}
-                    value={currentState ?? 'all'}
-                    label="Filter loan products by status"
-                    className="min-w-0"
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                    <SearchInput
+                        value={search}
+                        placeholder="Search name or description"
+                        label="Search loan products"
+                    />
+
+                    <FilterTabs
+                        tabs={[
+                            {
+                                value: 'all',
+                                label: 'All',
+                                count: counts.all,
+                                href: withState(),
+                            },
+                            {
+                                value: 'active',
+                                label: 'Active',
+                                count: counts.active,
+                                href: withState('active'),
+                            },
+                            {
+                                value: 'inactive',
+                                label: 'Inactive',
+                                count: counts.inactive,
+                                href: withState('inactive'),
+                            },
+                        ]}
+                        value={currentState ?? 'all'}
+                        label="Filter loan products by status"
+                        className="min-w-0 flex-1 basis-full lg:basis-auto"
+                    />
+                </div>
 
                 {loanProducts.data.length === 0 ? (
                     <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -81,17 +102,19 @@ export default function LoanProductsIndex({
                             icon={Landmark}
                             title="No loan products found"
                             description={
-                                currentState === 'active'
-                                    ? 'No active loan products. Activate a product to offer it again.'
-                                    : currentState === 'inactive'
-                                      ? 'No inactive loan products. Every product is currently active.'
-                                      : 'Create a product to define the interest, fees and terms you offer.'
+                                search
+                                    ? `No loan products match "${search}". Try another term or clear the search.`
+                                    : currentState === 'active'
+                                      ? 'No active loan products. Activate a product to offer it again.'
+                                      : currentState === 'inactive'
+                                        ? 'No inactive loan products. Every product is currently active.'
+                                        : 'Create a product to define the interest, fees and terms you offer.'
                             }
                             action={
-                                currentState ? (
+                                isFiltered ? (
                                     <Button asChild size="sm" variant="outline">
-                                        <Link href={withState()}>
-                                            <RotateCcw /> View all products
+                                        <Link href={clearFilters}>
+                                            <RotateCcw /> Clear filters
                                         </Link>
                                     </Button>
                                 ) : (

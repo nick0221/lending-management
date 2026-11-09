@@ -27,13 +27,23 @@ class LoanProductController extends Controller
 
         $actor = $request->user();
         $state = $request->string('state')->toString();
+        $search = trim($request->string('search')->toString());
         $isActive = match ($state) {
             'active' => true,
             'inactive' => false,
             default => null,
         };
 
-        $counts = LoanProduct::query()
+        $applyFilters = fn (Builder $query): Builder => $query->when(
+            $search !== '',
+            fn (Builder $query) => $query->whereAny(
+                ['name', 'description'],
+                'like',
+                "%{$search}%",
+            ),
+        );
+
+        $counts = $applyFilters(LoanProduct::query())
             ->selectRaw('is_active, count(*) as aggregate')
             ->groupBy('is_active')
             ->toBase()
@@ -42,7 +52,7 @@ class LoanProductController extends Controller
                 ($row->is_active ? 'active' : 'inactive') => (int) $row->aggregate,
             ]);
 
-        $loanProducts = LoanProduct::query()
+        $loanProducts = $applyFilters(LoanProduct::query())
             ->withCount('loans')
             ->when($isActive !== null, fn (Builder $query) => $query->where('is_active', $isActive))
             ->orderBy('name')
@@ -60,6 +70,7 @@ class LoanProductController extends Controller
         return Inertia::render('admin/loan-products/index', [
             'loanProducts' => $loanProducts,
             'currentState' => $isActive === null ? null : ($isActive ? 'active' : 'inactive'),
+            'search' => $search,
             'counts' => [
                 'all' => (int) $counts->sum(),
                 'active' => $counts->get('active', 0),

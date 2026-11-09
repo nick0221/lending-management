@@ -44,6 +44,47 @@ test('the loan product list can be filtered by state and exposes usage counts', 
         );
 });
 
+test('the loan product list can be searched by name or description', function () {
+    $admin = User::factory()->admin()->create();
+    LoanProduct::factory()->create([
+        'name' => 'Starter Loan',
+        'description' => 'Small first-time amounts.',
+    ]);
+    LoanProduct::factory()->inactive()->create([
+        'name' => 'Growth Loan',
+        'description' => 'For expanding businesses.',
+    ]);
+    LoanProduct::factory()->create([
+        'name' => 'Legacy Loan',
+        'description' => 'Retired lending line.',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.loan-products.index', ['search' => 'expanding']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loanProducts.data', 1)
+            ->where('loanProducts.data.0.name', 'Growth Loan')
+            ->where('search', 'expanding')
+            ->where('counts.all', 1)
+            ->where('counts.active', 0)
+            ->where('counts.inactive', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.loan-products.index', [
+            'search' => 'loan',
+            'state' => 'active',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('loanProducts.data', 2)
+            ->where('currentState', 'active')
+            ->where('counts.all', 3)
+            ->where('counts.active', 2)
+        );
+});
+
 test('admins can create a loan product', function () {
     $admin = User::factory()->admin()->create();
 
