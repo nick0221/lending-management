@@ -4,6 +4,7 @@ import {
     HandCoins,
     PhoneCall,
     RotateCcw,
+    Send,
     TriangleAlert,
     UserRound,
     Users,
@@ -20,6 +21,15 @@ import { PageHeader } from '@/components/page-header';
 import { SearchInput } from '@/components/search-input';
 import { SortableHeader } from '@/components/sortable-header';
 import StatCard from '@/components/stat-card';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -48,7 +58,11 @@ import {
 } from '@/routes/admin/collections';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { show as showBorrower } from '@/routes/admin/borrowers';
-import { index as loansIndex, show as showLoan } from '@/routes/admin/loans';
+import {
+    index as loansIndex,
+    remind as remindLoans,
+    show as showLoan,
+} from '@/routes/admin/loans';
 import type {
     CollectionChannelOption,
     CollectionOutcomeOption,
@@ -99,34 +113,51 @@ export default function CollectionsIndex({
     );
     const [selected, setSelected] = useState<number[]>([]);
     const [bulkOfficer, setBulkOfficer] = useState('');
+    const [remindOpen, setRemindOpen] = useState(false);
+    const [reminding, setReminding] = useState(false);
     const { auth } = usePage().props;
     const isMyQueue = currentOfficer === auth.user.id;
 
     useEffect(() => {
         setSelected((current) =>
             current.filter((id) =>
-                loans.data.some((loan) => loan.id === id && loan.can.assign),
+                loans.data.some(
+                    (loan) =>
+                        loan.id === id && (loan.can.assign || loan.can.remind),
+                ),
             ),
         );
     }, [loans]);
 
     const selectableIds = loans.data
+        .filter((loan) => loan.can.assign || loan.can.remind)
+        .map((loan) => loan.id);
+    const assignableIds = loans.data
         .filter((loan) => loan.can.assign)
         .map((loan) => loan.id);
+    const remindableIds = loans.data
+        .filter((loan) => loan.can.remind)
+        .map((loan) => loan.id);
+    const selectedAssignableIds = selected.filter((id) =>
+        assignableIds.includes(id),
+    );
+    const selectedRemindableIds = selected.filter((id) =>
+        remindableIds.includes(id),
+    );
     const allSelected =
         selectableIds.length > 0 &&
         selectableIds.every((id) => selected.includes(id));
     const someSelected = selected.length > 0 && !allSelected;
 
     const submitBulkAssign = () => {
-        if (selected.length === 0 || bulkOfficer === '') {
+        if (selectedAssignableIds.length === 0 || bulkOfficer === '') {
             return;
         }
 
         router.post(
             bulkAssignCollectionOfficers().url,
             {
-                loans: selected,
+                loans: selectedAssignableIds,
                 officer_id:
                     bulkOfficer === 'unassigned' ? null : Number(bulkOfficer),
             },
@@ -136,6 +167,31 @@ export default function CollectionsIndex({
                 onSuccess: () => {
                     setSelected([]);
                     setBulkOfficer('');
+                },
+            },
+        );
+    };
+
+    const submitReminders = () => {
+        if (selectedRemindableIds.length === 0) {
+            return;
+        }
+
+        router.post(
+            remindLoans().url,
+            { loans: selectedRemindableIds },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onStart: () => setReminding(true),
+                onFinish: () => setReminding(false),
+                onSuccess: () => {
+                    setRemindOpen(false);
+                    setSelected((current) =>
+                        current.filter(
+                            (id) => !selectedRemindableIds.includes(id),
+                        ),
+                    );
                 },
             },
         );
@@ -483,40 +539,60 @@ export default function CollectionsIndex({
                                 Clear
                             </Button>
 
-                            <Select
-                                value={bulkOfficer || undefined}
-                                onValueChange={setBulkOfficer}
-                            >
-                                <SelectTrigger
-                                    className="w-[170px]"
-                                    aria-label="Collection officer to apply"
-                                >
-                                    <SelectValue placeholder="Choose officer" />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                    <SelectItem value="unassigned">
-                                        Unassigned
-                                    </SelectItem>
-
-                                    {officers.map((officer) => (
-                                        <SelectItem
-                                            key={officer.value}
-                                            value={String(officer.value)}
+                            {selectedAssignableIds.length > 0 && (
+                                <>
+                                    <Select
+                                        value={bulkOfficer || undefined}
+                                        onValueChange={setBulkOfficer}
+                                    >
+                                        <SelectTrigger
+                                            className="w-[170px]"
+                                            aria-label="Collection officer to apply"
                                         >
-                                            {officer.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                            <SelectValue placeholder="Choose officer" />
+                                        </SelectTrigger>
 
-                            <Button
-                                size="sm"
-                                onClick={submitBulkAssign}
-                                disabled={bulkOfficer === ''}
-                            >
-                                <Users /> Assign
-                            </Button>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">
+                                                Unassigned
+                                            </SelectItem>
+
+                                            {officers.map((officer) => (
+                                                <SelectItem
+                                                    key={officer.value}
+                                                    value={String(
+                                                        officer.value,
+                                                    )}
+                                                >
+                                                    {officer.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Button
+                                        size="sm"
+                                        onClick={submitBulkAssign}
+                                        disabled={bulkOfficer === ''}
+                                    >
+                                        <Users /> Assign
+                                    </Button>
+                                </>
+                            )}
+
+                            {selectedRemindableIds.length > 0 && (
+                                <Button
+                                    size="sm"
+                                    variant={
+                                        selectedAssignableIds.length > 0
+                                            ? 'outline'
+                                            : 'default'
+                                    }
+                                    onClick={() => setRemindOpen(true)}
+                                >
+                                    <Send /> Send reminders
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -624,7 +700,8 @@ export default function CollectionsIndex({
                                 {loans.data.map((loan) => (
                                     <TableRow key={loan.id}>
                                         <TableCell>
-                                            {loan.can.assign && (
+                                            {(loan.can.assign ||
+                                                loan.can.remind) && (
                                                 <Checkbox
                                                     checked={selected.includes(
                                                         loan.id,
@@ -843,6 +920,36 @@ export default function CollectionsIndex({
 
                 <DataPagination paginator={loans} />
             </div>
+
+            <AlertDialog open={remindOpen} onOpenChange={setRemindOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Send overdue reminders?
+                        </AlertDialogTitle>
+
+                        <AlertDialogDescription>
+                            {selectedRemindableIds.length} overdue loan
+                            {selectedRemindableIds.length === 1 ? '' : 's'}{' '}
+                            selected. Each eligible borrower will be emailed a
+                            summary of their overdue installments. Borrowers who
+                            opted out or already received a notice today are
+                            skipped.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={reminding}>
+                            Cancel
+                        </AlertDialogCancel>
+
+                        <Button onClick={submitReminders} disabled={reminding}>
+                            <Send />
+                            {reminding ? 'Sending…' : 'Send reminders'}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <LogCollectionContactDialog
                 loan={contactLoan ?? { id: 0, borrower_name: '' }}

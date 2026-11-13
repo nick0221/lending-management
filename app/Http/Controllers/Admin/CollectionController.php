@@ -494,6 +494,8 @@ class CollectionController extends Controller
                 'view' => $actor->can('view', $loan),
                 'assign' => $actor->can('assignOfficer', $loan),
                 'log_contact' => $actor->can('logContact', $loan),
+                'remind' => $actor->can('sendReminders', Loan::class)
+                    && $loan->installments->contains(fn (LoanInstallment $installment): bool => $installment->isOverdue()),
             ],
         ];
     }

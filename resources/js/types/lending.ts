@@ -471,6 +471,7 @@ export type CollectionQueueRow = {
         view: boolean;
         assign: boolean;
         log_contact: boolean;
+        remind: boolean;
     };
 };
 

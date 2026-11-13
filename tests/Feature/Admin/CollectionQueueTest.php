@@ -57,6 +57,32 @@ test('the collections queue lists only overdue open loans', function () {
         );
 });
 
+test('the queue marks overdue loans as remindable', function () {
+    $admin = User::factory()->admin()->create();
+
+    $stale = Loan::factory()->withStatus(LoanStatus::Active)->create(['days_past_due' => 8]);
+    LoanInstallment::factory()->for($stale)->create([
+        'sequence' => 1,
+        'due_date' => today()->addWeek()->toDateString(),
+        'principal_due' => '500.00',
+        'interest_due' => 0,
+        'fee_due' => 0,
+    ]);
+
+    $remindable = Loan::factory()->withStatus(LoanStatus::Active)->create(['days_past_due' => 8]);
+    overdueInstallment($remindable, '2000.00');
+
+    $this->actingAs($admin)
+        ->get(route('admin.collections.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('loans.data.0.id', $remindable->id)
+            ->where('loans.data.0.can.remind', true)
+            ->where('loans.data.1.id', $stale->id)
+            ->where('loans.data.1.can.remind', false)
+        );
+});
+
 test('the queue tabs and filters scope the overdue book', function () {
     $admin = User::factory()->admin()->create();
     $superAdmin = User::factory()->superAdmin()->create();
