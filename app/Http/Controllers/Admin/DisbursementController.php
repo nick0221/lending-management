@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Borrower;
 use App\Models\Disbursement;
 use App\Models\Loan;
+use App\Models\User;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -50,6 +51,8 @@ class DisbursementController extends Controller
             ],
             'methods' => $this->methodOptions(),
             'currentMethod' => $filters['method']?->value,
+            'recorders' => $this->recorderOptions(),
+            'currentRecorder' => $filters['recorded_by'],
             'dateFrom' => $filters['from'],
             'dateTo' => $filters['to'],
             'currentBorrower' => $this->borrowerFilter($filters['borrower']),
@@ -82,7 +85,7 @@ class DisbursementController extends Controller
     /**
      * Parse the disbursement register filters from the request.
      *
-     * @return array{method: DisbursementMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     * @return array{method: DisbursementMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
      */
     private function filters(Request $request): array
     {
@@ -94,9 +97,13 @@ class DisbursementController extends Controller
         $sort = $request->string('sort')->toString();
         $borrowerId = $request->integer('borrower');
         $loanId = $request->integer('loan');
+        $recordedById = $request->integer('recorded_by');
 
         return [
             'method' => DisbursementMethod::tryFrom($request->string('method')->toString()),
+            'recorded_by' => $recordedById > 0 && User::query()->whereKey($recordedById)->exists()
+                ? $recordedById
+                : null,
             'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
                 ? $borrowerId
                 : null,
@@ -158,15 +165,16 @@ class DisbursementController extends Controller
     }
 
     /**
-     * The payouts that survive the borrower, loan, method, date and search filters.
+     * The payouts that survive the borrower, loan, recorder, method, date and search filters.
      *
-     * @param  array{method: DisbursementMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{method: DisbursementMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function baseQuery(array $filters): Builder
     {
         $search = $filters['search'];
 
         return Disbursement::query()
+            ->when($filters['recorded_by'] !== null, fn (Builder $query) => $query->where('recorded_by', $filters['recorded_by']))
             ->when($filters['borrower'] !== null, fn (Builder $query) => $query->whereHas(
                 'loan',
                 fn (Builder $loan) => $loan->where('borrower_id', $filters['borrower']),
@@ -198,7 +206,7 @@ class DisbursementController extends Controller
     /**
      * Apply the requested order, breaking ties by newest payout.
      *
-     * @param  array{method: DisbursementMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{method: DisbursementMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function applySort(Builder $query, array $filters): void
     {
@@ -221,6 +229,24 @@ class DisbursementController extends Controller
             ],
             DisbursementMethod::cases(),
         );
+    }
+
+    /**
+     * Map the staff who have recorded at least one payout to select options.
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    private function recorderOptions(): array
+    {
+        return User::query()
+            ->whereIn('id', Disbursement::query()->whereNotNull('recorded_by')->select('recorded_by'))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name,
+            ])
+            ->all();
     }
 
     /**

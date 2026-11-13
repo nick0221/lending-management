@@ -36,6 +36,7 @@ import type {
     DisbursementMethodOption,
     DisbursementRegisterRow,
     Paginated,
+    SelectOption,
 } from '@/types';
 
 type DisbursementSummary = {
@@ -53,6 +54,8 @@ export default function DisbursementsIndex({
     summary,
     methods,
     currentMethod,
+    recorders,
+    currentRecorder,
     dateFrom,
     dateTo,
     currentBorrower,
@@ -65,6 +68,8 @@ export default function DisbursementsIndex({
     summary: DisbursementSummary;
     methods: DisbursementMethodOption[];
     currentMethod: DisbursementMethod | null;
+    recorders: SelectOption<number>[];
+    currentRecorder: number | null;
     dateFrom: string | null;
     dateTo: string | null;
     currentBorrower: { id: number; name: string } | null;
@@ -75,6 +80,7 @@ export default function DisbursementsIndex({
 }) {
     const withFilters = (overrides: {
         method?: DisbursementMethod | null;
+        recordedBy?: number | null;
         borrower?: number | null;
         loan?: number | null;
         from?: string | null;
@@ -84,6 +90,10 @@ export default function DisbursementsIndex({
     }) => {
         const method =
             overrides.method !== undefined ? overrides.method : currentMethod;
+        const recordedBy =
+            overrides.recordedBy !== undefined
+                ? overrides.recordedBy
+                : currentRecorder;
         const borrower =
             overrides.borrower !== undefined
                 ? overrides.borrower
@@ -100,6 +110,7 @@ export default function DisbursementsIndex({
         return disbursementsIndex({
             query: {
                 ...(method ? { method } : {}),
+                ...(recordedBy ? { recorded_by: recordedBy } : {}),
                 ...(borrower ? { borrower } : {}),
                 ...(loan ? { loan } : {}),
                 ...(from ? { from } : {}),
@@ -127,6 +138,14 @@ export default function DisbursementsIndex({
         );
     };
 
+    const changeRecorder = (value: string) => {
+        navigate(
+            withFilters({
+                recordedBy: value === 'all' ? null : Number(value),
+            }).url,
+        );
+    };
+
     const changeRange = (from: string | null, to: string | null) => {
         navigate(withFilters({ from, to }).url);
     };
@@ -141,6 +160,7 @@ export default function DisbursementsIndex({
     const exportUrl = exportDisbursements({
         query: {
             ...(currentMethod ? { method: currentMethod } : {}),
+            ...(currentRecorder ? { recorded_by: currentRecorder } : {}),
             ...(currentBorrower ? { borrower: currentBorrower.id } : {}),
             ...(currentLoan ? { loan: currentLoan.id } : {}),
             ...(dateFrom ? { from: dateFrom } : {}),
@@ -155,6 +175,7 @@ export default function DisbursementsIndex({
     const hasFilters =
         search !== '' ||
         currentMethod !== null ||
+        currentRecorder !== null ||
         currentBorrower !== null ||
         currentLoan !== null ||
         dateFrom !== null ||
@@ -251,6 +272,45 @@ export default function DisbursementsIndex({
                             ))}
                         </SelectContent>
                     </Select>
+
+                    {recorders.length > 1 && (
+                        <Select
+                            value={
+                                currentRecorder
+                                    ? String(currentRecorder)
+                                    : 'all'
+                            }
+                            onValueChange={changeRecorder}
+                        >
+                            <SelectTrigger
+                                className="h-9 min-w-0 flex-1 sm:w-[190px] sm:flex-none"
+                                aria-label="Filter by staff member"
+                            >
+                                <SelectValue placeholder="All staff">
+                                    {currentRecorder
+                                        ? recorders.find(
+                                              (recorder) =>
+                                                  recorder.value ===
+                                                  currentRecorder,
+                                          )?.label
+                                        : 'All staff'}
+                                </SelectValue>
+                            </SelectTrigger>
+
+                            <SelectContent>
+                                <SelectItem value="all">All staff</SelectItem>
+
+                                {recorders.map((recorder) => (
+                                    <SelectItem
+                                        key={recorder.value}
+                                        value={String(recorder.value)}
+                                    >
+                                        {recorder.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
 
                     <DateRangePicker
                         from={dateFrom}

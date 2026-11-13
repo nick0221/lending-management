@@ -91,6 +91,42 @@ test('the register filters by method, payment date and search', function () {
         );
 });
 
+test('the register filters by the staff member who recorded the payout', function () {
+    $admin = User::factory()->admin()->create(['name' => 'Ada Admin']);
+    $officer = User::factory()->create(['name' => 'Sam Officer']);
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+
+    Disbursement::factory()->for($loan)->create([
+        'amount' => 900,
+        'recorded_by' => $admin->id,
+    ]);
+    $theirs = Disbursement::factory()->for($loan)->create([
+        'amount' => 1500,
+        'recorded_by' => $officer->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.disbursements.index', ['recorded_by' => $officer->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('disbursements.data', 1)
+            ->where('disbursements.data.0.id', $theirs->id)
+            ->where('currentRecorder', $officer->id)
+            ->has('recorders', 2)
+        );
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.disbursements.export', ['recorded_by' => $officer->id]));
+
+    $response->assertOk();
+
+    $csv = $response->streamedContent();
+
+    expect($csv)
+        ->toContain('Sam Officer')
+        ->not->toContain('Ada Admin');
+});
+
 test('the register export honours the active filters', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
