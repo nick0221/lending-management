@@ -19,6 +19,7 @@ test('the loan product list exposes the abilities for every row', function () {
             ->where('loanProducts.data.0.name', 'Starter Loan')
             ->where('loanProducts.data.0.can.update', true)
             ->where('loanProducts.data.0.can.delete', true)
+            ->where('loanProducts.data.0.can.create_loan', true)
         );
 });
 

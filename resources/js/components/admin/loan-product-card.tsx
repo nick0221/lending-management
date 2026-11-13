@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { MoreHorizontal, Pencil, Power, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Power, Trash2, FilePlus } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete';
@@ -26,7 +26,10 @@ import {
     destroy as destroyLoanProduct,
     edit as editLoanProduct,
 } from '@/routes/admin/loan-products';
-import { index as loansIndex } from '@/routes/admin/loans';
+import {
+    create as createLoan,
+    index as loansIndex,
+} from '@/routes/admin/loans';
 import type { LoanProductListItem } from '@/types';
 
 /**
@@ -91,7 +94,9 @@ export function LoanProductCard({
                             </div>
                         </div>
 
-                        {(loanProduct.can.update || loanProduct.can.delete) && (
+                        {(loanProduct.can.update ||
+                            loanProduct.can.delete ||
+                            loanProduct.can.create_loan) && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
@@ -107,6 +112,28 @@ export function LoanProductCard({
                                     align="end"
                                     className="w-44"
                                 >
+                                    {loanProduct.can.create_loan &&
+                                        loanProduct.is_active && (
+                                            <>
+                                                <DropdownMenuItem asChild>
+                                                    <Link
+                                                        href={createLoan({
+                                                            query: {
+                                                                product:
+                                                                    loanProduct.id,
+                                                            },
+                                                        })}
+                                                        prefetch
+                                                    >
+                                                        <FilePlus />
+                                                        New loan
+                                                    </Link>
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuSeparator />
+                                            </>
+                                        )}
+
                                     {loanProduct.can.update && (
                                         <>
                                             <DropdownMenuItem asChild>

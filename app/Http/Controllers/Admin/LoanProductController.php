@@ -7,6 +7,7 @@ use App\Enums\RepaymentFrequency;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLoanProductRequest;
 use App\Http\Requests\Admin\UpdateLoanProductRequest;
+use App\Models\Loan;
 use App\Models\LoanProduct;
 use App\Services\Settings;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,6 +65,7 @@ class LoanProductController extends Controller
                 'can' => [
                     'update' => $actor->can('update', $loanProduct),
                     'delete' => $actor->can('delete', $loanProduct),
+                    'create_loan' => $actor->can('create', Loan::class),
                 ],
             ]);
 

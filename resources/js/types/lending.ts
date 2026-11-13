@@ -137,6 +137,7 @@ export type LoanProductListItem = LoanProduct & {
     can: {
         update: boolean;
         delete: boolean;
+        create_loan: boolean;
     };
 };
 
