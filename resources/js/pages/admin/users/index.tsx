@@ -7,6 +7,7 @@ import {
     RotateCcw,
     ShieldCheck,
     ShieldOff,
+    UserX,
     Users,
 } from 'lucide-react';
 import { UserRowActions } from '@/components/admin/user-row-actions';
@@ -44,6 +45,7 @@ export default function UsersIndex({
     currentRole,
     search,
     unverified,
+    neverSignedIn,
     roleCounts,
 }: {
     users: Paginated<AdminUserListItem>;
@@ -51,12 +53,14 @@ export default function UsersIndex({
     currentRole: Role | null;
     search: string;
     unverified: boolean;
+    neverSignedIn: boolean;
     roleCounts: Record<string, number>;
 }) {
     const withFilters = (
         overrides: {
             role?: Role | null;
             unverified?: boolean;
+            never?: boolean;
         } = {},
     ) => {
         const role =
@@ -65,11 +69,14 @@ export default function UsersIndex({
             overrides.unverified !== undefined
                 ? overrides.unverified
                 : unverified;
+        const neverOnly =
+            overrides.never !== undefined ? overrides.never : neverSignedIn;
 
         return usersIndex({
             query: {
                 ...(role ? { role } : {}),
                 ...(unverifiedOnly ? { unverified: '1' } : {}),
+                ...(neverOnly ? { never: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(users.per_page !== 15 ? { per_page: users.per_page } : {}),
             },
@@ -80,12 +87,14 @@ export default function UsersIndex({
         query: users.per_page !== 15 ? { per_page: users.per_page } : undefined,
     });
 
-    const isFiltered = search !== '' || currentRole !== null || unverified;
+    const isFiltered =
+        search !== '' || currentRole !== null || unverified || neverSignedIn;
 
     const exportHref = exportUsers({
         query: {
             ...(currentRole ? { role: currentRole } : {}),
             ...(unverified ? { unverified: '1' } : {}),
+            ...(neverSignedIn ? { never: '1' } : {}),
             ...(search ? { search } : {}),
         },
     });
@@ -164,6 +173,22 @@ export default function UsersIndex({
                         >
                             <Clock />
                             Unverified
+                        </Link>
+                    </Toggle>
+
+                    <Toggle
+                        asChild
+                        variant="outline"
+                        pressed={neverSignedIn}
+                        className="h-9 shrink-0 gap-2 px-3"
+                    >
+                        <Link
+                            href={withFilters({ never: !neverSignedIn })}
+                            preserveScroll
+                            prefetch
+                        >
+                            <UserX />
+                            Never signed in
                         </Link>
                     </Toggle>
                 </div>

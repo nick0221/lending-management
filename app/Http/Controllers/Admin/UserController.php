@@ -33,11 +33,22 @@ class UserController extends Controller
         $search = trim($request->string('search')->toString());
         $role = Role::tryFrom($request->string('role')->toString());
         $unverified = $request->boolean('unverified');
+        $neverSignedIn = $request->boolean('never');
 
         $applyFilters = fn ($query) => $query
             ->when(
                 $unverified,
                 fn ($query) => $query->whereNull('email_verified_at'),
+            )
+            ->when(
+                $neverSignedIn,
+                fn ($query) => $query->whereNotIn(
+                    'id',
+                    ActivityLog::query()
+                        ->where('event', ActivityLog::EVENT_LOGIN)
+                        ->whereNotNull('user_id')
+                        ->select('user_id'),
+                ),
             )
             ->when(
                 $search !== '',
@@ -85,6 +96,7 @@ class UserController extends Controller
             'currentRole' => $role?->value,
             'search' => $search,
             'unverified' => $unverified,
+            'neverSignedIn' => $neverSignedIn,
             'roleCounts' => [
                 'all' => (int) $counts->sum(),
                 ...collect(Role::cases())
@@ -106,10 +118,11 @@ class UserController extends Controller
         $search = trim($request->string('search')->toString());
         $role = Role::tryFrom($request->string('role')->toString());
         $unverified = $request->boolean('unverified');
+        $neverSignedIn = $request->boolean('never');
 
         return $this->csvExporter->stream(
             'users-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($role, $search, $unverified),
+            $this->csvRows($role, $search, $unverified, $neverSignedIn),
         );
     }
 
@@ -268,7 +281,7 @@ class UserController extends Controller
      *
      * @return \Generator<int, array<int, string|null>>
      */
-    private function csvRows(?Role $role, string $search, bool $unverified = false): \Generator
+    private function csvRows(?Role $role, string $search, bool $unverified = false, bool $neverSignedIn = false): \Generator
     {
         yield [
             'Name',
@@ -292,6 +305,16 @@ class UserController extends Controller
             ->when(
                 $unverified,
                 fn ($query) => $query->whereNull('email_verified_at'),
+            )
+            ->when(
+                $neverSignedIn,
+                fn ($query) => $query->whereNotIn(
+                    'id',
+                    ActivityLog::query()
+                        ->where('event', ActivityLog::EVENT_LOGIN)
+                        ->whereNotNull('user_id')
+                        ->select('user_id'),
+                ),
             )
             ->when(
                 $search !== '',

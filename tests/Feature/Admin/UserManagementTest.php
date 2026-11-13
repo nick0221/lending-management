@@ -64,6 +64,42 @@ test('the user list reports the last sign-in from the audit trail', function () 
         );
 });
 
+test('the user list can be narrowed to accounts that never signed in', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $active = User::factory()->create([
+        'name' => 'Active Account',
+        'email' => 'active@example.com',
+    ]);
+    $dormant = User::factory()->create([
+        'name' => 'Dormant Account',
+        'email' => 'dormant@example.com',
+    ]);
+
+    ActivityLog::create([
+        'user_id' => $active->id,
+        'event' => ActivityLog::EVENT_LOGIN,
+        'description' => 'Signed in.',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['never' => '1', 'search' => 'Account']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $dormant->id)
+            ->where('neverSignedIn', true)
+        );
+
+    $response = $this->actingAs($superAdmin)
+        ->get(route('admin.users.export', ['never' => '1', 'search' => 'Account']));
+
+    $response->assertOk();
+
+    expect($response->streamedContent())
+        ->toContain('Dormant Account')
+        ->not->toContain('Active Account');
+});
+
 test('the user list can be searched by name or email', function () {
     $superAdmin = User::factory()->superAdmin()->create();
     User::factory()->admin()->create([
