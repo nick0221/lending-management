@@ -672,6 +672,18 @@ export type ReportLoanRow = {
     aging: AgingBuckets;
 };
 
+export type BorrowerPerformance = {
+    borrower_id: number;
+    borrower: string | null;
+    loans: number;
+    open_loans: number;
+    disbursed: number;
+    collected: number;
+    outstanding: number;
+    arrears: number;
+    days_past_due: number;
+};
+
 export type ProductPerformance = {
     product_id: number | null;
     product: string | null;

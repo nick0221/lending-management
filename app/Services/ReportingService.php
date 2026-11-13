@@ -303,6 +303,39 @@ class ReportingService
     }
 
     /**
+     * Per-borrower lending and collection performance, worst arrears first.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function borrowerPerformance(): Collection
+    {
+        return $this->loanRows()
+            ->groupBy('borrower_id')
+            ->map(function (Collection $rows): array {
+                $open = $rows->where('is_open', true);
+                $disbursed = round(
+                    $rows->filter(fn (array $loan): bool => $loan['disbursed_at'] !== null)
+                        ->sum('principal'),
+                    2,
+                );
+
+                return [
+                    'borrower_id' => $rows->first()['borrower_id'],
+                    'borrower' => $rows->first()['borrower'],
+                    'loans' => $rows->count(),
+                    'open_loans' => $open->count(),
+                    'disbursed' => $disbursed,
+                    'collected' => round($rows->sum('paid'), 2),
+                    'outstanding' => round($open->sum('outstanding'), 2),
+                    'arrears' => round($open->sum('arrears'), 2),
+                    'days_past_due' => (int) $open->max('days_past_due'),
+                ];
+            })
+            ->sortByDesc('arrears')
+            ->values();
+    }
+
+    /**
      * Per-product lending and collection performance.
      *
      * @return Collection<int, array<string, mixed>>

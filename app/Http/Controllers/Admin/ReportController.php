@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'products', 'officers', 'payments', 'cash_flow', 'write_offs'];
+    public const EXPORTS = ['summary', 'loans', 'collections', 'arrears', 'borrowers', 'products', 'officers', 'payments', 'cash_flow', 'write_offs'];
 
     public function __construct(
         private readonly ReportingService $reporting,
@@ -28,7 +28,7 @@ class ReportController extends Controller
     public function index(Request $request): Response
     {
         $currentTab = $request->string('tab')->toString();
-        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'products', 'officers', 'cashflow', 'writeoffs'], true)
+        $currentTab = in_array($currentTab, ['portfolio', 'aging', 'collections', 'arrears', 'borrowers', 'products', 'officers', 'cashflow', 'writeoffs'], true)
             ? $currentTab
             : 'portfolio';
 
@@ -43,6 +43,7 @@ class ReportController extends Controller
             'cash_flow_trend' => $this->reporting->cashFlowTrend(),
             'write_offs' => $this->reporting->writeOffs()->all(),
             'loans' => $this->reporting->loanRows()->values()->all(),
+            'borrowers' => $this->reporting->borrowerPerformance()->all(),
             'products' => $this->reporting->productPerformance()->all(),
             'officers' => $this->reporting->officerPerformance()->all(),
             'payment_methods' => $this->reporting->paymentMethodPerformance()->all(),
@@ -83,6 +84,7 @@ class ReportController extends Controller
             'loans' => $this->exportLoans(),
             'collections' => $this->exportCollections(),
             'arrears' => $this->exportArrears(),
+            'borrowers' => $this->exportBorrowers(),
             'products' => $this->exportProducts(),
             'officers' => $this->exportOfficers(),
             'payments' => $this->exportPayments(),
@@ -185,6 +187,37 @@ class ReportController extends Controller
             ->values();
 
         return $this->exportLoanRows('arrears-report.csv', $loans);
+    }
+
+    /**
+     * Export per-borrower lending and collection performance.
+     */
+    private function exportBorrowers(): StreamedResponse
+    {
+        $money = $this->money(...);
+
+        $rows = $this->reporting->borrowerPerformance()
+            ->map(fn (array $borrower): array => [
+                $borrower['borrower'] ?? 'Unassigned',
+                $borrower['loans'],
+                $borrower['open_loans'],
+                $money($borrower['disbursed']),
+                $money($borrower['collected']),
+                $money($borrower['outstanding']),
+                $money($borrower['arrears']),
+                $borrower['days_past_due'],
+            ]);
+
+        return $this->csv('borrower-performance.csv', [
+            'Borrower',
+            'Loans',
+            'Open loans',
+            'Principal disbursed',
+            'Collected',
+            'Outstanding',
+            'Arrears',
+            'Days past due',
+        ], $rows);
     }
 
     /**

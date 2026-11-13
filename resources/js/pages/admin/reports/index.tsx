@@ -43,6 +43,7 @@ import {
 } from '@/routes/admin/reports';
 import type {
     AgingBuckets,
+    BorrowerPerformance,
     CashFlowPoint,
     Collections,
     CollectionsTrendPoint,
@@ -74,6 +75,7 @@ type ReportsTab =
     | 'collections'
     | 'cashflow'
     | 'arrears'
+    | 'borrowers'
     | 'products'
     | 'officers'
     | 'writeoffs';
@@ -474,6 +476,7 @@ export default function ReportsIndex({
     cash_flow_trend: cashFlowTrend,
     write_offs: writeOffs,
     loans,
+    borrowers,
     products,
     officers,
     payment_methods: paymentMethods,
@@ -488,6 +491,7 @@ export default function ReportsIndex({
     cash_flow_trend: CashFlowPoint[];
     write_offs: WriteOffRow[];
     loans: ReportLoanRow[];
+    borrowers: BorrowerPerformance[];
     products: ProductPerformance[];
     officers: OfficerPerformance[];
     payment_methods: PaymentMethodPerformance[];
@@ -672,6 +676,34 @@ export default function ReportsIndex({
         },
     );
 
+    const borrowerTotals = borrowers.reduce(
+        (totals, borrower) => ({
+            loans: totals.loans + borrower.loans,
+            open_loans: totals.open_loans + borrower.open_loans,
+            disbursed: totals.disbursed + borrower.disbursed,
+            collected: totals.collected + borrower.collected,
+            outstanding: totals.outstanding + borrower.outstanding,
+            arrears: totals.arrears + borrower.arrears,
+        }),
+        {
+            loans: 0,
+            open_loans: 0,
+            disbursed: 0,
+            collected: 0,
+            outstanding: 0,
+            arrears: 0,
+        },
+    );
+
+    const borrowersInArrears = borrowers.filter(
+        (borrower) => borrower.arrears > 0,
+    ).length;
+
+    const worstBorrowerDpd = borrowers.reduce(
+        (max, borrower) => Math.max(max, borrower.days_past_due),
+        0,
+    );
+
     const overallCollectionRate =
         productTotals.disbursed > 0
             ? (productTotals.collected / productTotals.disbursed) * 100
@@ -788,6 +820,18 @@ export default function ReportsIndex({
                         }
                     >
                         Cash flow
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        href={
+                            download(
+                                { report: 'borrowers' },
+                                { query: periodQuery },
+                            ).url
+                        }
+                    >
+                        Borrower performance
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -918,6 +962,14 @@ export default function ReportsIndex({
                             count: arrearsLoans.length,
                             href: reportsIndex({
                                 query: { tab: 'arrears', ...periodQuery },
+                            }),
+                        },
+                        {
+                            value: 'borrowers',
+                            label: 'Borrowers',
+                            count: borrowers.length,
+                            href: reportsIndex({
+                                query: { tab: 'borrowers', ...periodQuery },
                             }),
                         },
                         {
@@ -1618,6 +1670,185 @@ export default function ReportsIndex({
                                 loans={arrearsLoans}
                                 emptyMessage="No loans in arrears."
                             />
+                        </SectionCard>
+                    </>
+                )}
+                {currentTab === 'borrowers' && (
+                    <>
+                        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <StatCard
+                                title="Borrowers"
+                                value={String(borrowers.length)}
+                                hint={`${borrowerTotals.open_loans} open loans`}
+                            />
+                            <StatCard
+                                title="Outstanding"
+                                value={formatMoney(borrowerTotals.outstanding)}
+                                hint="Across open loans"
+                            />
+                            <StatCard
+                                title="Arrears"
+                                value={formatMoney(borrowerTotals.arrears)}
+                                tone={
+                                    borrowerTotals.arrears > 0
+                                        ? 'danger'
+                                        : 'default'
+                                }
+                                hint={
+                                    borrowersInArrears > 0
+                                        ? `${borrowersInArrears} ${
+                                              borrowersInArrears === 1
+                                                  ? 'borrower'
+                                                  : 'borrowers'
+                                          } overdue`
+                                        : 'Nothing overdue'
+                                }
+                            />
+                            <StatCard
+                                title="Worst DPD"
+                                value={
+                                    worstBorrowerDpd > 0
+                                        ? `${worstBorrowerDpd} days`
+                                        : '—'
+                                }
+                                hint="Days past due"
+                                tone={
+                                    worstBorrowerDpd > 0 ? 'warning' : 'default'
+                                }
+                            />
+                        </section>
+
+                        <SectionCard
+                            title="Borrower performance"
+                            description="Lending and collection by borrower, worst arrears first. The date filter narrows the cohort by application date."
+                        >
+                            {borrowers.length === 0 ? (
+                                <p className="p-4 text-sm text-muted-foreground">
+                                    No loans fall in this period.
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Borrower</TableHead>
+                                                <TableHead className="text-right">
+                                                    Loans
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Open
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Disbursed
+                                                </TableHead>
+                                                <TableHead className="hidden text-right md:table-cell">
+                                                    Collected
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Outstanding
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Arrears
+                                                </TableHead>
+                                                <TableHead className="hidden text-right sm:table-cell">
+                                                    DPD
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        <TableBody>
+                                            {borrowers.map((borrower) => (
+                                                <TableRow
+                                                    key={borrower.borrower_id}
+                                                >
+                                                    <TableCell className="font-medium">
+                                                        <Link
+                                                            href={showBorrower(
+                                                                borrower.borrower_id,
+                                                            )}
+                                                            className="hover:underline"
+                                                        >
+                                                            {borrower.borrower ??
+                                                                'Unassigned'}
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {borrower.loans}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {borrower.open_loans}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            borrower.disbursed,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                        {formatMoney(
+                                                            borrower.collected,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            borrower.outstanding,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatMoney(
+                                                            borrower.arrears,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                        {borrower.days_past_due >
+                                                        0
+                                                            ? `${borrower.days_past_due} days`
+                                                            : '—'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        <TableFooter>
+                                            <TableRow>
+                                                <TableCell className="font-medium">
+                                                    Total
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {borrowerTotals.loans}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {borrowerTotals.open_loans}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        borrowerTotals.disbursed,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums md:table-cell">
+                                                    {formatMoney(
+                                                        borrowerTotals.collected,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        borrowerTotals.outstanding,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                    {formatMoney(
+                                                        borrowerTotals.arrears,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                                                    {worstBorrowerDpd > 0
+                                                        ? `${worstBorrowerDpd} days`
+                                                        : '—'}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </div>
+                            )}
                         </SectionCard>
                     </>
                 )}

@@ -3,8 +3,10 @@
 use App\Enums\CollectionOutcome;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Models\Borrower;
 use App\Models\CollectionContact;
 use App\Models\Loan;
+use App\Models\LoanInstallment;
 use App\Models\LoanProduct;
 use App\Models\Payment;
 use App\Models\User;
@@ -24,6 +26,7 @@ test('the reports page defaults to the portfolio tab', function () {
             ->has('collections')
             ->has('collections_trend')
             ->has('loans')
+            ->has('borrowers')
             ->has('products')
             ->has('officers')
             ->has('payment_methods')
@@ -37,7 +40,7 @@ test('the reports page selects the requested tab', function (string $tab) {
         ->get(route('admin.reports.index', ['tab' => $tab]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('currentTab', $tab));
-})->with(['aging', 'collections', 'arrears', 'products', 'officers']);
+})->with(['aging', 'collections', 'arrears', 'borrowers', 'products', 'officers']);
 
 test('the reports page falls back to the portfolio tab for an unknown tab', function () {
     $admin = User::factory()->admin()->create();
@@ -211,6 +214,70 @@ test('product performance can be downloaded as a CSV', function () {
         ->toContain('Product')
         ->toContain('Collection rate')
         ->toContain('Salary Advance');
+});
+
+test('borrower performance rolls loans and payments up by borrower', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Ada Borrower']);
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'borrower_id' => $borrower->id,
+        'principal' => '5000.00',
+        'disbursed_at' => now(),
+    ]);
+
+    LoanInstallment::factory()->for($loan)->create([
+        'due_date' => today()->subDays(12),
+        'principal_due' => '1000.00',
+        'interest_due' => '0.00',
+        'fee_due' => '0.00',
+    ]);
+
+    Payment::factory()->for($loan)->create([
+        'amount' => '400.00',
+        'payment_date' => today(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.index', ['tab' => 'borrowers']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/reports/index')
+            ->where('currentTab', 'borrowers')
+            ->has('borrowers', 1)
+            ->where('borrowers.0.borrower_id', $borrower->id)
+            ->where('borrowers.0.borrower', 'Ada Borrower')
+            ->where('borrowers.0.loans', 1)
+            ->where('borrowers.0.open_loans', 1)
+            ->where('borrowers.0.disbursed', 5000)
+            ->where('borrowers.0.collected', 400)
+            ->where('borrowers.0.outstanding', 1000)
+            ->where('borrowers.0.arrears', 1000)
+            ->where('borrowers.0.days_past_due', 12)
+        );
+});
+
+test('borrower performance can be downloaded as a CSV', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create(['name' => 'Ada Borrower']);
+
+    Loan::factory()->withStatus(LoanStatus::Active)->create([
+        'borrower_id' => $borrower->id,
+        'principal' => '3000.00',
+        'disbursed_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reports.download', ['report' => 'borrowers']));
+
+    $response->assertOk();
+
+    $csv = $response->streamedContent();
+
+    expect($csv)
+        ->toContain('Borrower')
+        ->toContain('"Days past due"')
+        ->toContain('Ada Borrower');
 });
 
 test('officer performance groups collection contacts by officer', function () {
