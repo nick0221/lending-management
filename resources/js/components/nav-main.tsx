@@ -131,7 +131,6 @@ function NavGroup({
                                     isActive={isCurrentOrParentUrl(item.href)}
                                 >
                                     <Link href={item.href} prefetch>
-                                        {item.icon && <item.icon />}
                                         <span>{item.title}</span>
                                     </Link>
                                 </SidebarMenuSubButton>

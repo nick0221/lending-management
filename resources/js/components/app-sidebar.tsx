@@ -1,7 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    Banknote,
-    Bell,
     BookOpen,
     ChartPie,
     CircleDollarSign,
@@ -9,16 +7,8 @@ import {
     FolderGit2,
     Gauge,
     HandCoins,
-    Landmark,
     LayoutGrid,
-    PhoneCall,
-    Receipt,
-    ScrollText,
-    Server,
-    Settings,
     ShieldCheck,
-    Users,
-    Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -70,17 +60,14 @@ const adminNavEntries: NavEntry[] = [
             {
                 title: 'Borrowers',
                 href: adminBorrowers(),
-                icon: HandCoins,
             },
             {
                 title: 'Loan products',
                 href: adminLoanProducts(),
-                icon: Landmark,
             },
             {
                 title: 'Loans',
                 href: adminLoans(),
-                icon: Wallet,
             },
         ],
     },
@@ -91,17 +78,14 @@ const adminNavEntries: NavEntry[] = [
             {
                 title: 'Payments',
                 href: adminPayments(),
-                icon: Receipt,
             },
             {
                 title: 'Disbursements',
                 href: adminDisbursements(),
-                icon: Banknote,
             },
             {
                 title: 'Collections',
                 href: adminCollections(),
-                icon: PhoneCall,
             },
         ],
     },
@@ -112,12 +96,10 @@ const adminNavEntries: NavEntry[] = [
             {
                 title: 'Reports',
                 href: adminReports(),
-                icon: FileBarChart,
             },
             {
                 title: 'Notifications',
                 href: adminNotifications(),
-                icon: Bell,
             },
         ],
     },
@@ -149,24 +131,20 @@ export function AppSidebar() {
             {
                 title: 'Users',
                 href: adminUsers(),
-                icon: Users,
             },
             ...(isSuperAdmin
                 ? [
                       {
                           title: 'Activity log',
                           href: adminActivity(),
-                          icon: ScrollText,
                       },
                       {
                           title: 'System status',
                           href: adminSystem(),
-                          icon: Server,
                       },
                       {
                           title: 'Settings',
                           href: adminSettings(),
-                          icon: Settings,
                       },
                   ]
                 : []),
