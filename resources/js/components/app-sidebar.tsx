@@ -3,8 +3,11 @@ import {
     Banknote,
     Bell,
     BookOpen,
+    ChartPie,
+    CircleDollarSign,
     FileBarChart,
     FolderGit2,
+    Gauge,
     HandCoins,
     Landmark,
     LayoutGrid,
@@ -44,7 +47,7 @@ import { index as adminReports } from '@/routes/admin/reports';
 import { edit as adminSettings } from '@/routes/admin/settings';
 import { index as adminSystem } from '@/routes/admin/system';
 import { index as adminUsers } from '@/routes/admin/users';
-import type { NavItem } from '@/types';
+import type { NavEntry, NavGroupItem, NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
     {
@@ -54,56 +57,69 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const adminNavItems: NavItem[] = [
+const adminNavEntries: NavEntry[] = [
     {
         title: 'Overview',
         href: adminDashboard(),
-        icon: ShieldCheck,
+        icon: Gauge,
     },
     {
-        title: 'Users',
-        href: adminUsers(),
-        icon: Users,
-    },
-    {
-        title: 'Borrowers',
-        href: adminBorrowers(),
+        title: 'Lending',
         icon: HandCoins,
+        items: [
+            {
+                title: 'Borrowers',
+                href: adminBorrowers(),
+                icon: HandCoins,
+            },
+            {
+                title: 'Loan products',
+                href: adminLoanProducts(),
+                icon: Landmark,
+            },
+            {
+                title: 'Loans',
+                href: adminLoans(),
+                icon: Wallet,
+            },
+        ],
     },
     {
-        title: 'Loan products',
-        href: adminLoanProducts(),
-        icon: Landmark,
+        title: 'Finance',
+        icon: CircleDollarSign,
+        items: [
+            {
+                title: 'Payments',
+                href: adminPayments(),
+                icon: Receipt,
+            },
+            {
+                title: 'Disbursements',
+                href: adminDisbursements(),
+                icon: Banknote,
+            },
+            {
+                title: 'Collections',
+                href: adminCollections(),
+                icon: PhoneCall,
+            },
+        ],
     },
     {
-        title: 'Loans',
-        href: adminLoans(),
-        icon: Wallet,
-    },
-    {
-        title: 'Payments',
-        href: adminPayments(),
-        icon: Receipt,
-    },
-    {
-        title: 'Disbursements',
-        href: adminDisbursements(),
-        icon: Banknote,
-    },
-    {
-        title: 'Notifications',
-        href: adminNotifications(),
-        icon: Bell,
-    },
-    {
-        title: 'Collections',
-        href: adminCollections(),
-        icon: PhoneCall,
-    },
-    {
-        title: 'Reports',
-        href: adminReports(),
-        icon: FileBarChart,
+        title: 'Insights',
+        icon: ChartPie,
+        items: [
+            {
+                title: 'Reports',
+                href: adminReports(),
+                icon: FileBarChart,
+            },
+            {
+                title: 'Notifications',
+                href: adminNotifications(),
+                icon: Bell,
+            },
+        ],
     },
 ];
 
@@ -124,28 +140,43 @@ export function AppSidebar() {
     const { auth } = usePage().props;
     const canAccessAdmin =
         auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
+    const isSuperAdmin = auth.user?.role === 'super_admin';
 
-    const navigationItems: NavItem[] =
-        auth.user?.role === 'super_admin'
-            ? [
-                  ...adminNavItems,
-                  {
-                      title: 'Activity log',
-                      href: adminActivity(),
-                      icon: ScrollText,
-                  },
-                  {
-                      title: 'System status',
-                      href: adminSystem(),
-                      icon: Server,
-                  },
-                  {
-                      title: 'Settings',
-                      href: adminSettings(),
-                      icon: Settings,
-                  },
-              ]
-            : adminNavItems;
+    const administrationNavItems: NavGroupItem = {
+        title: 'Administration',
+        icon: ShieldCheck,
+        items: [
+            {
+                title: 'Users',
+                href: adminUsers(),
+                icon: Users,
+            },
+            ...(isSuperAdmin
+                ? [
+                      {
+                          title: 'Activity log',
+                          href: adminActivity(),
+                          icon: ScrollText,
+                      },
+                      {
+                          title: 'System status',
+                          href: adminSystem(),
+                          icon: Server,
+                      },
+                      {
+                          title: 'Settings',
+                          href: adminSettings(),
+                          icon: Settings,
+                      },
+                  ]
+                : []),
+        ],
+    };
+
+    const navigationItems: NavEntry[] = [
+        ...adminNavEntries,
+        administrationNavItems,
+    ];
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -165,7 +196,7 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
 
                 {canAccessAdmin && (
-                    <NavMain items={navigationItems} label="Administration" />
+                    <NavMain items={navigationItems} label="Management" />
                 )}
             </SidebarContent>
 
