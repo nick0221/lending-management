@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -70,6 +71,8 @@ class PaymentController extends Controller
             'methods' => $this->methodOptions(),
             'currentStatus' => $filters['status'],
             'currentMethod' => $filters['method']?->value,
+            'recorders' => $this->recorderOptions(),
+            'currentRecorder' => $filters['recorded_by'],
             'dateFrom' => $filters['from'],
             'dateTo' => $filters['to'],
             'currentBorrower' => $this->borrowerFilter($filters['borrower']),
@@ -103,7 +106,7 @@ class PaymentController extends Controller
     /**
      * Parse the payment register filters from the request.
      *
-     * @return array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
+     * @return array{status: string, method: PaymentMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}
      */
     private function filters(Request $request): array
     {
@@ -116,10 +119,14 @@ class PaymentController extends Controller
         $sort = $request->string('sort')->toString();
         $borrowerId = $request->integer('borrower');
         $loanId = $request->integer('loan');
+        $recordedById = $request->integer('recorded_by');
 
         return [
             'status' => in_array($status, self::TABS, true) ? $status : 'all',
             'method' => PaymentMethod::tryFrom($request->string('method')->toString()),
+            'recorded_by' => $recordedById > 0 && User::query()->whereKey($recordedById)->exists()
+                ? $recordedById
+                : null,
             'borrower' => $borrowerId > 0 && Borrower::query()->whereKey($borrowerId)->exists()
                 ? $borrowerId
                 : null,
@@ -181,15 +188,16 @@ class PaymentController extends Controller
     }
 
     /**
-     * The payments that survive the borrower, loan, method, date and search filters.
+     * The payments that survive the borrower, loan, recorder, method, date and search filters.
      *
-     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: string, method: PaymentMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function baseQuery(array $filters): Builder
     {
         $search = $filters['search'];
 
         return Payment::query()
+            ->when($filters['recorded_by'] !== null, fn (Builder $query) => $query->where('recorded_by', $filters['recorded_by']))
             ->when($filters['borrower'] !== null, fn (Builder $query) => $query->whereHas(
                 'loan',
                 fn (Builder $loan) => $loan->where('borrower_id', $filters['borrower']),
@@ -231,7 +239,7 @@ class PaymentController extends Controller
     /**
      * Apply the requested order, breaking ties by newest payment.
      *
-     * @param  array{status: string, method: PaymentMethod|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
+     * @param  array{status: string, method: PaymentMethod|null, recorded_by: int|null, borrower: int|null, loan: int|null, from: string|null, to: string|null, search: string, sort: string, direction: 'asc'|'desc'}  $filters
      */
     private function applySort(Builder $query, array $filters): void
     {
@@ -254,6 +262,24 @@ class PaymentController extends Controller
             ],
             PaymentMethod::cases(),
         );
+    }
+
+    /**
+     * Map the staff who have recorded at least one payment to select options.
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    private function recorderOptions(): array
+    {
+        return User::query()
+            ->whereIn('id', Payment::query()->whereNotNull('recorded_by')->select('recorded_by'))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name,
+            ])
+            ->all();
     }
 
     /**
