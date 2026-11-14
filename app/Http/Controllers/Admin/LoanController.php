@@ -556,6 +556,10 @@ class LoanController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment reversed.')]);
 
+        if ($request->validated('redirect') === 'register') {
+            return to_route('admin.payments.index');
+        }
+
         return to_route('admin.loans.show', ['loan' => $loan, 'tab' => 'payments']);
     }
 

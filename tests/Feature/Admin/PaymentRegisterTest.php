@@ -179,6 +179,66 @@ test('the register filters by the staff member who recorded the payment', functi
         ->not->toContain('Ada Admin');
 });
 
+test('the register reports which payments can still be reversed', function () {
+    $admin = User::factory()->admin()->create();
+
+    $active = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $closed = Loan::factory()->withStatus(LoanStatus::Closed)->create();
+    $defaulted = Loan::factory()->withStatus(LoanStatus::Defaulted)->create();
+
+    $reversible = Payment::factory()->for($active)->create();
+    $closedPayment = Payment::factory()->for($closed)->create();
+    $alreadyReversed = Payment::factory()->for($active)->create([
+        'reversed_at' => now(),
+        'reversal_reason' => 'Duplicated.',
+    ]);
+    $blocked = Payment::factory()->for($defaulted)->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('payments.data', fn ($rows): bool => collect($rows)
+                ->firstWhere('id', $reversible->id)['can_reverse'] === true
+                && collect($rows)->firstWhere('id', $closedPayment->id)['can_reverse'] === true
+                && collect($rows)->firstWhere('id', $alreadyReversed->id)['can_reverse'] === false
+                && collect($rows)->firstWhere('id', $blocked->id)['can_reverse'] === false)
+        );
+});
+
+test('a reversal started from the register returns to the register', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $payment = Payment::factory()->for($loan)->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.reverse', [$loan, $payment]), [
+            'reason' => 'Recorded against the wrong loan.',
+            'redirect' => 'register',
+        ])
+        ->assertRedirect(route('admin.payments.index'));
+
+    $reversed = $payment->fresh();
+
+    expect($reversed->reversed_at)->not->toBeNull()
+        ->and($reversed->reversal_reason)->toBe('Recorded against the wrong loan.');
+});
+
+test('a reversal rejects an unknown return target', function () {
+    $admin = User::factory()->admin()->create();
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $payment = Payment::factory()->for($loan)->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.reverse', [$loan, $payment]), [
+            'reason' => 'Recorded against the wrong loan.',
+            'redirect' => 'somewhere-else',
+        ])
+        ->assertSessionHasErrors('redirect');
+
+    expect($payment->fresh()->reversed_at)->toBeNull();
+});
+
 test('the register export honours the active filters', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();

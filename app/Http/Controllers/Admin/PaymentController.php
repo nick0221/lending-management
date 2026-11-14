@@ -35,6 +35,7 @@ class PaymentController extends Controller
         Gate::authorize('viewAny', Payment::class);
 
         $filters = $this->filters($request);
+        $actor = $request->user();
         $base = $this->baseQuery($filters);
 
         $counts = [
@@ -53,7 +54,7 @@ class PaymentController extends Controller
         $payments = $paymentsQuery
             ->paginate($this->perPage($request))
             ->withQueryString()
-            ->through(fn (Payment $payment): array => $this->toPayload($payment));
+            ->through(fn (Payment $payment): array => $this->toPayload($payment, $actor));
 
         return Inertia::render('admin/payments/index', [
             'payments' => $payments,
@@ -99,7 +100,7 @@ class PaymentController extends Controller
 
         return $this->csvExporter->stream(
             'payments-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($query->lazy(500)),
+            $this->csvRows($query->lazy(500), $request->user()),
         );
     }
 
@@ -287,11 +288,12 @@ class PaymentController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function toPayload(Payment $payment): array
+    private function toPayload(Payment $payment, User $actor): array
     {
         return [
             'id' => $payment->id,
             'loan_id' => $payment->loan_id,
+            'loan_status' => $payment->loan->status->value,
             'borrower_id' => $payment->loan->borrower_id,
             'borrower_name' => $payment->loan->borrower->name,
             'borrower_phone' => $payment->loan->borrower->phone,
@@ -304,6 +306,7 @@ class PaymentController extends Controller
             'reversed' => $payment->reversed_at !== null,
             'reversed_at' => $payment->reversed_at?->toDateString(),
             'reversal_reason' => $payment->reversal_reason,
+            'can_reverse' => $actor->can('reversePayment', [$payment->loan, $payment]),
         ];
     }
 
@@ -313,7 +316,7 @@ class PaymentController extends Controller
      * @param  iterable<int, Payment>  $payments
      * @return \Generator<int, array<int, string|int|null>>
      */
-    private function csvRows(iterable $payments): \Generator
+    private function csvRows(iterable $payments, User $actor): \Generator
     {
         yield [
             'Payment #',
@@ -331,7 +334,7 @@ class PaymentController extends Controller
         ];
 
         foreach ($payments as $payment) {
-            $row = $this->toPayload($payment);
+            $row = $this->toPayload($payment, $actor);
 
             yield [
                 $row['id'],

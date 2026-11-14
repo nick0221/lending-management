@@ -28,11 +28,13 @@ export function ReversePaymentDialog({
     payment,
     open,
     onOpenChange,
+    returnTo,
 }: {
-    loan: Loan;
-    payment: Payment | null;
+    loan: Pick<Loan, 'id' | 'status'>;
+    payment: Pick<Payment, 'id' | 'amount' | 'payment_date'> | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    returnTo?: 'register';
 }) {
     if (!payment) {
         return null;
@@ -57,6 +59,7 @@ export function ReversePaymentDialog({
                     {...reversePayment.form({
                         loan: loan.id,
                         payment: payment.id,
+                        ...(returnTo ? { redirect: returnTo } : {}),
                     })}
                     options={{ preserveScroll: true }}
                     onSuccess={() => onOpenChange(false)}

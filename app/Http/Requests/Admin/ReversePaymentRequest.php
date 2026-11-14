@@ -31,6 +31,7 @@ class ReversePaymentRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', 'max:500'],
+            'redirect' => ['nullable', 'string', 'in:register'],
         ];
     }
 }

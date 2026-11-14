@@ -359,6 +359,7 @@ export type Payment = {
 export type PaymentRegisterRow = {
     id: number;
     loan_id: number;
+    loan_status: LoanStatus;
     borrower_id: number;
     borrower_name: string;
     borrower_phone: string;
@@ -371,6 +372,7 @@ export type PaymentRegisterRow = {
     reversed: boolean;
     reversed_at: string | null;
     reversal_reason: string | null;
+    can_reverse: boolean;
 };
 
 export type DisbursementRegisterRow = {

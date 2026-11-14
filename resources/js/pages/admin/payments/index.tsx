@@ -4,9 +4,12 @@ import {
     HandCoins,
     Receipt,
     RotateCcw,
+    Undo2,
     Wallet,
     X,
 } from 'lucide-react';
+import { useState } from 'react';
+import { ReversePaymentDialog } from '@/components/admin/reverse-payment-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { EmptyState } from '@/components/empty-state';
@@ -95,6 +98,8 @@ export default function PaymentsIndex({
     currentSort: string;
     currentDirection: 'asc' | 'desc';
 }) {
+    const [reversing, setReversing] = useState<PaymentRegisterRow | null>(null);
+
     const withFilters = (overrides: {
         status?: PaymentTab;
         method?: PaymentMethod | null;
@@ -599,6 +604,21 @@ export default function PaymentsIndex({
 
                                         <TableCell>
                                             <div className="flex justify-end gap-2">
+                                                {payment.can_reverse && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setReversing(
+                                                                payment,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Undo2 /> Reverse
+                                                    </Button>
+                                                )}
+
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
@@ -648,6 +668,23 @@ export default function PaymentsIndex({
                 </div>
 
                 <DataPagination paginator={payments} />
+
+                {reversing && (
+                    <ReversePaymentDialog
+                        loan={{
+                            id: reversing.loan_id,
+                            status: reversing.loan_status,
+                        }}
+                        payment={reversing}
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setReversing(null);
+                            }
+                        }}
+                        returnTo="register"
+                    />
+                )}
             </div>
         </>
     );
