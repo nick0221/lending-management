@@ -180,6 +180,42 @@ test('the user list can be narrowed to unverified accounts', function () {
         ->not->toContain($superAdmin->email);
 });
 
+test('the user list can be narrowed to accounts without two-factor authentication', function () {
+    $superAdmin = User::factory()->superAdmin()->withTwoFactor()->create([
+        'name' => 'Root Operator',
+        'email' => 'root@example.com',
+    ]);
+
+    $protected = User::factory()->withTwoFactor()->create([
+        'name' => 'Protected Person',
+        'email' => 'protected@example.com',
+    ]);
+
+    $plain = User::factory()->create([
+        'name' => 'Plain Person',
+        'email' => 'plain@example.com',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['no_2fa' => '1', 'search' => 'Person']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $plain->id)
+            ->where('withoutTwoFactor', true)
+        );
+
+    $content = $this->actingAs($superAdmin)
+        ->get(route('admin.users.export', ['no_2fa' => '1', 'search' => 'Person']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($content)
+        ->toContain('Plain Person')
+        ->not->toContain('Protected Person')
+        ->not->toContain('Root Operator');
+});
+
 test('creating a user sends a verification email', function () {
     Notification::fake();
 

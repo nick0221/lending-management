@@ -34,11 +34,16 @@ class UserController extends Controller
         $role = Role::tryFrom($request->string('role')->toString());
         $unverified = $request->boolean('unverified');
         $neverSignedIn = $request->boolean('never');
+        $withoutTwoFactor = $request->boolean('no_2fa');
 
         $applyFilters = fn ($query) => $query
             ->when(
                 $unverified,
                 fn ($query) => $query->whereNull('email_verified_at'),
+            )
+            ->when(
+                $withoutTwoFactor,
+                fn ($query) => $query->whereNull('two_factor_confirmed_at'),
             )
             ->when(
                 $neverSignedIn,
@@ -97,6 +102,7 @@ class UserController extends Controller
             'search' => $search,
             'unverified' => $unverified,
             'neverSignedIn' => $neverSignedIn,
+            'withoutTwoFactor' => $withoutTwoFactor,
             'roleCounts' => [
                 'all' => (int) $counts->sum(),
                 ...collect(Role::cases())
@@ -119,10 +125,11 @@ class UserController extends Controller
         $role = Role::tryFrom($request->string('role')->toString());
         $unverified = $request->boolean('unverified');
         $neverSignedIn = $request->boolean('never');
+        $withoutTwoFactor = $request->boolean('no_2fa');
 
         return $this->csvExporter->stream(
             'users-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($role, $search, $unverified, $neverSignedIn),
+            $this->csvRows($role, $search, $unverified, $neverSignedIn, $withoutTwoFactor),
         );
     }
 
@@ -281,7 +288,7 @@ class UserController extends Controller
      *
      * @return \Generator<int, array<int, string|null>>
      */
-    private function csvRows(?Role $role, string $search, bool $unverified = false, bool $neverSignedIn = false): \Generator
+    private function csvRows(?Role $role, string $search, bool $unverified = false, bool $neverSignedIn = false, bool $withoutTwoFactor = false): \Generator
     {
         yield [
             'Name',
@@ -315,6 +322,10 @@ class UserController extends Controller
                         ->whereNotNull('user_id')
                         ->select('user_id'),
                 ),
+            )
+            ->when(
+                $withoutTwoFactor,
+                fn ($query) => $query->whereNull('two_factor_confirmed_at'),
             )
             ->when(
                 $search !== '',

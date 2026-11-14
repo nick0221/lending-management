@@ -46,6 +46,7 @@ export default function UsersIndex({
     search,
     unverified,
     neverSignedIn,
+    withoutTwoFactor,
     roleCounts,
 }: {
     users: Paginated<AdminUserListItem>;
@@ -54,6 +55,7 @@ export default function UsersIndex({
     search: string;
     unverified: boolean;
     neverSignedIn: boolean;
+    withoutTwoFactor: boolean;
     roleCounts: Record<string, number>;
 }) {
     const withFilters = (
@@ -61,6 +63,7 @@ export default function UsersIndex({
             role?: Role | null;
             unverified?: boolean;
             never?: boolean;
+            no2fa?: boolean;
         } = {},
     ) => {
         const role =
@@ -71,12 +74,15 @@ export default function UsersIndex({
                 : unverified;
         const neverOnly =
             overrides.never !== undefined ? overrides.never : neverSignedIn;
+        const noTwoFactorOnly =
+            overrides.no2fa !== undefined ? overrides.no2fa : withoutTwoFactor;
 
         return usersIndex({
             query: {
                 ...(role ? { role } : {}),
                 ...(unverifiedOnly ? { unverified: '1' } : {}),
                 ...(neverOnly ? { never: '1' } : {}),
+                ...(noTwoFactorOnly ? { no_2fa: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(users.per_page !== 15 ? { per_page: users.per_page } : {}),
             },
@@ -88,13 +94,18 @@ export default function UsersIndex({
     });
 
     const isFiltered =
-        search !== '' || currentRole !== null || unverified || neverSignedIn;
+        search !== '' ||
+        currentRole !== null ||
+        unverified ||
+        neverSignedIn ||
+        withoutTwoFactor;
 
     const exportHref = exportUsers({
         query: {
             ...(currentRole ? { role: currentRole } : {}),
             ...(unverified ? { unverified: '1' } : {}),
             ...(neverSignedIn ? { never: '1' } : {}),
+            ...(withoutTwoFactor ? { no_2fa: '1' } : {}),
             ...(search ? { search } : {}),
         },
     });
@@ -191,6 +202,22 @@ export default function UsersIndex({
                             Never signed in
                         </Link>
                     </Toggle>
+
+                    <Toggle
+                        asChild
+                        variant="outline"
+                        pressed={withoutTwoFactor}
+                        className="h-9 shrink-0 gap-2 px-3"
+                    >
+                        <Link
+                            href={withFilters({ no2fa: !withoutTwoFactor })}
+                            preserveScroll
+                            prefetch
+                        >
+                            <ShieldOff />
+                            No 2FA
+                        </Link>
+                    </Toggle>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -205,9 +232,11 @@ export default function UsersIndex({
                             description={
                                 unverified
                                     ? 'No unverified accounts match the current search and role filter. Turn off the unverified filter to see everyone.'
-                                    : isFiltered
-                                      ? 'No accounts match the current search and role filter.'
-                                      : 'Create the first account to give someone access to the admin panel.'
+                                    : withoutTwoFactor
+                                      ? 'Every account that matches the current search and role filter already uses two-factor authentication.'
+                                      : isFiltered
+                                        ? 'No accounts match the current search and role filter.'
+                                        : 'Create the first account to give someone access to the admin panel.'
                             }
                             action={
                                 isFiltered ? (
