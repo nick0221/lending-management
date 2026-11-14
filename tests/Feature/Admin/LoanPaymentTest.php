@@ -15,6 +15,7 @@ use App\Services\LoanService;
 use App\Services\RepaymentService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Originate, approve and disburse a deterministic 1200 loan so the repayment
@@ -297,4 +298,168 @@ test('re-sending a receipt respects the borrower opt-out', function () {
         ->assertRedirect();
 
     expect(NotificationLog::query()->where('type', NotificationLog::TYPE_RECEIPT)->count())->toBe(0);
+});
+
+test('a repeated idempotency key records a single payment', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = disbursedActiveLoan();
+
+    $payload = [
+        'amount' => 112,
+        'method' => PaymentMethod::BankTransfer->value,
+        'reference' => 'IDEM-1',
+        'idempotency_key' => 'dialog-token-1',
+    ];
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.loans.show', $loan));
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.loans.show', $loan));
+
+    expect($loan->payments()->count())->toBe(1)
+        ->and($loan->payments()->first()->idempotency_key)->toBe('dialog-token-1')
+        ->and($loan->payments()->first()->amount)->toBe('112.00');
+});
+
+test('a retried full payment succeeds after the first one closed the loan', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = disbursedActiveLoan();
+
+    $payload = [
+        'amount' => 1344,
+        'method' => PaymentMethod::BankTransfer->value,
+        'idempotency_key' => 'dialog-token-close',
+    ];
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), $payload)
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('admin.loans.show', $loan));
+
+    expect($loan->payments()->count())->toBe(1)
+        ->and($loan->fresh()->status)->toBe(LoanStatus::Closed)
+        ->and($loan->fresh()->closed_at)->not->toBeNull();
+});
+
+test('a second live payment cannot reuse a reference on the same loan', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = disbursedActiveLoan();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), [
+            'amount' => 112,
+            'method' => PaymentMethod::BankTransfer->value,
+            'reference' => 'PAY-DUP',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), [
+            'amount' => 50,
+            'method' => PaymentMethod::BankTransfer->value,
+            'reference' => 'PAY-DUP',
+        ])
+        ->assertSessionHasErrors('reference');
+
+    expect($loan->payments()->count())->toBe(1);
+});
+
+test('reversing a payment frees its reference for reuse', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = disbursedActiveLoan();
+    $service = app(RepaymentService::class);
+
+    $payment = $service->recordPayment($loan, $admin, 112, PaymentMethod::BankTransfer, 'FREE-1');
+
+    $service->reversePayment($loan, $payment, $admin, 'Duplicated on the bank feed.');
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $loan), [
+            'amount' => 50,
+            'method' => PaymentMethod::BankTransfer->value,
+            'reference' => 'FREE-1',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($loan->payments()->count())->toBe(2);
+});
+
+test('different loans may share a payment reference', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $firstLoan = disbursedActiveLoan();
+    $secondLoan = disbursedActiveLoan();
+
+    foreach ([$firstLoan, $secondLoan] as $loan) {
+        $this->actingAs($admin)
+            ->post(route('admin.loans.payments.store', $loan), [
+                'amount' => 112,
+                'method' => PaymentMethod::BankTransfer->value,
+                'reference' => 'SHARED-1',
+            ])
+            ->assertSessionHasNoErrors();
+    }
+
+    expect($firstLoan->payments()->count())->toBe(1)
+        ->and($secondLoan->payments()->count())->toBe(1);
+});
+
+test('an idempotency token cannot be reused on another loan', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $firstLoan = disbursedActiveLoan();
+    $secondLoan = disbursedActiveLoan();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $firstLoan), [
+            'amount' => 112,
+            'method' => PaymentMethod::Cash->value,
+            'idempotency_key' => 'dialog-token-shared',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($admin)
+        ->post(route('admin.loans.payments.store', $secondLoan), [
+            'amount' => 112,
+            'method' => PaymentMethod::Cash->value,
+            'idempotency_key' => 'dialog-token-shared',
+        ])
+        ->assertSessionHasErrors('idempotency_key');
+
+    expect($firstLoan->payments()->count())->toBe(1)
+        ->and($secondLoan->payments()->count())->toBe(0);
+});
+
+test('the repayment service refuses a live duplicate reference', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = disbursedActiveLoan();
+    $service = app(RepaymentService::class);
+
+    $service->recordPayment($loan, $admin, 112, PaymentMethod::Cash, 'SVC-1');
+
+    expect(fn () => $service->recordPayment($loan->fresh(), $admin, 50, PaymentMethod::Cash, 'SVC-1'))
+        ->toThrow(ValidationException::class);
+
+    expect($loan->payments()->count())->toBe(1);
 });

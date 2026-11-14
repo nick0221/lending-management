@@ -12,6 +12,7 @@ use App\Models\LoanPaymentAllocation;
 use App\Models\Payment;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,10 @@ class RepaymentService
      * Record a payment against a loan, allocating it to the outstanding
      * installments oldest-first (penalty, then fee, interest and principal) and
      * closing the loan once it is fully repaid.
+     *
+     * A repeated submission carrying the same idempotency key returns the
+     * payment recorded the first time, so a double click or retried request
+     * cannot record the same money twice (even once the loan is closed).
      */
     public function recordPayment(
         Loan $loan,
@@ -40,7 +45,17 @@ class RepaymentService
         ?string $reference = null,
         ?string $notes = null,
         ?CarbonInterface $paymentDate = null,
+        ?string $idempotencyKey = null,
     ): Payment {
+        $reference = $this->normaliseOptionalString($reference);
+        $idempotencyKey = $this->normaliseOptionalString($idempotencyKey);
+
+        $existingPayment = $this->findIdempotentPayment($loan, $idempotencyKey);
+
+        if ($existingPayment !== null) {
+            return $existingPayment;
+        }
+
         if ($loan->status !== LoanStatus::Active) {
             throw ValidationException::withMessages([
                 'loan' => __('Payments can only be recorded against active loans.'),
@@ -69,52 +84,84 @@ class RepaymentService
             ]);
         }
 
-        $payment = DB::transaction(function () use ($loan, $actor, $amount, $method, $reference, $notes, $paymentDate, $targets): Payment {
-            $payment = $loan->payments()->create([
-                'amount' => $amount,
-                'method' => $method,
-                'reference' => $reference,
-                'notes' => $notes,
-                'payment_date' => $paymentDate?->toDateTimeString() ?? now(),
-                'recorded_by' => $actor->id,
-            ]);
+        try {
+            $payment = DB::transaction(function () use ($loan, $actor, $amount, $method, $reference, $notes, $paymentDate, $idempotencyKey, $targets): Payment {
+                Loan::query()
+                    ->whereKey($loan->getKey())
+                    ->lockForUpdate()
+                    ->first();
 
-            $remaining = $amount;
+                $existingPayment = $this->findIdempotentPayment($loan, $idempotencyKey);
 
-            foreach ($targets as $target) {
-                if ($remaining <= self::MONEY_EPSILON) {
-                    break;
+                if ($existingPayment !== null) {
+                    return $existingPayment;
                 }
 
-                $penalty = min($remaining, $target['penalty']);
-                $remaining = round($remaining - $penalty, 2);
-
-                $fee = min($remaining, $target['fee']);
-                $remaining = round($remaining - $fee, 2);
-
-                $interest = min($remaining, $target['interest']);
-                $remaining = round($remaining - $interest, 2);
-
-                $principal = min($remaining, $target['principal']);
-                $remaining = round($remaining - $principal, 2);
-
-                if ($penalty <= 0 && $fee <= 0 && $interest <= 0 && $principal <= 0) {
-                    continue;
+                if ($reference !== null && $loan->payments()->where('reference', $reference)->whereNull('reversed_at')->exists()) {
+                    throw ValidationException::withMessages([
+                        'reference' => __('A live payment on this loan already uses this reference.'),
+                    ]);
                 }
 
-                $payment->allocations()->create([
-                    'loan_id' => $loan->id,
-                    'installment_id' => $target['installment']->id,
-                    'sequence' => $target['installment']->sequence,
-                    'penalty_allocated' => $penalty,
-                    'fee_allocated' => $fee,
-                    'interest_allocated' => $interest,
-                    'principal_allocated' => $principal,
+                $payment = $loan->payments()->create([
+                    'amount' => $amount,
+                    'method' => $method,
+                    'reference' => $reference,
+                    'idempotency_key' => $idempotencyKey,
+                    'notes' => $notes,
+                    'payment_date' => $paymentDate?->toDateTimeString() ?? now(),
+                    'recorded_by' => $actor->id,
                 ]);
+
+                $remaining = $amount;
+
+                foreach ($targets as $target) {
+                    if ($remaining <= self::MONEY_EPSILON) {
+                        break;
+                    }
+
+                    $penalty = min($remaining, $target['penalty']);
+                    $remaining = round($remaining - $penalty, 2);
+
+                    $fee = min($remaining, $target['fee']);
+                    $remaining = round($remaining - $fee, 2);
+
+                    $interest = min($remaining, $target['interest']);
+                    $remaining = round($remaining - $interest, 2);
+
+                    $principal = min($remaining, $target['principal']);
+                    $remaining = round($remaining - $principal, 2);
+
+                    if ($penalty <= 0 && $fee <= 0 && $interest <= 0 && $principal <= 0) {
+                        continue;
+                    }
+
+                    $payment->allocations()->create([
+                        'loan_id' => $loan->id,
+                        'installment_id' => $target['installment']->id,
+                        'sequence' => $target['installment']->sequence,
+                        'penalty_allocated' => $penalty,
+                        'fee_allocated' => $fee,
+                        'interest_allocated' => $interest,
+                        'principal_allocated' => $principal,
+                    ]);
+                }
+
+                return $payment;
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            $existingPayment = $this->findIdempotentPayment($loan, $idempotencyKey);
+
+            if ($existingPayment === null) {
+                throw $exception;
             }
 
+            $payment = $existingPayment;
+        }
+
+        if (! $payment->wasRecentlyCreated) {
             return $payment;
-        });
+        }
 
         LoanEvent::create([
             'loan_id' => $loan->id,
@@ -197,6 +244,41 @@ class RepaymentService
         });
 
         return $payment->refresh();
+    }
+
+    /**
+     * Find the payment recorded by an earlier submission of the same form.
+     * A key presented against a different loan is treated as invalid rather
+     * than silently recording nothing.
+     */
+    private function findIdempotentPayment(Loan $loan, ?string $idempotencyKey): ?Payment
+    {
+        if ($idempotencyKey === null) {
+            return null;
+        }
+
+        $payment = Payment::query()
+            ->where('idempotency_key', $idempotencyKey)
+            ->first();
+
+        if ($payment === null) {
+            return null;
+        }
+
+        if ((int) $payment->loan_id !== (int) $loan->id) {
+            throw ValidationException::withMessages([
+                'idempotency_key' => __('This payment submission was already used for another loan.'),
+            ]);
+        }
+
+        return $payment;
+    }
+
+    private function normaliseOptionalString(?string $value): ?string
+    {
+        $value = $value === null ? null : trim($value);
+
+        return $value === '' ? null : $value;
     }
 
     /**

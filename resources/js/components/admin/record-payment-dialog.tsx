@@ -41,6 +41,21 @@ const allocationRows: { key: AllocationKey; label: string }[] = [
 ];
 
 /**
+ * One token per dialog session so a double click or retried submission is
+ * recognised by the server and cannot record the payment twice.
+ */
+function createIdempotencyKey(): string {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
+        return crypto.randomUUID();
+    }
+
+    return `payment-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
  * Mirror RepaymentService: walk the installments oldest first and apply the
  * amount to penalty, fee, interest and principal in that order.
  */
@@ -106,6 +121,7 @@ export function RecordPaymentDialog({
     installments: LoanInstallment[];
 }) {
     const [open, setOpen] = useState(false);
+    const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
     const [method, setMethod] = useState<string>(methods[0]?.value ?? '');
     const selectedMethod = methods.find((option) => option.value === method);
     const [amount, setAmount] = useState<string>(
@@ -131,6 +147,7 @@ export function RecordPaymentDialog({
 
         if (nextOpen) {
             setAmount(Number(outstanding).toFixed(2));
+            setIdempotencyKey(createIdempotencyKey());
         }
     };
 
@@ -163,6 +180,12 @@ export function RecordPaymentDialog({
                     {({ processing, errors }) => (
                         <>
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 pb-6">
+                                <input
+                                    type="hidden"
+                                    name="idempotency_key"
+                                    value={idempotencyKey}
+                                />
+
                                 <div className="rounded-lg border bg-muted/30 p-3">
                                     <div className="flex items-baseline justify-between gap-3">
                                         <span className="text-xs text-muted-foreground uppercase">

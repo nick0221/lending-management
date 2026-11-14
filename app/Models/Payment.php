@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $amount
  * @property PaymentMethod $method
  * @property string|null $reference
+ * @property string|null $idempotency_key
  * @property string|null $notes
  * @property Carbon $payment_date
  * @property int|null $recorded_by
@@ -34,6 +35,7 @@ use Illuminate\Support\Carbon;
     'amount',
     'method',
     'reference',
+    'idempotency_key',
     'notes',
     'payment_date',
     'recorded_by',

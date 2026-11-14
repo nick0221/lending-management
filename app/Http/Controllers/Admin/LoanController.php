@@ -459,7 +459,7 @@ class LoanController extends Controller
     {
         $data = $request->validated();
 
-        $repaymentService->recordPayment(
+        $payment = $repaymentService->recordPayment(
             $loan,
             $request->user(),
             (float) $data['amount'],
@@ -467,9 +467,15 @@ class LoanController extends Controller
             $data['reference'] ?? null,
             $data['notes'] ?? null,
             isset($data['payment_date']) ? Date::parse($data['payment_date']) : null,
+            $data['idempotency_key'] ?? null,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $payment->wasRecentlyCreated
+                ? __('Payment recorded.')
+                : __('This payment was already recorded.'),
+        ]);
 
         return to_route('admin.loans.show', $loan);
     }
