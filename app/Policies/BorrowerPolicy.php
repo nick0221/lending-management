@@ -49,8 +49,20 @@ class BorrowerPolicy
 
     /**
      * Determine whether the user can delete the given borrower.
+     *
+     * Deleting archives the borrower. Whether they have loan history is
+     * enforced by the controller with an explanation, so the register can keep
+     * offering the action and report why it was refused.
      */
     public function delete(User $user, Borrower $borrower): bool
+    {
+        return $user->canAccessAdminPanel() && ! $borrower->trashed();
+    }
+
+    /**
+     * Determine whether the user can restore an archived borrower.
+     */
+    public function restore(User $user, Borrower $borrower): bool
     {
         return $user->canAccessAdminPanel();
     }

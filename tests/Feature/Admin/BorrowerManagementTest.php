@@ -370,7 +370,7 @@ test('the borrower detail page shows their loans, payments and abilities', funct
             ->where('recentDisbursements.0.loan_id', $loan->id)
             ->where('recentDisbursements.0.amount', 5000)
             ->where('can.update', true)
-            ->where('can.delete', true)
+            ->where('can.delete', false)
             ->where('can.viewActivity', false)
         );
 });
@@ -533,7 +533,7 @@ test('admins can update the kyc status of several borrowers at once', function (
             ->count())->toBe(2);
 });
 
-test('admins can delete a borrower', function () {
+test('admins can archive a borrower without loan history', function () {
     $admin = User::factory()->admin()->create();
     $borrower = Borrower::factory()->create();
 
@@ -541,5 +541,61 @@ test('admins can delete a borrower', function () {
         ->delete(route('admin.borrowers.destroy', $borrower))
         ->assertRedirect(route('admin.borrowers.index'));
 
-    expect($borrower->fresh())->toBeNull();
+    expect(Borrower::find($borrower->id))->toBeNull()
+        ->and(Borrower::withTrashed()->find($borrower->id))->not->toBeNull()
+        ->and($borrower->fresh()->trashed())->toBeTrue();
+});
+
+test('a borrower with loan history cannot be archived', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->create();
+    $loan = Loan::factory()->for($borrower)->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.borrowers.index'))
+        ->delete(route('admin.borrowers.destroy', $borrower))
+        ->assertRedirect(route('admin.borrowers.index'));
+
+    expect($borrower->fresh()->trashed())->toBeFalse()
+        ->and(Loan::find($loan->id))->not->toBeNull();
+});
+
+test('the register hides archived borrowers and offers them only in the archived view', function () {
+    $admin = User::factory()->admin()->create();
+    $active = Borrower::factory()->create(['name' => 'Active Person']);
+    $archived = Borrower::factory()->trashed()->create(['name' => 'Archived Person']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 1)
+            ->where('borrowers.data.0.id', $active->id)
+            ->where('archivedOnly', false)
+            ->where('archivedCount', 1)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.borrowers.index', ['archived' => '1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('borrowers.data', 1)
+            ->where('borrowers.data.0.id', $archived->id)
+            ->where('borrowers.data.0.archived', true)
+            ->where('borrowers.data.0.can.delete', false)
+            ->where('archivedOnly', true)
+        );
+});
+
+test('an archived borrower can be restored', function () {
+    $admin = User::factory()->admin()->create();
+    $borrower = Borrower::factory()->trashed()->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.borrowers.index', ['archived' => '1']))
+        ->patch(route('admin.borrowers.restore', $borrower))
+        ->assertRedirect(route('admin.borrowers.index', ['archived' => '1']));
+
+    expect($borrower->fresh()->trashed())->toBeFalse()
+        ->and(Borrower::find($borrower->id))->not->toBeNull();
 });

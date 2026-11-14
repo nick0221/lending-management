@@ -1,13 +1,13 @@
 import { Link, router } from '@inertiajs/react';
 import {
+    Archive,
     KeyRound,
     MailCheck,
     MoreHorizontal,
     Pencil,
-    Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { ConfirmDeleteDialog } from '@/components/confirm-delete';
+import { ConfirmActionDialog } from '@/components/confirm-delete';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -26,7 +26,7 @@ import type { AdminUserListItem } from '@/types';
 
 /**
  * Row menu for the user register: edit the account, send account recovery
- * emails, or delete it after confirmation.
+ * emails, or archive it after confirmation.
  */
 export function UserRowActions({ user }: { user: AdminUserListItem }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -99,18 +99,20 @@ export function UserRowActions({ user }: { user: AdminUserListItem }) {
                                     setConfirmOpen(true);
                                 }}
                             >
-                                <Trash2 />
-                                Delete account
+                                <Archive />
+                                Archive account
                             </DropdownMenuItem>
                         </>
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <ConfirmDeleteDialog
+            <ConfirmActionDialog
                 form={destroyUser.form(user.id)}
-                title={`Delete ${user.name}?`}
-                description="This permanently removes the account and revokes access. Any linked borrower profile and its loan history are kept."
+                title={`Archive ${user.name}?`}
+                description="The account can no longer sign in, but their name stays on the payments and payouts they recorded. You can restore it later from the Archived view."
+                label="Archive account"
+                processingLabel="Archiving…"
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
             />

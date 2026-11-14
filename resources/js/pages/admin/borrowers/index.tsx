@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Archive,
+    ArchiveRestore,
     BadgeCheck,
     Download,
     Plus,
@@ -34,13 +36,14 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Toggle } from '@/components/ui/toggle';
-import { formatMoney } from '@/lib/format';
+import { formatDateOnly, formatMoney } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import {
     create as createBorrower,
     exportMethod as exportBorrowers,
     index as borrowersIndex,
     kycStatus as updateBorrowerKyc,
+    restore as restoreBorrower,
     show as showBorrower,
 } from '@/routes/admin/borrowers';
 import { create as importBorrowers } from '@/routes/admin/borrowers/imports';
@@ -56,6 +59,8 @@ export default function BorrowersIndex({
     kycStatuses,
     currentKycStatus,
     arrearsOnly,
+    archivedOnly,
+    archivedCount,
     kycCounts,
     search,
 }: {
@@ -63,6 +68,8 @@ export default function BorrowersIndex({
     kycStatuses: KycStatusOption[];
     currentKycStatus: KycStatus | null;
     arrearsOnly: boolean;
+    archivedOnly: boolean;
+    archivedCount: number;
     kycCounts: Record<string, number>;
     search: string;
 }) {
@@ -106,17 +113,20 @@ export default function BorrowersIndex({
     const withFilters = (overrides: {
         kycStatus?: KycStatus | null;
         arrears?: boolean;
+        archived?: boolean;
     }) => {
         const kycStatus =
             overrides.kycStatus === undefined
                 ? currentKycStatus
                 : overrides.kycStatus;
         const arrears = overrides.arrears ?? arrearsOnly;
+        const archived = overrides.archived ?? archivedOnly;
 
         return borrowersIndex({
             query: {
-                ...(kycStatus ? { kyc_status: kycStatus } : {}),
-                ...(arrears ? { arrears: '1' } : {}),
+                ...(kycStatus && !archived ? { kyc_status: kycStatus } : {}),
+                ...(arrears && !archived ? { arrears: '1' } : {}),
+                ...(archived ? { archived: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(borrowers.per_page !== 15
                     ? { per_page: borrowers.per_page }
@@ -135,8 +145,11 @@ export default function BorrowersIndex({
     const exportHref = exportBorrowers({
         query: {
             ...(search ? { search } : {}),
-            ...(currentKycStatus ? { kyc_status: currentKycStatus } : {}),
-            ...(arrearsOnly ? { arrears: '1' } : {}),
+            ...(currentKycStatus && !archivedOnly
+                ? { kyc_status: currentKycStatus }
+                : {}),
+            ...(arrearsOnly && !archivedOnly ? { arrears: '1' } : {}),
+            ...(archivedOnly ? { archived: '1' } : {}),
         },
     });
 
@@ -178,44 +191,87 @@ export default function BorrowersIndex({
                         label="Search borrowers"
                     />
 
-                    <FilterTabs
-                        tabs={[
-                            {
-                                value: 'all',
-                                label: 'All',
-                                count: kycCounts.all,
-                                href: withFilters({ kycStatus: null }),
-                            },
-                            ...kycStatuses.map((status) => ({
-                                value: status.value,
-                                label: status.label,
-                                count: kycCounts[status.value] ?? 0,
-                                href: withFilters({ kycStatus: status.value }),
-                            })),
-                        ]}
-                        value={currentKycStatus ?? 'all'}
-                        label="Filter borrowers by KYC status"
-                        className="min-w-0 flex-1 basis-full lg:basis-auto"
-                    />
+                    {archivedOnly ? (
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                Archived borrowers keep their file but are out
+                                of the working register.
+                            </p>
 
-                    <Toggle
-                        asChild
-                        variant="outline"
-                        pressed={arrearsOnly}
-                        className="h-9 shrink-0 gap-2 px-3"
-                    >
-                        <Link
-                            href={withFilters({ arrears: !arrearsOnly })}
-                            preserveScroll
-                            prefetch
-                        >
-                            <TriangleAlert />
-                            In arrears
-                        </Link>
-                    </Toggle>
+                            <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto h-9"
+                            >
+                                <Link href={withFilters({ archived: false })}>
+                                    <RotateCcw /> Back to register
+                                </Link>
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <FilterTabs
+                                tabs={[
+                                    {
+                                        value: 'all',
+                                        label: 'All',
+                                        count: kycCounts.all,
+                                        href: withFilters({ kycStatus: null }),
+                                    },
+                                    ...kycStatuses.map((status) => ({
+                                        value: status.value,
+                                        label: status.label,
+                                        count: kycCounts[status.value] ?? 0,
+                                        href: withFilters({
+                                            kycStatus: status.value,
+                                        }),
+                                    })),
+                                ]}
+                                value={currentKycStatus ?? 'all'}
+                                label="Filter borrowers by KYC status"
+                                className="min-w-0 flex-1 basis-full lg:basis-auto"
+                            />
+
+                            <Toggle
+                                asChild
+                                variant="outline"
+                                pressed={arrearsOnly}
+                                className="h-9 shrink-0 gap-2 px-3"
+                            >
+                                <Link
+                                    href={withFilters({
+                                        arrears: !arrearsOnly,
+                                    })}
+                                    preserveScroll
+                                    prefetch
+                                >
+                                    <TriangleAlert />
+                                    In arrears
+                                </Link>
+                            </Toggle>
+
+                            {archivedCount > 0 && (
+                                <Toggle
+                                    asChild
+                                    variant="outline"
+                                    className="h-9 shrink-0 gap-2 px-3"
+                                >
+                                    <Link
+                                        href={withFilters({ archived: true })}
+                                        preserveScroll
+                                        prefetch
+                                    >
+                                        <Archive />
+                                        Archived ({archivedCount})
+                                    </Link>
+                                </Toggle>
+                            )}
+                        </>
+                    )}
                 </div>
 
-                {selected.length > 0 && (
+                {!archivedOnly && selected.length > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
                         <p className="text-sm font-medium">
                             {selected.length} borrower
@@ -281,16 +337,32 @@ export default function BorrowersIndex({
                             icon={Users}
                             title="No borrowers found"
                             description={
-                                search
-                                    ? `No borrowers match "${search}". Try another term or clear the search.`
-                                    : currentKycStatus
-                                      ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
-                                      : arrearsOnly
-                                        ? 'No borrowers are in arrears right now. Turn off the arrears filter to see the whole register.'
-                                        : 'Register the first borrower or import your existing book to start originating loans.'
+                                archivedOnly
+                                    ? search
+                                        ? `No archived borrowers match "${search}".`
+                                        : 'Nothing is archived. Borrowers you remove are kept here so a mistake can be undone.'
+                                    : search
+                                      ? `No borrowers match "${search}". Try another term or clear the search.`
+                                      : currentKycStatus
+                                        ? 'No borrowers match this KYC status. Try another tab or register a new borrower.'
+                                        : arrearsOnly
+                                          ? 'No borrowers are in arrears right now. Turn off the arrears filter to see the whole register.'
+                                          : 'Register the first borrower or import your existing book to start originating loans.'
                             }
                             action={
-                                search || currentKycStatus || arrearsOnly ? (
+                                archivedOnly ? (
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link
+                                            href={withFilters({
+                                                archived: false,
+                                            })}
+                                        >
+                                            <RotateCcw /> Back to register
+                                        </Link>
+                                    </Button>
+                                ) : search ||
+                                  currentKycStatus ||
+                                  arrearsOnly ? (
                                     <Button asChild size="sm" variant="outline">
                                         <Link href={clearFilters}>
                                             <RotateCcw /> Clear filters
@@ -322,23 +394,25 @@ export default function BorrowersIndex({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-10">
-                                        <Checkbox
-                                            checked={
-                                                allSelected
-                                                    ? true
-                                                    : someSelected
-                                                      ? 'indeterminate'
-                                                      : false
-                                            }
-                                            onCheckedChange={(checked) =>
-                                                setSelected(
-                                                    checked === true
-                                                        ? pageIds
-                                                        : [],
-                                                )
-                                            }
-                                            aria-label="Select all borrowers on this page"
-                                        />
+                                        {archivedOnly ? null : (
+                                            <Checkbox
+                                                checked={
+                                                    allSelected
+                                                        ? true
+                                                        : someSelected
+                                                          ? 'indeterminate'
+                                                          : false
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    setSelected(
+                                                        checked === true
+                                                            ? pageIds
+                                                            : [],
+                                                    )
+                                                }
+                                                aria-label="Select all borrowers on this page"
+                                            />
+                                        )}
                                     </TableHead>
                                     <TableHead>Name</TableHead>
                                     <TableHead className="hidden xl:table-cell">
@@ -348,7 +422,7 @@ export default function BorrowersIndex({
                                         National ID
                                     </TableHead>
                                     <TableHead className="hidden sm:table-cell">
-                                        KYC
+                                        {archivedOnly ? 'Archived' : 'KYC'}
                                     </TableHead>
                                     <TableHead className="hidden md:table-cell">
                                         Loans
@@ -369,35 +443,49 @@ export default function BorrowersIndex({
                                 {borrowers.data.map((borrower) => (
                                     <TableRow key={borrower.id}>
                                         <TableCell>
-                                            <Checkbox
-                                                checked={selected.includes(
-                                                    borrower.id,
-                                                )}
-                                                onCheckedChange={(checked) =>
-                                                    setSelected((current) =>
-                                                        checked === true
-                                                            ? [
-                                                                  ...current,
-                                                                  borrower.id,
-                                                              ]
-                                                            : current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      borrower.id,
-                                                              ),
-                                                    )
-                                                }
-                                                aria-label={`Select ${borrower.name}`}
-                                            />
+                                            {archivedOnly ? null : (
+                                                <Checkbox
+                                                    checked={selected.includes(
+                                                        borrower.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelected(
+                                                            (current) =>
+                                                                checked === true
+                                                                    ? [
+                                                                          ...current,
+                                                                          borrower.id,
+                                                                      ]
+                                                                    : current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              borrower.id,
+                                                                      ),
+                                                        )
+                                                    }
+                                                    aria-label={`Select ${borrower.name}`}
+                                                />
+                                            )}
                                         </TableCell>
                                         <TableCell className="font-medium">
-                                            <Link
-                                                href={showBorrower(borrower.id)}
-                                                className="hover:underline"
-                                                prefetch
-                                            >
-                                                {borrower.name}
-                                            </Link>
+                                            {archivedOnly ||
+                                            !borrower.can.view ? (
+                                                <span>{borrower.name}</span>
+                                            ) : (
+                                                <Link
+                                                    href={showBorrower(
+                                                        borrower.id,
+                                                    )}
+                                                    className="hover:underline"
+                                                    prefetch
+                                                >
+                                                    {borrower.name}
+                                                </Link>
+                                            )}
                                             {borrower.email && (
                                                 <div className="hidden truncate text-xs text-muted-foreground sm:block">
                                                     {borrower.email}
@@ -415,9 +503,13 @@ export default function BorrowersIndex({
                                                 </div>
                                             )}
                                             <div className="mt-1 sm:hidden">
-                                                <KycBadge
-                                                    status={borrower.kyc_status}
-                                                />
+                                                {archivedOnly ? null : (
+                                                    <KycBadge
+                                                        status={
+                                                            borrower.kyc_status
+                                                        }
+                                                    />
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="hidden text-muted-foreground xl:table-cell">
@@ -427,9 +519,19 @@ export default function BorrowersIndex({
                                             {borrower.national_id ?? '—'}
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">
-                                            <KycBadge
-                                                status={borrower.kyc_status}
-                                            />
+                                            {archivedOnly ? (
+                                                <span className="text-muted-foreground">
+                                                    {borrower.deleted_at
+                                                        ? formatDateOnly(
+                                                              borrower.deleted_at,
+                                                          )
+                                                        : 'Archived'}
+                                                </span>
+                                            ) : (
+                                                <KycBadge
+                                                    status={borrower.kyc_status}
+                                                />
+                                            )}
                                         </TableCell>
                                         <TableCell className="hidden text-muted-foreground md:table-cell">
                                             {borrower.open_loan_count > 0 ? (
@@ -472,9 +574,32 @@ export default function BorrowersIndex({
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">
-                                                <BorrowerRowActions
-                                                    borrower={borrower}
-                                                />
+                                                {archivedOnly ? (
+                                                    borrower.can.restore && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                router.patch(
+                                                                    restoreBorrower(
+                                                                        borrower.id,
+                                                                    ).url,
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            <ArchiveRestore />{' '}
+                                                            Restore
+                                                        </Button>
+                                                    )
+                                                ) : (
+                                                    <BorrowerRowActions
+                                                        borrower={borrower}
+                                                    />
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

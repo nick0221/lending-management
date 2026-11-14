@@ -2,6 +2,9 @@
 
 use App\Enums\Role;
 use App\Models\ActivityLog;
+use App\Models\Borrower;
+use App\Models\Loan;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -458,7 +461,7 @@ test('updating a user can change their password', function () {
     expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
 });
 
-test('admins can delete regular users', function () {
+test('admins can archive regular users', function () {
     $admin = User::factory()->admin()->create();
     $user = User::factory()->create();
 
@@ -466,7 +469,83 @@ test('admins can delete regular users', function () {
         ->delete(route('admin.users.destroy', $user))
         ->assertRedirect(route('admin.users.index'));
 
-    expect($user->fresh())->toBeNull();
+    expect(User::find($user->id))->toBeNull()
+        ->and($user->fresh()->trashed())->toBeTrue();
+});
+
+test('an archived account keeps its name on the payments it recorded', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create(['name' => 'Ledger Keeper']);
+    $loan = Loan::factory()->create();
+
+    $payment = Payment::factory()->for($loan)->create([
+        'recorded_by' => $user->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $user))
+        ->assertRedirect(route('admin.users.index'));
+
+    $this->actingAs($admin)
+        ->get(route('admin.payments.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('payments.data.0.id', $payment->id)
+            ->where('payments.data.0.recorded_by', 'Ledger Keeper')
+        );
+});
+
+test('an account linked to a borrower portal profile cannot be archived', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+    Borrower::factory()->forUser($user)->create();
+
+    $this->actingAs($admin)
+        ->from(route('admin.users.index'))
+        ->delete(route('admin.users.destroy', $user))
+        ->assertRedirect(route('admin.users.index'));
+
+    expect($user->fresh()->trashed())->toBeFalse();
+});
+
+test('the user register hides archived accounts and lists them on request', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $active = User::factory()->create(['name' => 'Active Staff']);
+    $archived = User::factory()->trashed()->create(['name' => 'Archived Staff']);
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('users.data', fn ($rows): bool => collect($rows)
+                ->pluck('id')
+                ->contains($active->id)
+                && ! collect($rows)->pluck('id')->contains($archived->id))
+            ->where('archivedOnly', false)
+            ->where('archivedCount', 1)
+        );
+
+    $this->actingAs($superAdmin)
+        ->get(route('admin.users.index', ['archived' => '1']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $archived->id)
+            ->where('users.data.0.archived', true)
+            ->where('archivedOnly', true)
+        );
+});
+
+test('an archived account can be restored', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $user = User::factory()->trashed()->create();
+
+    $this->actingAs($superAdmin)
+        ->from(route('admin.users.index', ['archived' => '1']))
+        ->patch(route('admin.users.restore', $user))
+        ->assertRedirect(route('admin.users.index', ['archived' => '1']));
+
+    expect($user->fresh()->trashed())->toBeFalse();
 });
 
 test('admins cannot delete other admins', function () {

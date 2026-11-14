@@ -833,6 +833,15 @@ class LoanController extends Controller
     {
         Gate::authorize('delete', $loan);
 
+        if ($loan->payments()->exists() || $loan->disbursements()->exists()) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('This loan has money movement against it and cannot be deleted.'),
+            ]);
+
+            return back();
+        }
+
         $loan->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan deleted.')]);

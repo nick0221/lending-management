@@ -141,8 +141,9 @@ export default function ShowBorrower({
                                 {can.delete && (
                                     <ConfirmDelete
                                         form={destroyBorrower.form(borrower.id)}
-                                        title={`Delete ${borrower.name}?`}
-                                        description="This permanently deletes the borrower and every loan, payment and schedule attached to them. This cannot be undone."
+                                        title={`Archive ${borrower.name}?`}
+                                        description="The borrower leaves the working register but the file is kept, so a mistake can be undone. Borrowers with loan history cannot be archived."
+                                        label="Archive borrower"
                                         testId="delete-borrower-button"
                                     />
                                 )}

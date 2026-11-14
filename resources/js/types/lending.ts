@@ -40,6 +40,8 @@ export type Borrower = {
 };
 
 export type BorrowerListItem = Borrower & {
+    archived: boolean;
+    deleted_at: string | null;
     loan_count: number;
     open_loan_count: number;
     outstanding: string;
@@ -49,6 +51,7 @@ export type BorrowerListItem = Borrower & {
         view: boolean;
         update: boolean;
         delete: boolean;
+        restore: boolean;
     };
 };
 

@@ -105,7 +105,7 @@ class NotificationLog extends Model
      */
     public function borrower(): BelongsTo
     {
-        return $this->belongsTo(Borrower::class);
+        return $this->belongsTo(Borrower::class)->withTrashed();
     }
 
     /**

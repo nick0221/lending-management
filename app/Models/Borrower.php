@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property bool $notify_sms
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable([
     'user_id',
@@ -51,7 +53,7 @@ use Illuminate\Support\Carbon;
 class Borrower extends Model
 {
     /** @use HasFactory<BorrowerFactory> */
-    use AuditsActivity, HasFactory, Notifiable;
+    use AuditsActivity, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -141,7 +143,7 @@ class Borrower extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     /**

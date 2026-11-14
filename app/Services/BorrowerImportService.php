@@ -96,6 +96,15 @@ class BorrowerImportService
                 $nationalId = $this->value($row, $headerMap, 'national_id');
                 $nationalIdKey = $nationalId !== null ? strtolower($nationalId) : null;
 
+                if ($nationalId !== null && Borrower::onlyTrashed()->where('national_id', $nationalId)->exists()) {
+                    $errors[] = [
+                        'line' => $line,
+                        'message' => "National ID {$nationalId} belongs to an archived borrower. Restore that borrower instead.",
+                    ];
+
+                    continue;
+                }
+
                 if ($nationalId !== null && Borrower::query()->where('national_id', $nationalId)->exists()) {
                     $errors[] = [
                         'line' => $line,

@@ -3,6 +3,7 @@
 use App\Enums\InterestMethod;
 use App\Enums\LoanStatus;
 use App\Models\Borrower;
+use App\Models\Disbursement;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Models\LoanProduct;
@@ -772,4 +773,18 @@ test('admins can delete a loan', function () {
         ->assertRedirect(route('admin.loans.index'));
 
     expect($loan->fresh())->toBeNull();
+});
+
+test('a loan with money movement cannot be deleted even when its status looks undeployed', function () {
+    $admin = User::factory()->admin()->create();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Approved)->create();
+    Disbursement::factory()->for($loan)->create(['disbursed_at' => today()]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.loans.index'))
+        ->delete(route('admin.loans.destroy', $loan))
+        ->assertRedirect(route('admin.loans.index'));
+
+    expect(Loan::find($loan->id))->not->toBeNull();
 });

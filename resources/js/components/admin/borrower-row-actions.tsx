@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
-import { Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Archive, Eye, MoreHorizontal, Pencil } from 'lucide-react';
 import { useState } from 'react';
-import { ConfirmDeleteDialog } from '@/components/confirm-delete';
+import { ConfirmActionDialog } from '@/components/confirm-delete';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -18,7 +18,10 @@ import {
 import type { BorrowerListItem } from '@/types';
 
 /**
- * Row menu for the borrower register: open the file, edit or delete.
+ * Row menu for the borrower register: open the file, edit or remove.
+ *
+ * Removing archives a borrower who has no loan history; borrowers with loans
+ * stay put so their payments and schedules can never be erased.
  */
 export function BorrowerRowActions({
     borrower,
@@ -74,18 +77,20 @@ export function BorrowerRowActions({
                                     setConfirmOpen(true);
                                 }}
                             >
-                                <Trash2 />
-                                Delete
+                                <Archive />
+                                Archive
                             </DropdownMenuItem>
                         </>
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <ConfirmDeleteDialog
+            <ConfirmActionDialog
                 form={destroyBorrower.form(borrower.id)}
-                title={`Delete ${borrower.name}?`}
-                description="This permanently deletes the borrower and every loan, payment and schedule attached to them. This cannot be undone."
+                title={`Archive ${borrower.name}?`}
+                description="The borrower leaves the working register but their file is kept, so nothing is lost if this was a mistake. Borrowers with loan history cannot be archived."
+                label="Archive borrower"
+                processingLabel="Archiving…"
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
             />

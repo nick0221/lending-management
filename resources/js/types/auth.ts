@@ -30,6 +30,8 @@ export type AdminUser = {
     role_label: string;
     email_verified_at: string | null;
     two_factor_enabled: boolean;
+    archived: boolean;
+    deleted_at: string | null;
     created_at: string | null;
     last_login_at: string | null;
 };
@@ -38,6 +40,7 @@ export type AdminUserListItem = AdminUser & {
     can: {
         update: boolean;
         delete: boolean;
+        restore: boolean;
     };
 };
 

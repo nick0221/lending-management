@@ -79,4 +79,14 @@ class UserFactory extends Factory
             'role' => Role::Admin->value,
         ]);
     }
+
+    /**
+     * Indicate that the account has been archived.
+     */
+    public function trashed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deleted_at' => now(),
+        ]);
+    }
 }

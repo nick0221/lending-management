@@ -95,7 +95,7 @@ class Loan extends Model
      */
     public function borrower(): BelongsTo
     {
-        return $this->belongsTo(Borrower::class);
+        return $this->belongsTo(Borrower::class)->withTrashed();
     }
 
     /**
@@ -153,7 +153,7 @@ class Loan extends Model
      */
     public function collectionOfficer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'collection_officer_id');
+        return $this->belongsTo(User::class, 'collection_officer_id')->withTrashed();
     }
 
     /**

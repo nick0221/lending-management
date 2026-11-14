@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
 import {
+    Archive,
+    ArchiveRestore,
     BadgeCheck,
     Clock,
     Download,
@@ -10,6 +11,7 @@ import {
     UserX,
     Users,
 } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
 import { UserRowActions } from '@/components/admin/user-row-actions';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -36,6 +38,7 @@ import {
     edit as editUser,
     exportMethod as exportUsers,
     index as usersIndex,
+    restore as restoreUser,
 } from '@/routes/admin/users';
 import type { AdminUserListItem, Paginated, Role, RoleOption } from '@/types';
 
@@ -47,6 +50,8 @@ export default function UsersIndex({
     unverified,
     neverSignedIn,
     withoutTwoFactor,
+    archivedOnly,
+    archivedCount,
     roleCounts,
 }: {
     users: Paginated<AdminUserListItem>;
@@ -56,6 +61,8 @@ export default function UsersIndex({
     unverified: boolean;
     neverSignedIn: boolean;
     withoutTwoFactor: boolean;
+    archivedOnly: boolean;
+    archivedCount: number;
     roleCounts: Record<string, number>;
 }) {
     const withFilters = (
@@ -64,6 +71,7 @@ export default function UsersIndex({
             unverified?: boolean;
             never?: boolean;
             no2fa?: boolean;
+            archived?: boolean;
         } = {},
     ) => {
         const role =
@@ -76,13 +84,15 @@ export default function UsersIndex({
             overrides.never !== undefined ? overrides.never : neverSignedIn;
         const noTwoFactorOnly =
             overrides.no2fa !== undefined ? overrides.no2fa : withoutTwoFactor;
+        const archived = overrides.archived ?? archivedOnly;
 
         return usersIndex({
             query: {
-                ...(role ? { role } : {}),
-                ...(unverifiedOnly ? { unverified: '1' } : {}),
-                ...(neverOnly ? { never: '1' } : {}),
-                ...(noTwoFactorOnly ? { no_2fa: '1' } : {}),
+                ...(role && !archived ? { role } : {}),
+                ...(unverifiedOnly && !archived ? { unverified: '1' } : {}),
+                ...(neverOnly && !archived ? { never: '1' } : {}),
+                ...(noTwoFactorOnly && !archived ? { no_2fa: '1' } : {}),
+                ...(archived ? { archived: '1' } : {}),
                 ...(search ? { search } : {}),
                 ...(users.per_page !== 15 ? { per_page: users.per_page } : {}),
             },
@@ -102,10 +112,11 @@ export default function UsersIndex({
 
     const exportHref = exportUsers({
         query: {
-            ...(currentRole ? { role: currentRole } : {}),
-            ...(unverified ? { unverified: '1' } : {}),
-            ...(neverSignedIn ? { never: '1' } : {}),
-            ...(withoutTwoFactor ? { no_2fa: '1' } : {}),
+            ...(currentRole && !archivedOnly ? { role: currentRole } : {}),
+            ...(unverified && !archivedOnly ? { unverified: '1' } : {}),
+            ...(neverSignedIn && !archivedOnly ? { never: '1' } : {}),
+            ...(withoutTwoFactor && !archivedOnly ? { no_2fa: '1' } : {}),
+            ...(archivedOnly ? { archived: '1' } : {}),
             ...(search ? { search } : {}),
         },
     });
@@ -151,73 +162,117 @@ export default function UsersIndex({
                         label="Search users"
                     />
 
-                    <FilterTabs
-                        tabs={[
-                            {
-                                value: 'all',
-                                label: 'All',
-                                count: roleCounts.all,
-                                href: withFilters(),
-                            },
-                            ...roles.map((role) => ({
-                                value: role.value,
-                                label: role.label,
-                                count: roleCounts[role.value] ?? 0,
-                                href: withFilters({ role: role.value }),
-                            })),
-                        ]}
-                        value={currentRole ?? 'all'}
-                        label="Filter users by role"
-                        className="min-w-0 flex-1 basis-full lg:basis-auto"
-                    />
+                    {archivedOnly ? (
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                Archived accounts cannot sign in, and their name
+                                stays on the records they created.
+                            </p>
 
-                    <Toggle
-                        asChild
-                        variant="outline"
-                        pressed={unverified}
-                        className="h-9 shrink-0 gap-2 px-3"
-                    >
-                        <Link
-                            href={withFilters({ unverified: !unverified })}
-                            preserveScroll
-                            prefetch
-                        >
-                            <Clock />
-                            Unverified
-                        </Link>
-                    </Toggle>
+                            <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto h-9"
+                            >
+                                <Link href={withFilters({ archived: false })}>
+                                    <RotateCcw /> Back to register
+                                </Link>
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <FilterTabs
+                                tabs={[
+                                    {
+                                        value: 'all',
+                                        label: 'All',
+                                        count: roleCounts.all,
+                                        href: withFilters(),
+                                    },
+                                    ...roles.map((role) => ({
+                                        value: role.value,
+                                        label: role.label,
+                                        count: roleCounts[role.value] ?? 0,
+                                        href: withFilters({ role: role.value }),
+                                    })),
+                                ]}
+                                value={currentRole ?? 'all'}
+                                label="Filter users by role"
+                                className="min-w-0 flex-1 basis-full lg:basis-auto"
+                            />
+                            <Toggle
+                                asChild
+                                variant="outline"
+                                pressed={unverified}
+                                className="h-9 shrink-0 gap-2 px-3"
+                            >
+                                <Link
+                                    href={withFilters({
+                                        unverified: !unverified,
+                                    })}
+                                    preserveScroll
+                                    prefetch
+                                >
+                                    <Clock />
+                                    Unverified
+                                </Link>
+                            </Toggle>
 
-                    <Toggle
-                        asChild
-                        variant="outline"
-                        pressed={neverSignedIn}
-                        className="h-9 shrink-0 gap-2 px-3"
-                    >
-                        <Link
-                            href={withFilters({ never: !neverSignedIn })}
-                            preserveScroll
-                            prefetch
-                        >
-                            <UserX />
-                            Never signed in
-                        </Link>
-                    </Toggle>
+                            <Toggle
+                                asChild
+                                variant="outline"
+                                pressed={neverSignedIn}
+                                className="h-9 shrink-0 gap-2 px-3"
+                            >
+                                <Link
+                                    href={withFilters({
+                                        never: !neverSignedIn,
+                                    })}
+                                    preserveScroll
+                                    prefetch
+                                >
+                                    <UserX />
+                                    Never signed in
+                                </Link>
+                            </Toggle>
 
-                    <Toggle
-                        asChild
-                        variant="outline"
-                        pressed={withoutTwoFactor}
-                        className="h-9 shrink-0 gap-2 px-3"
-                    >
-                        <Link
-                            href={withFilters({ no2fa: !withoutTwoFactor })}
-                            preserveScroll
-                            prefetch
-                        >
-                            <ShieldOff />
-                            No 2FA
-                        </Link>
-                    </Toggle>
+                            <Toggle
+                                asChild
+                                variant="outline"
+                                pressed={withoutTwoFactor}
+                                className="h-9 shrink-0 gap-2 px-3"
+                            >
+                                <Link
+                                    href={withFilters({
+                                        no2fa: !withoutTwoFactor,
+                                    })}
+                                    preserveScroll
+                                    prefetch
+                                >
+                                    <ShieldOff />
+                                    No 2FA
+                                </Link>
+                            </Toggle>
+
+                            {archivedCount > 0 && (
+                                <Toggle
+                                    asChild
+                                    variant="outline"
+                                    className="h-9 shrink-0 gap-2 px-3"
+                                >
+                                    <Link
+                                        href={withFilters({ archived: true })}
+                                        preserveScroll
+                                        prefetch
+                                    >
+                                        <Archive />
+                                        Archived ({archivedCount})
+                                    </Link>
+                                </Toggle>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
@@ -230,16 +285,30 @@ export default function UsersIndex({
                                     : 'No users yet'
                             }
                             description={
-                                unverified
-                                    ? 'No unverified accounts match the current search and role filter. Turn off the unverified filter to see everyone.'
-                                    : withoutTwoFactor
-                                      ? 'Every account that matches the current search and role filter already uses two-factor authentication.'
-                                      : isFiltered
-                                        ? 'No accounts match the current search and role filter.'
-                                        : 'Create the first account to give someone access to the admin panel.'
+                                archivedOnly
+                                    ? search
+                                        ? `No archived accounts match "${search}".`
+                                        : 'Nothing is archived. Accounts you remove are kept here so access can be restored later.'
+                                    : unverified
+                                      ? 'No unverified accounts match the current search and role filter. Turn off the unverified filter to see everyone.'
+                                      : withoutTwoFactor
+                                        ? 'Every account that matches the current search and role filter already uses two-factor authentication.'
+                                        : isFiltered
+                                          ? 'No accounts match the current search and role filter.'
+                                          : 'Create the first account to give someone access to the admin panel.'
                             }
                             action={
-                                isFiltered ? (
+                                archivedOnly ? (
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link
+                                            href={withFilters({
+                                                archived: false,
+                                            })}
+                                        >
+                                            <RotateCcw /> Back to register
+                                        </Link>
+                                    </Button>
+                                ) : isFiltered ? (
                                     <Button asChild size="sm" variant="outline">
                                         <Link href={clearFilters}>
                                             <RotateCcw /> Clear filters
@@ -285,7 +354,8 @@ export default function UsersIndex({
                                 {users.data.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">
-                                            {user.can.update ? (
+                                            {user.can.update &&
+                                            !user.archived ? (
                                                 <Link
                                                     href={editUser(user.id)}
                                                     className="hover:underline"
@@ -296,6 +366,15 @@ export default function UsersIndex({
                                             ) : (
                                                 user.name
                                             )}
+                                            {user.archived &&
+                                                user.deleted_at && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Archived{' '}
+                                                        {formatDate(
+                                                            user.deleted_at,
+                                                        )}
+                                                    </div>
+                                                )}
                                             {user.email && (
                                                 <div className="hidden text-xs text-muted-foreground sm:block lg:hidden">
                                                     {user.email}
@@ -370,7 +449,32 @@ export default function UsersIndex({
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end">
-                                                <UserRowActions user={user} />
+                                                {archivedOnly ? (
+                                                    user.can.restore && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                router.patch(
+                                                                    restoreUser(
+                                                                        user.id,
+                                                                    ).url,
+                                                                    {},
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            <ArchiveRestore />{' '}
+                                                            Restore
+                                                        </Button>
+                                                    )
+                                                ) : (
+                                                    <UserRowActions
+                                                        user={user}
+                                                    />
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

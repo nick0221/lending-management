@@ -66,4 +66,14 @@ class BorrowerFactory extends Factory
             'user_id' => $user->id,
         ]);
     }
+
+    /**
+     * Indicate that the borrower has been archived.
+     */
+    public function trashed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'deleted_at' => now(),
+        ]);
+    }
 }

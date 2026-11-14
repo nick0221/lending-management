@@ -59,6 +59,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->middleware('throttle:reminders')
             ->name('users.password-reset');
         Route::get('users/export', [UserController::class, 'export'])->name('users.export');
+        Route::patch('users/{user}/restore', [UserController::class, 'restore'])
+            ->withTrashed()
+            ->name('users.restore');
         Route::resource('users', UserController::class)->except('show');
         Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
         Route::get('borrowers/import', [BorrowerImportController::class, 'create'])->name('borrowers.imports.create');
@@ -70,6 +73,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('borrowers/export', [BorrowerController::class, 'export'])
             ->middleware('throttle:reports')
             ->name('borrowers.export');
+        Route::patch('borrowers/{borrower}/restore', [BorrowerController::class, 'restore'])
+            ->withTrashed()
+            ->name('borrowers.restore');
         Route::resource('borrowers', BorrowerController::class);
         Route::patch('loan-products/{loanProduct}/availability', [LoanProductController::class, 'toggleAvailability'])
             ->name('loan-products.availability');

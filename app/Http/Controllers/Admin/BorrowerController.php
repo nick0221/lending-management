@@ -39,8 +39,11 @@ class BorrowerController extends Controller
         $status = $this->statusFilter($request);
         $search = $this->searchTerm($request);
         $arrearsOnly = $request->boolean('arrears');
+        $archivedOnly = $request->boolean('archived');
 
-        $counts = $this->applyFilters(Borrower::query(), null, $search, $arrearsOnly)
+        $base = fn (): Builder => $archivedOnly ? Borrower::onlyTrashed() : Borrower::query();
+
+        $counts = $this->applyFilters($base(), null, $search, $arrearsOnly)
             ->selectRaw('kyc_status, count(*) as aggregate')
             ->groupBy('kyc_status')
             ->toBase()
@@ -50,7 +53,7 @@ class BorrowerController extends Controller
             ]);
 
         $borrowers = $this->applyFilters(
-            Borrower::query()->with(['user', 'loans.installments.allocations']),
+            $base()->with(['user', 'loans.installments.allocations']),
             $status,
             $search,
             $arrearsOnly,
@@ -97,7 +100,8 @@ class BorrowerController extends Controller
                     'can' => [
                         'view' => $actor->can('view', $borrower),
                         'update' => $actor->can('update', $borrower),
-                        'delete' => $actor->can('delete', $borrower),
+                        'delete' => $actor->canAccessAdminPanel() && ! $borrower->trashed() && $borrower->loans->isEmpty(),
+                        'restore' => $actor->can('restore', $borrower),
                     ],
                 ];
             });
@@ -107,6 +111,8 @@ class BorrowerController extends Controller
             'kycStatuses' => $this->kycStatusOptions(),
             'currentKycStatus' => $status?->value,
             'arrearsOnly' => $arrearsOnly,
+            'archivedOnly' => $archivedOnly,
+            'archivedCount' => Borrower::onlyTrashed()->count(),
             'search' => $search,
             'kycCounts' => [
                 'all' => (int) $counts->sum(),
@@ -132,6 +138,7 @@ class BorrowerController extends Controller
                 $this->statusFilter($request),
                 $this->searchTerm($request),
                 $request->boolean('arrears'),
+                $request->boolean('archived'),
             ),
         );
     }
@@ -189,7 +196,7 @@ class BorrowerController extends Controller
             'activityCount' => $activityCount,
             'can' => [
                 'update' => $actor->can('update', $borrower),
-                'delete' => $actor->can('delete', $borrower),
+                'delete' => $actor->can('delete', $borrower) && $borrower->loans()->doesntExist(),
                 'viewActivity' => $actor->can('viewAny', ActivityLog::class),
             ],
         ]);
@@ -288,11 +295,37 @@ class BorrowerController extends Controller
     {
         Gate::authorize('delete', $borrower);
 
+        if ($borrower->loans()->exists()) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('This borrower has loan history and cannot be removed. Close or write off their loans instead.'),
+            ]);
+
+            return back();
+        }
+
         $borrower->delete();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Borrower deleted.')]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Borrower archived. Restore them from the Archived view if this was a mistake.'),
+        ]);
 
         return to_route('admin.borrowers.index');
+    }
+
+    /**
+     * Bring an archived borrower back into the register.
+     */
+    public function restore(Borrower $borrower): RedirectResponse
+    {
+        Gate::authorize('restore', $borrower);
+
+        $borrower->restore();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Borrower restored.')]);
+
+        return back();
     }
 
     /**
@@ -342,7 +375,7 @@ class BorrowerController extends Controller
      *
      * @return \Generator<int, array<int, string|int|null>>
      */
-    private function csvRows(?KycStatus $status, string $search, bool $arrearsOnly = false): \Generator
+    private function csvRows(?KycStatus $status, string $search, bool $arrearsOnly = false, bool $archivedOnly = false): \Generator
     {
         yield [
             'Name',
@@ -356,7 +389,8 @@ class BorrowerController extends Controller
         ];
 
         $borrowers = $this->applyFilters(
-            Borrower::query()->with(['user', 'loans.installments.allocations']),
+            ($archivedOnly ? Borrower::onlyTrashed() : Borrower::query())
+                ->with(['user', 'loans.installments.allocations']),
             $status,
             $search,
             $arrearsOnly,
@@ -434,6 +468,8 @@ class BorrowerController extends Controller
             'notify_receipts' => $borrower->notify_receipts,
             'notify_statements' => $borrower->notify_statements,
             'notify_sms' => $borrower->notify_sms,
+            'archived' => $borrower->trashed(),
+            'deleted_at' => $borrower->deleted_at?->toDateString(),
             'created_at' => $borrower->created_at?->toIso8601String(),
         ];
     }

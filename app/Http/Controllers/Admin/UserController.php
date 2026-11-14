@@ -35,6 +35,9 @@ class UserController extends Controller
         $unverified = $request->boolean('unverified');
         $neverSignedIn = $request->boolean('never');
         $withoutTwoFactor = $request->boolean('no_2fa');
+        $archivedOnly = $request->boolean('archived');
+
+        $base = fn () => $archivedOnly ? User::onlyTrashed() : User::query();
 
         $applyFilters = fn ($query) => $query
             ->when(
@@ -64,7 +67,7 @@ class UserController extends Controller
                 ),
             );
 
-        $counts = $applyFilters(User::query())
+        $counts = $applyFilters($base())
             ->selectRaw('role, count(*) as aggregate')
             ->groupBy('role')
             ->toBase()
@@ -81,7 +84,7 @@ class UserController extends Controller
             ->pluck('last_login_at', 'user_id')
             ->map(fn (string $value): string => CarbonImmutable::parse($value)->toIso8601String());
 
-        $users = $applyFilters(User::query())
+        $users = $applyFilters($base())
             ->when($role, fn ($query) => $query->where('role', $role))
             ->orderBy('name')
             ->paginate($this->perPage($request))
@@ -92,6 +95,7 @@ class UserController extends Controller
                 'can' => [
                     'update' => $actor->can('update', $user),
                     'delete' => $actor->can('delete', $user),
+                    'restore' => $actor->can('restore', $user),
                 ],
             ]);
 
@@ -103,6 +107,8 @@ class UserController extends Controller
             'unverified' => $unverified,
             'neverSignedIn' => $neverSignedIn,
             'withoutTwoFactor' => $withoutTwoFactor,
+            'archivedOnly' => $archivedOnly,
+            'archivedCount' => User::onlyTrashed()->count(),
             'roleCounts' => [
                 'all' => (int) $counts->sum(),
                 ...collect(Role::cases())
@@ -126,10 +132,11 @@ class UserController extends Controller
         $unverified = $request->boolean('unverified');
         $neverSignedIn = $request->boolean('never');
         $withoutTwoFactor = $request->boolean('no_2fa');
+        $archivedOnly = $request->boolean('archived');
 
         return $this->csvExporter->stream(
             'users-'.now()->format('Y-m-d').'.csv',
-            $this->csvRows($role, $search, $unverified, $neverSignedIn, $withoutTwoFactor),
+            $this->csvRows($role, $search, $unverified, $neverSignedIn, $withoutTwoFactor, $archivedOnly),
         );
     }
 
@@ -276,11 +283,37 @@ class UserController extends Controller
     {
         Gate::authorize('delete', $user);
 
+        if ($user->borrower()->exists()) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('This account is linked to a borrower portal profile. Unlink it before archiving the account.'),
+            ]);
+
+            return back();
+        }
+
         $user->delete();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('User deleted.')]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Account archived. They can no longer sign in, and you can restore them from the Archived view.'),
+        ]);
 
         return to_route('admin.users.index');
+    }
+
+    /**
+     * Bring an archived account back into the register.
+     */
+    public function restore(User $user): RedirectResponse
+    {
+        Gate::authorize('restore', $user);
+
+        $user->restore();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Account restored.')]);
+
+        return back();
     }
 
     /**
@@ -288,7 +321,7 @@ class UserController extends Controller
      *
      * @return \Generator<int, array<int, string|null>>
      */
-    private function csvRows(?Role $role, string $search, bool $unverified = false, bool $neverSignedIn = false, bool $withoutTwoFactor = false): \Generator
+    private function csvRows(?Role $role, string $search, bool $unverified = false, bool $neverSignedIn = false, bool $withoutTwoFactor = false, bool $archivedOnly = false): \Generator
     {
         yield [
             'Name',
@@ -307,7 +340,7 @@ class UserController extends Controller
             ->toBase()
             ->pluck('last_login_at', 'user_id');
 
-        $users = User::query()
+        $users = ($archivedOnly ? User::onlyTrashed() : User::query())
             ->when($role, fn ($query) => $query->where('role', $role))
             ->when(
                 $unverified,
@@ -368,6 +401,8 @@ class UserController extends Controller
             'role_label' => $user->role->label(),
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
+            'archived' => $user->trashed(),
+            'deleted_at' => $user->deleted_at?->toDateString(),
             'created_at' => $user->created_at?->toIso8601String(),
             'last_login_at' => null,
         ];

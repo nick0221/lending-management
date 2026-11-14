@@ -37,7 +37,22 @@ class StoreBorrowerRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'national_id' => ['nullable', 'string', 'max:64', Rule::unique(Borrower::class)],
+            'national_id' => [
+                'nullable',
+                'string',
+                'max:64',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (Borrower::onlyTrashed()->where('national_id', $value)->exists()) {
+                        $fail(__('This national ID belongs to an archived borrower. Restore that borrower instead of creating a duplicate.'));
+
+                        return;
+                    }
+
+                    if (Borrower::query()->where('national_id', $value)->exists()) {
+                        $fail(__('This national ID is already registered to another borrower.'));
+                    }
+                },
+            ],
             'phone' => ['required', 'string', 'max:32'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'date_of_birth' => ['nullable', 'date', 'before:today'],

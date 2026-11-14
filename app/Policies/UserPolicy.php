@@ -55,11 +55,28 @@ class UserPolicy
      * Determine whether the user can delete the given user.
      *
      * Nobody may delete their own account from the admin panel. Admins may
-     * only delete regular user accounts.
+     * only delete regular user accounts. Deleting archives the account so
+     * their name stays on the payments and payouts they recorded.
      */
     public function delete(User $user, User $model): bool
     {
         if (! $user->canAccessAdminPanel() || $user->is($model)) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $model->hasRole(Role::User);
+    }
+
+    /**
+     * Determine whether the user can restore an archived account.
+     */
+    public function restore(User $user, User $model): bool
+    {
+        if (! $user->canAccessAdminPanel()) {
             return false;
         }
 
