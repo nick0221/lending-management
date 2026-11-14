@@ -132,6 +132,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('notifications/export', [NotificationController::class, 'export'])
             ->middleware('throttle:reports')
             ->name('notifications.export');
+        Route::post('notifications/resend', [NotificationController::class, 'resendBulk'])
+            ->middleware('throttle:reminders')
+            ->name('notifications.resend');
 
         Route::get('collections', [CollectionController::class, 'index'])->name('collections.index');
         Route::get('collections/export', [CollectionController::class, 'export'])

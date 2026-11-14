@@ -222,6 +222,71 @@ test('resending an overdue notice without overdue installments is skipped', func
         ->and($log->fresh()->error)->toContain('overdue');
 });
 
+test('staff can resend several failed or skipped notifications at once', function () {
+    Notification::fake();
+
+    $admin = User::factory()->admin()->create();
+    $loan = notificationResendLoan([
+        ['principal' => 100, 'interest' => 10, 'fee' => 5, 'due_date' => '2026-07-01'],
+    ]);
+
+    $failed = NotificationLog::create([
+        'key' => "loan:{$loan->id}:statement:bulk-failed",
+        'type' => NotificationLog::TYPE_STATEMENT,
+        'channel' => 'mail',
+        'status' => NotificationLog::STATUS_FAILED,
+        'error' => 'SMTP timeout',
+        'borrower_id' => $loan->borrower_id,
+        'loan_id' => $loan->id,
+    ]);
+
+    $skipped = NotificationLog::create([
+        'key' => "loan:{$loan->id}:statement:bulk-skipped",
+        'type' => NotificationLog::TYPE_STATEMENT,
+        'channel' => 'mail',
+        'status' => NotificationLog::STATUS_SKIPPED,
+        'error' => 'Channel disabled.',
+        'borrower_id' => $loan->borrower_id,
+        'loan_id' => $loan->id,
+    ]);
+
+    $alreadySent = NotificationLog::create([
+        'key' => "loan:{$loan->id}:statement:bulk-sent",
+        'type' => NotificationLog::TYPE_STATEMENT,
+        'channel' => 'mail',
+        'status' => NotificationLog::STATUS_SENT,
+        'borrower_id' => $loan->borrower_id,
+        'loan_id' => $loan->id,
+        'sent_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.notifications.index'))
+        ->post(route('admin.notifications.resend'), [
+            'logs' => [$failed->id, $skipped->id, $alreadySent->id],
+        ])
+        ->assertRedirect(route('admin.notifications.index'));
+
+    expect($failed->fresh()->status)->toBe(NotificationLog::STATUS_QUEUED)
+        ->and($failed->fresh()->error)->toBeNull()
+        ->and($skipped->fresh()->status)->toBe(NotificationLog::STATUS_QUEUED)
+        ->and($alreadySent->fresh()->status)->toBe(NotificationLog::STATUS_SENT);
+
+    Notification::assertSentTo($loan->borrower, LoanStatement::class);
+});
+
+test('regular users cannot resend notifications in bulk', function () {
+    Notification::fake();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('admin.notifications.resend'), ['logs' => [1]])
+        ->assertForbidden();
+
+    Notification::assertNothingSent();
+});
+
 test('regular users cannot resend notifications', function () {
     Notification::fake();
 

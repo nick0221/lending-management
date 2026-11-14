@@ -10,6 +10,7 @@ import {
     Send,
     X,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { EmptyState } from '@/components/empty-state';
@@ -17,8 +18,18 @@ import { FilterTabs } from '@/components/filter-tabs';
 import { PageHeader } from '@/components/page-header';
 import { SearchInput } from '@/components/search-input';
 import StatCard from '@/components/stat-card';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -43,6 +54,7 @@ import { resend as resendNotification } from '@/routes/admin/loans/notifications
 import {
     exportMethod as exportNotifications,
     index as notificationsIndex,
+    resend as resendNotificationsBulk,
 } from '@/routes/admin/notifications';
 import type {
     NotificationOption,
@@ -63,6 +75,15 @@ const statusVariant = (status: NotificationStatus) => {
             return 'outline' as const;
     }
 };
+
+/**
+ * Only failed or skipped deliveries can be queued again in bulk.
+ */
+function isBulkResendable(log: NotificationRegisterRow): boolean {
+    return (
+        log.can_resend && (log.status === 'failed' || log.status === 'skipped')
+    );
+}
 
 /**
  * Every email and SMS delivery recorded against the book, so staff can see
@@ -97,6 +118,10 @@ export default function NotificationsIndex({
     from: string | null;
     to: string | null;
 }) {
+    const [selected, setSelected] = useState<number[]>([]);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [sending, setSending] = useState(false);
+
     const withFilters = (overrides: {
         status?: NotificationStatus | null;
         channel?: string | null;
@@ -176,6 +201,42 @@ export default function NotificationsIndex({
             }).url,
             {},
             { preserveScroll: true },
+        );
+    };
+
+    const selectableIds = logs.data
+        .filter(isBulkResendable)
+        .map((log) => log.id);
+    const allSelected =
+        selectableIds.length > 0 &&
+        selectableIds.every((id) => selected.includes(id));
+    const someSelected = selected.length > 0 && !allSelected;
+
+    useEffect(() => {
+        setSelected((current) =>
+            current.filter((id) =>
+                logs.data.some((log) => log.id === id && isBulkResendable(log)),
+            ),
+        );
+    }, [logs]);
+
+    const submitBulkResend = () => {
+        if (selected.length === 0) {
+            return;
+        }
+
+        router.post(
+            resendNotificationsBulk().url,
+            { logs: selected },
+            {
+                preserveScroll: true,
+                onStart: () => setSending(true),
+                onFinish: () => setSending(false),
+                onSuccess: () => {
+                    setConfirmOpen(false);
+                    setSelected([]);
+                },
+            },
         );
     };
 
@@ -403,6 +464,32 @@ export default function NotificationsIndex({
                     className="min-w-0"
                 />
 
+                {selected.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                        <p className="text-sm font-medium">
+                            {selected.length} notification
+                            {selected.length === 1 ? '' : 's'} selected
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelected([])}
+                            >
+                                Clear
+                            </Button>
+
+                            <Button
+                                size="sm"
+                                onClick={() => setConfirmOpen(true)}
+                            >
+                                <Send /> Resend selected
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     {logs.data.length === 0 ? (
                         <EmptyState
@@ -431,6 +518,28 @@ export default function NotificationsIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-10">
+                                        <Checkbox
+                                            checked={
+                                                allSelected
+                                                    ? true
+                                                    : someSelected
+                                                      ? 'indeterminate'
+                                                      : false
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setSelected(
+                                                    checked === true
+                                                        ? selectableIds
+                                                        : [],
+                                                )
+                                            }
+                                            disabled={
+                                                selectableIds.length === 0
+                                            }
+                                            aria-label="Select resendable notifications on this page"
+                                        />
+                                    </TableHead>
                                     <TableHead>Recorded</TableHead>
                                     <TableHead>Borrower</TableHead>
                                     <TableHead className="hidden md:table-cell">
@@ -458,6 +567,36 @@ export default function NotificationsIndex({
                                                 'bg-destructive/5',
                                         )}
                                     >
+                                        <TableCell>
+                                            {isBulkResendable(log) && (
+                                                <Checkbox
+                                                    checked={selected.includes(
+                                                        log.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelected(
+                                                            (current) =>
+                                                                checked === true
+                                                                    ? [
+                                                                          ...current,
+                                                                          log.id,
+                                                                      ]
+                                                                    : current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              log.id,
+                                                                      ),
+                                                        )
+                                                    }
+                                                    aria-label={`Select notification ${log.id}`}
+                                                />
+                                            )}
+                                        </TableCell>
+
                                         <TableCell className="whitespace-nowrap text-muted-foreground">
                                             {formatDateTime(log.created_at)}
 
@@ -593,6 +732,38 @@ export default function NotificationsIndex({
                 </div>
 
                 <DataPagination paginator={logs} />
+
+                <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Resend selected notifications?
+                            </AlertDialogTitle>
+
+                            <AlertDialogDescription>
+                                {selected.length} failed or skipped notification
+                                {selected.length === 1 ? '' : 's'} will be
+                                queued again. Deliveries whose borrower has
+                                disabled the channel are skipped, and every row
+                                keeps its own delivery history.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={sending}>
+                                Cancel
+                            </AlertDialogCancel>
+
+                            <Button
+                                onClick={submitBulkResend}
+                                disabled={sending}
+                            >
+                                <Send />
+                                {sending ? 'Resending…' : 'Resend selected'}
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </>
     );

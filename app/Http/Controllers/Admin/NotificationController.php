@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\BulkResendNotificationsRequest;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\NotificationLog;
 use App\Services\CsvExporter;
+use App\Services\NotificationService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -152,6 +155,44 @@ class NotificationController extends Controller
             'notifications-'.now()->format('Y-m-d').'.csv',
             $this->csvRows($this->validatedFilters($request)),
         );
+    }
+
+    /**
+     * Queue the selected failed or skipped deliveries again.
+     */
+    public function resendBulk(
+        BulkResendNotificationsRequest $request,
+        NotificationService $notificationService,
+    ): RedirectResponse {
+        $logs = NotificationLog::query()
+            ->with(['borrower', 'loan'])
+            ->whereIn('id', $request->validated('logs'))
+            ->whereIn('status', [NotificationLog::STATUS_FAILED, NotificationLog::STATUS_SKIPPED])
+            ->get();
+
+        $resent = 0;
+        $skipped = 0;
+
+        foreach ($logs as $log) {
+            $notificationService->resend($log) ? $resent++ : $skipped++;
+        }
+
+        $message = trans_choice(
+            '{0} No notifications were queued again.|{1} :count notification queued again.|[2,*] :count notifications queued again.',
+            $resent,
+            ['count' => $resent],
+        );
+
+        if ($skipped > 0) {
+            $message .= ' '.__(':count could not be resent.', ['count' => $skipped]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => $resent > 0 ? 'success' : 'warning',
+            'message' => $message,
+        ]);
+
+        return back();
     }
 
     /**
