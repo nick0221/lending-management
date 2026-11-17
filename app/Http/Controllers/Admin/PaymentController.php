@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ApprovalStatus;
+use App\Enums\ApprovalType;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Models\Borrower;
@@ -47,7 +49,7 @@ class PaymentController extends Controller
         $summaryQuery = $this->baseQuery($filters);
 
         $paymentsQuery = $this->baseQuery($filters)
-            ->with(['loan.borrower:id,name,phone', 'recordedBy:id,name']);
+            ->with($this->relations());
         $this->applyStatus($paymentsQuery, $filters['status']);
         $this->applySort($paymentsQuery, $filters);
 
@@ -94,7 +96,7 @@ class PaymentController extends Controller
         $filters = $this->filters($request);
 
         $query = $this->baseQuery($filters)
-            ->with(['loan.borrower:id,name,phone', 'recordedBy:id,name']);
+            ->with($this->relations());
         $this->applyStatus($query, $filters['status']);
         $this->applySort($query, $filters);
 
@@ -306,7 +308,25 @@ class PaymentController extends Controller
             'reversed' => $payment->reversed_at !== null,
             'reversed_at' => $payment->reversed_at?->toDateString(),
             'reversal_reason' => $payment->reversal_reason,
-            'can_reverse' => $actor->can('reversePayment', [$payment->loan, $payment]),
+            'reversal_pending' => $payment->approvalRequests->isNotEmpty(),
+            'can_reverse' => $payment->approvalRequests->isEmpty()
+                && $actor->can('reversePayment', [$payment->loan, $payment]),
+        ];
+    }
+
+    /**
+     * The relations shared by the register and its export.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function relations(): array
+    {
+        return [
+            'loan.borrower:id,name,phone',
+            'recordedBy:id,name',
+            'approvalRequests' => fn ($query) => $query
+                ->where('type', ApprovalType::PaymentReversal)
+                ->where('status', ApprovalStatus::Pending),
         ];
     }
 

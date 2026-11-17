@@ -3,6 +3,7 @@ import {
     ArrowRight,
     Banknote,
     Bell,
+    ClipboardCheck,
     FileBarChart,
     HandCoins,
     Landmark,
@@ -36,6 +37,7 @@ import {
     search as searchRoute,
 } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
+import { index as approvalsIndex } from '@/routes/admin/approvals';
 import { index as borrowersIndex } from '@/routes/admin/borrowers';
 import { index as collectionsIndex } from '@/routes/admin/collections';
 import { index as disbursementsIndex } from '@/routes/admin/disbursements';
@@ -122,6 +124,12 @@ export function GlobalSearch() {
             label: 'Collections',
             url: collectionsIndex().url,
             icon: PhoneCall,
+        },
+        {
+            value: 'go-approvals',
+            label: 'Approvals',
+            url: approvalsIndex().url,
+            icon: ClipboardCheck,
         },
         {
             value: 'go-reports',

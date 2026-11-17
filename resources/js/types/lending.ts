@@ -293,6 +293,36 @@ export type LoanAbilities = {
     delete: boolean;
 };
 
+export type ApprovalType = 'loan_write_off' | 'payment_reversal';
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export type ApprovalRow = {
+    id: number;
+    type: ApprovalType;
+    type_label: string;
+    status: ApprovalStatus;
+    status_label: string;
+    loan_id: number;
+    borrower_id: number;
+    borrower_name: string;
+    amount: string;
+    reason: string;
+    requested_by: string | null;
+    requested_at: string;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    review_note: string | null;
+    is_requester: boolean;
+    can_decide: boolean;
+};
+
+export type PendingWriteOffRequest = {
+    approval_id: number;
+    requested_by: string | null;
+    requested_at: string;
+};
+
 export type BorrowerLoanTotals = {
     payable: string;
     paid: string;
@@ -355,6 +385,7 @@ export type Payment = {
     reversed_at: string | null;
     reversal_reason: string | null;
     reversed_by: string | null;
+    reversal_pending: boolean;
     can_reverse: boolean;
     allocations: PaymentAllocation[];
 };
@@ -375,6 +406,7 @@ export type PaymentRegisterRow = {
     reversed: boolean;
     reversed_at: string | null;
     reversal_reason: string | null;
+    reversal_pending: boolean;
     can_reverse: boolean;
 };
 

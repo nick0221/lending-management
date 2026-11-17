@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ApprovalStatus;
+use App\Enums\ApprovalType;
 use App\Enums\CollectionChannel;
 use App\Enums\CollectionOutcome;
 use App\Enums\DisbursementMethod;
@@ -14,10 +16,12 @@ use App\Http\Requests\Admin\DisburseLoanRequest;
 use App\Http\Requests\Admin\LoanCalculatorRequest;
 use App\Http\Requests\Admin\PreviewLoanRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
+use App\Http\Requests\Admin\RequestWriteOffRequest;
 use App\Http\Requests\Admin\RestructureLoanRequest;
 use App\Http\Requests\Admin\ReversePaymentRequest;
 use App\Http\Requests\Admin\SendLoanRemindersRequest;
 use App\Http\Requests\Admin\StoreLoanRequest;
+use App\Models\ApprovalRequest;
 use App\Models\Borrower;
 use App\Models\CollectionContact;
 use App\Models\Disbursement;
@@ -30,6 +34,7 @@ use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Models\User;
 use App\Notifications\LoanStatement;
+use App\Services\ApprovalService;
 use App\Services\CsvExporter;
 use App\Services\LoanService;
 use App\Services\LoanStatementService;
@@ -311,11 +316,26 @@ class LoanController extends Controller
             ->when($paymentTo !== null, fn (Collection $payments): Collection => $payments
                 ->filter(fn (Payment $payment): bool => $payment->payment_date->toDateString() <= $paymentTo));
 
+        $pendingApprovals = ApprovalRequest::query()
+            ->with('requestedBy:id,name')
+            ->where('loan_id', $loan->id)
+            ->where('status', ApprovalStatus::Pending)
+            ->get();
+
+        $writeOffRequest = $pendingApprovals->firstWhere('type', ApprovalType::LoanWriteOff);
+
+        $pendingReversalPaymentIds = $pendingApprovals
+            ->where('type', ApprovalType::PaymentReversal)
+            ->pluck('payment_id')
+            ->filter()
+            ->map(fn (int|string $id): int => (int) $id)
+            ->all();
+
         return Inertia::render('admin/loans/show', [
             'loan' => $this->toPayload($loan),
             'installments' => $this->installmentPayload($loan),
             'disbursements' => $this->disbursementPayload($loan),
-            'payments' => $this->paymentPayload($payments, $actor, $loan),
+            'payments' => $this->paymentPayload($payments, $actor, $loan, $pendingReversalPaymentIds),
             'paymentCount' => $loan->payments->count(),
             'paymentFilters' => [
                 'method' => $paymentMethod?->value,
@@ -343,6 +363,11 @@ class LoanController extends Controller
             'collectionChannels' => $this->enumOptions(CollectionChannel::cases()),
             'collectionOutcomes' => $this->enumOptions(CollectionOutcome::cases()),
             'currentTab' => $currentTab,
+            'writeOffRequest' => $writeOffRequest === null ? null : [
+                'approval_id' => $writeOffRequest->id,
+                'requested_by' => $writeOffRequest->requestedBy?->name,
+                'requested_at' => $writeOffRequest->created_at?->toIso8601String(),
+            ],
             'can' => [
                 'approve' => $actor->can('approve', $loan),
                 'reject' => $actor->can('reject', $loan),
@@ -353,7 +378,7 @@ class LoanController extends Controller
                 'remind' => $actor->can('sendReminders', Loan::class)
                     && $loan->installments->contains(fn (LoanInstallment $installment): bool => $installment->isOverdue()),
                 'default' => $actor->can('markDefaulted', $loan),
-                'write_off' => $actor->can('writeOff', $loan),
+                'write_off' => $actor->can('writeOff', $loan) && $writeOffRequest === null,
                 'restructure' => $actor->can('restructure', $loan),
                 'statement' => $actor->can('view', $loan) && filled($loan->borrower->email),
                 'download_statement' => $actor->can('view', $loan),
@@ -543,24 +568,24 @@ class LoanController extends Controller
     }
 
     /**
-     * Reverse a recorded payment and restore the outstanding schedule.
+     * Ask a second administrator to reverse the payment.
      */
-    public function reversePayment(
+    public function requestPaymentReversal(
         ReversePaymentRequest $request,
         Loan $loan,
         Payment $payment,
-        RepaymentService $repaymentService,
+        ApprovalService $approvalService,
     ): RedirectResponse {
         abort_unless((int) $payment->loan_id === (int) $loan->id, 404);
 
-        $repaymentService->reversePayment(
+        $approvalService->requestPaymentReversal(
             $loan,
             $payment,
             $request->user(),
             $request->validated('reason'),
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment reversed.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Reversal sent for approval.')]);
 
         if ($request->validated('redirect') === 'register') {
             return to_route('admin.payments.index');
@@ -584,15 +609,17 @@ class LoanController extends Controller
     }
 
     /**
-     * Write off the given loan.
+     * Ask a second administrator to write off the loan.
      */
-    public function writeOff(Request $request, Loan $loan, LoanService $loanService): RedirectResponse
+    public function requestWriteOff(RequestWriteOffRequest $request, Loan $loan, ApprovalService $approvalService): RedirectResponse
     {
-        Gate::authorize('writeOff', $loan);
+        $approvalService->requestWriteOff(
+            $loan,
+            $request->user(),
+            $request->validated('reason'),
+        );
 
-        $loanService->writeOff($loan, $request->user());
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Loan written off.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Write-off sent for approval.')]);
 
         return to_route('admin.loans.show', $loan);
     }
@@ -1107,27 +1134,33 @@ class LoanController extends Controller
      * Transform the given payments into the payload shared with the client.
      *
      * @param  Collection<int, Payment>  $payments
+     * @param  array<int, int>  $pendingReversalPaymentIds
      * @return array<int, array<string, mixed>>
      */
-    private function paymentPayload(Collection $payments, User $actor, Loan $loan): array
+    private function paymentPayload(Collection $payments, User $actor, Loan $loan, array $pendingReversalPaymentIds = []): array
     {
         return $payments
             ->sortByDesc('payment_date')
-            ->map(fn (Payment $payment): array => [
-                'id' => $payment->id,
-                'amount' => $payment->amount,
-                'method' => $payment->method->value,
-                'method_label' => $payment->method->label(),
-                'reference' => $payment->reference,
-                'notes' => $payment->notes,
-                'payment_date' => $payment->payment_date->toIso8601String(),
-                'recorded_by' => $payment->recordedBy?->name,
-                'reversed_at' => $payment->reversed_at?->toIso8601String(),
-                'reversal_reason' => $payment->reversal_reason,
-                'reversed_by' => $payment->reversedBy?->name,
-                'can_reverse' => $actor->can('reversePayment', [$loan, $payment]),
-                'allocations' => $this->receipts->allocations($payment),
-            ])
+            ->map(function (Payment $payment) use ($actor, $loan, $pendingReversalPaymentIds): array {
+                $reversalPending = in_array((int) $payment->id, $pendingReversalPaymentIds, true);
+
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'method' => $payment->method->value,
+                    'method_label' => $payment->method->label(),
+                    'reference' => $payment->reference,
+                    'notes' => $payment->notes,
+                    'payment_date' => $payment->payment_date->toIso8601String(),
+                    'recorded_by' => $payment->recordedBy?->name,
+                    'reversed_at' => $payment->reversed_at?->toIso8601String(),
+                    'reversal_reason' => $payment->reversal_reason,
+                    'reversed_by' => $payment->reversedBy?->name,
+                    'reversal_pending' => $reversalPending,
+                    'can_reverse' => ! $reversalPending && $actor->can('reversePayment', [$loan, $payment]),
+                    'allocations' => $this->receipts->allocations($payment),
+                ];
+            })
             ->values()
             ->all();
     }

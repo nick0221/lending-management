@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\ApprovalStatus;
+use App\Enums\ApprovalType;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Models\ApprovalRequest;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\Payment;
@@ -193,6 +196,17 @@ test('the register reports which payments can still be reversed', function () {
         'reversal_reason' => 'Duplicated.',
     ]);
     $blocked = Payment::factory()->for($defaulted)->create();
+    $pending = Payment::factory()->for($active)->create();
+
+    ApprovalRequest::query()->create([
+        'type' => ApprovalType::PaymentReversal,
+        'status' => ApprovalStatus::Pending,
+        'loan_id' => $active->id,
+        'payment_id' => $pending->id,
+        'amount' => $pending->amount,
+        'reason' => 'Recorded twice.',
+        'requested_by' => $admin->id,
+    ]);
 
     $this->actingAs($admin)
         ->get(route('admin.payments.index'))
@@ -202,11 +216,13 @@ test('the register reports which payments can still be reversed', function () {
                 ->firstWhere('id', $reversible->id)['can_reverse'] === true
                 && collect($rows)->firstWhere('id', $closedPayment->id)['can_reverse'] === true
                 && collect($rows)->firstWhere('id', $alreadyReversed->id)['can_reverse'] === false
-                && collect($rows)->firstWhere('id', $blocked->id)['can_reverse'] === false)
+                && collect($rows)->firstWhere('id', $blocked->id)['can_reverse'] === false
+                && collect($rows)->firstWhere('id', $pending->id)['can_reverse'] === false
+                && collect($rows)->firstWhere('id', $pending->id)['reversal_pending'] === true)
         );
 });
 
-test('a reversal started from the register returns to the register', function () {
+test('a reversal started from the register returns to the register as a pending request', function () {
     $admin = User::factory()->admin()->create();
     $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
     $payment = Payment::factory()->for($loan)->create();
@@ -218,10 +234,8 @@ test('a reversal started from the register returns to the register', function ()
         ])
         ->assertRedirect(route('admin.payments.index'));
 
-    $reversed = $payment->fresh();
-
-    expect($reversed->reversed_at)->not->toBeNull()
-        ->and($reversed->reversal_reason)->toBe('Recorded against the wrong loan.');
+    expect($payment->fresh()->reversed_at)->toBeNull()
+        ->and(ApprovalRequest::query()->where('payment_id', $payment->id)->where('status', ApprovalStatus::Pending)->exists())->toBeTrue();
 });
 
 test('a reversal rejects an unknown return target', function () {

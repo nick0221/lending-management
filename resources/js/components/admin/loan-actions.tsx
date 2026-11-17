@@ -4,6 +4,7 @@ import {
     Ban,
     BellRing,
     Check,
+    Clock,
     Download,
     Mail,
     MoreHorizontal,
@@ -18,6 +19,7 @@ import { DisburseLoanDialog } from '@/components/admin/disburse-loan-dialog';
 import { RecordPaymentDialog } from '@/components/admin/record-payment-dialog';
 import { RestructureLoanDialog } from '@/components/admin/restructure-loan-dialog';
 import { StatementPreviewDialog } from '@/components/admin/statement-preview-dialog';
+import { WriteOffRequestDialog } from '@/components/admin/write-off-request-dialog';
 import {
     ConfirmActionDialog,
     ConfirmDeleteDialog,
@@ -36,7 +38,6 @@ import {
     markDefault as markLoanDefault,
     reject as rejectLoan,
     remind as remindLoan,
-    writeOff as writeOffLoan,
 } from '@/routes/admin/loans';
 import {
     download as downloadStatement,
@@ -49,6 +50,7 @@ import type {
     LoanInstallment,
     PaymentBreakdown,
     PaymentMethodOption,
+    PendingWriteOffRequest,
 } from '@/types';
 
 /**
@@ -61,6 +63,7 @@ export function LoanActions({
     breakdown,
     installments,
     can,
+    writeOffRequest,
     disbursementMethods,
     paymentMethods,
     onLogContact,
@@ -70,6 +73,7 @@ export function LoanActions({
     breakdown: PaymentBreakdown;
     installments: LoanInstallment[];
     can: LoanAbilities;
+    writeOffRequest: PendingWriteOffRequest | null;
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
     onLogContact: () => void;
@@ -88,6 +92,7 @@ export function LoanActions({
         can.download_statement ||
         can.default ||
         can.write_off ||
+        writeOffRequest !== null ||
         can.delete;
 
     return (
@@ -224,7 +229,9 @@ export function LoanActions({
                                 </DropdownMenuItem>
                             )}
 
-                            {(can.default || can.write_off) && (
+                            {(can.default ||
+                                can.write_off ||
+                                writeOffRequest !== null) && (
                                 <DropdownMenuSeparator />
                             )}
 
@@ -249,7 +256,16 @@ export function LoanActions({
                                     }}
                                     data-test="write-off-loan-button"
                                 >
-                                    <Ban /> Write off
+                                    <Ban /> Request write-off
+                                </DropdownMenuItem>
+                            )}
+
+                            {writeOffRequest !== null && (
+                                <DropdownMenuItem
+                                    disabled
+                                    data-test="write-off-pending-button"
+                                >
+                                    <Clock /> Write-off pending
                                 </DropdownMenuItem>
                             )}
 
@@ -306,12 +322,9 @@ export function LoanActions({
             )}
 
             {can.write_off && (
-                <ConfirmActionDialog
-                    form={writeOffLoan.form(loan.id)}
-                    title={`Write off loan #${loan.id}?`}
-                    description={`The outstanding balance for ${loan.borrower_name} is written off and the loan closes. Recorded payments and history stay intact.`}
-                    label="Write off"
-                    processingLabel="Writing off…"
+                <WriteOffRequestDialog
+                    loan={loan}
+                    outstanding={outstanding}
                     open={writeOffOpen}
                     onOpenChange={setWriteOffOpen}
                 />

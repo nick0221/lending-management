@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\BorrowerController;
 use App\Http\Controllers\Admin\BorrowerImportController;
 use App\Http\Controllers\Admin\CollectionController;
@@ -102,10 +103,10 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             Route::post('loans/{loan}/payments', [LoanController::class, 'recordPayment'])->name('loans.payments.store');
             Route::post('loans/{loan}/payments/{payment}/receipt/email', [LoanController::class, 'emailReceipt'])
                 ->name('loans.payments.receipt.email');
-            Route::post('loans/{loan}/payments/{payment}/reverse', [LoanController::class, 'reversePayment'])
+            Route::post('loans/{loan}/payments/{payment}/reverse', [LoanController::class, 'requestPaymentReversal'])
                 ->name('loans.payments.reverse');
             Route::post('loans/{loan}/mark-default', [LoanController::class, 'markDefaulted'])->name('loans.mark-default');
-            Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff'])->name('loans.write-off');
+            Route::post('loans/{loan}/write-off', [LoanController::class, 'requestWriteOff'])->name('loans.write-off');
             Route::post('loans/{loan}/restructure', [LoanController::class, 'restructure'])->name('loans.restructure');
             Route::post('loans/{loan}/statement', [LoanController::class, 'sendStatement'])->name('loans.statement');
             Route::get('loans/{loan}/statement/preview', [LoanController::class, 'previewStatement'])->name('loans.statement.preview');
@@ -126,6 +127,14 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
         Route::get('payments/export', [PaymentController::class, 'export'])
             ->middleware('throttle:reports')
             ->name('payments.export');
+
+        Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::post('approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])
+            ->middleware('throttle:money')
+            ->name('approvals.approve');
+        Route::post('approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])
+            ->middleware('throttle:money')
+            ->name('approvals.reject');
 
         Route::get('disbursements', [DisbursementController::class, 'index'])
             ->name('disbursements.index');

@@ -3,6 +3,7 @@ import {
     ArrowLeft,
     Banknote,
     Bell,
+    Clock,
     History,
     MoreHorizontal,
     PhoneCall,
@@ -57,6 +58,7 @@ import {
 import { cn } from '@/lib/utils';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
+import { index as approvalsIndex } from '@/routes/admin/approvals';
 import { show as showBorrower } from '@/routes/admin/borrowers';
 import { officer as assignCollectionOfficer } from '@/routes/admin/collections';
 import { index as disbursementsIndex } from '@/routes/admin/disbursements';
@@ -81,6 +83,7 @@ import type {
     PaymentFilters,
     PaymentMethodOption,
     PaymentTotals,
+    PendingWriteOffRequest,
 } from '@/types';
 
 const tabs = [
@@ -464,6 +467,7 @@ export default function ShowLoan({
     disbursementMethods,
     paymentMethods,
     currentTab,
+    writeOffRequest,
     can,
 }: {
     name: string;
@@ -486,6 +490,7 @@ export default function ShowLoan({
     disbursementMethods: DisbursementMethodOption[];
     paymentMethods: PaymentMethodOption[];
     currentTab: LoanTab;
+    writeOffRequest: PendingWriteOffRequest | null;
     can: LoanAbilities;
 }) {
     const [tab, setTab] = useState<LoanTab>(currentTab);
@@ -629,6 +634,7 @@ export default function ShowLoan({
                                 breakdown={totals.allocation}
                                 installments={installments}
                                 can={can}
+                                writeOffRequest={writeOffRequest}
                                 disbursementMethods={disbursementMethods}
                                 paymentMethods={paymentMethods}
                                 onLogContact={() => setContactOpen(true)}
@@ -636,6 +642,36 @@ export default function ShowLoan({
                         }
                     />
                 </div>
+
+                {writeOffRequest && (
+                    <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+                        <Clock className="mt-0.5 size-4 shrink-0 text-amber-600" />
+
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <p className="font-medium">
+                                Write-off awaiting approval
+                            </p>
+                            <p className="text-muted-foreground">
+                                Requested by{' '}
+                                {writeOffRequest.requested_by ?? 'a colleague'}{' '}
+                                on{' '}
+                                {formatDateTime(writeOffRequest.requested_at)}.
+                                A different administrator must approve it before
+                                the loan is written off.
+                            </p>
+                        </div>
+
+                        <Button asChild size="sm" variant="outline">
+                            <Link
+                                href={approvalsIndex({
+                                    query: { tab: 'pending' },
+                                })}
+                            >
+                                Open approvals
+                            </Link>
+                        </Button>
+                    </div>
+                )}
 
                 <Tabs value={tab} onValueChange={changeTab} className="gap-6">
                     <div className="z-20 -mx-4 space-y-3 border-b bg-background/95 px-4 py-3 backdrop-blur md:sticky md:top-0">
@@ -1482,8 +1518,22 @@ export default function ShowLoan({
                                                                         }
                                                                     >
                                                                         <Undo2 />{' '}
-                                                                        Reverse
-                                                                        payment
+                                                                        Request
+                                                                        reversal
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+
+                                                            {payment.reversal_pending && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        disabled
+                                                                    >
+                                                                        <Clock />{' '}
+                                                                        Reversal
+                                                                        awaiting
+                                                                        approval
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}

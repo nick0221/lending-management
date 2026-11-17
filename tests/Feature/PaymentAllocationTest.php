@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\ApprovalStatus;
+use App\Enums\ApprovalType;
 use App\Enums\LoanEventType;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Models\ApprovalRequest;
 use App\Models\Loan;
 use App\Models\User;
 use App\Services\RepaymentService;
@@ -183,7 +186,7 @@ test('a payment cannot be reversed twice', function () {
     expect($payment->fresh()->reversal_reason)->toBe('First reversal.');
 });
 
-test('the reversal endpoint requires a reason and redirects to the payments tab', function () {
+test('the reversal endpoint requires a reason and queues the request instead of reversing', function () {
     $admin = User::factory()->admin()->create();
 
     $loan = activeLoanWithSchedule([
@@ -204,7 +207,13 @@ test('the reversal endpoint requires a reason and redirects to the payments tab'
         ])
         ->assertRedirect(route('admin.loans.show', ['loan' => $loan, 'tab' => 'payments']));
 
-    expect($payment->fresh()->reversed_at)->not->toBeNull();
+    $approval = ApprovalRequest::query()->sole();
+
+    expect($payment->fresh()->reversed_at)->toBeNull()
+        ->and($approval->status)->toBe(ApprovalStatus::Pending)
+        ->and($approval->type)->toBe(ApprovalType::PaymentReversal)
+        ->and($approval->payment_id)->toBe($payment->id)
+        ->and($approval->amount)->toBe('40.00');
 });
 
 test('regular users cannot reverse payments', function () {

@@ -11,7 +11,7 @@ test('the role matrix is evaluated from the policies', function () {
         ->assertInertia(fn ($page) => $page
             ->component('admin/roles/index')
             ->has('roles', 3)
-            ->has('groups', 5)
+            ->has('groups', 6)
             ->where('counts.super_admin', 0)
             ->where('counts.admin', 1)
             ->where('counts.user', 0)
@@ -44,10 +44,18 @@ test('the role matrix reflects the narrower user and audit abilities', function 
             ->where('groups.3.abilities.8.label', 'Assign the super admin role')
             ->where('groups.3.abilities.8.roles.super_admin', true)
             ->where('groups.3.abilities.8.roles.admin', false)
-            ->where('groups.4.abilities.0.label', 'View the audit trail')
+            ->where('groups.4.abilities.0.label', 'View approvals')
             ->where('groups.4.abilities.0.roles.super_admin', true)
-            ->where('groups.4.abilities.0.roles.admin', false)
+            ->where('groups.4.abilities.0.roles.admin', true)
             ->where('groups.4.abilities.0.roles.user', false)
+            ->where('groups.4.abilities.1.label', 'Decide approvals')
+            ->where('groups.4.abilities.1.roles.super_admin', true)
+            ->where('groups.4.abilities.1.roles.admin', true)
+            ->where('groups.4.abilities.1.roles.user', false)
+            ->where('groups.5.abilities.0.label', 'View the audit trail')
+            ->where('groups.5.abilities.0.roles.super_admin', true)
+            ->where('groups.5.abilities.0.roles.admin', false)
+            ->where('groups.5.abilities.0.roles.user', false)
         );
 });
 

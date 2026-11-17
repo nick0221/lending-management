@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Clock,
     Download,
     HandCoins,
     Receipt,
@@ -604,6 +605,13 @@ export default function PaymentsIndex({
 
                                         <TableCell>
                                             <div className="flex justify-end gap-2">
+                                                {payment.reversal_pending && (
+                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                                        <Clock className="size-3.5" />
+                                                        Reversal pending
+                                                    </span>
+                                                )}
+
                                                 {payment.can_reverse && (
                                                     <Button
                                                         size="sm"

@@ -20,8 +20,9 @@ const textareaClassName =
     'border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 flex min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] md:text-sm';
 
 /**
- * Ask for a reason before releasing a payment's allocations and restoring the
- * outstanding balance.
+ * Ask a second administrator to release a payment's allocations and restore
+ * the outstanding balance. The payment stays live until the request is
+ * approved.
  */
 export function ReversePaymentDialog({
     loan,
@@ -44,14 +45,16 @@ export function ReversePaymentDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Reverse payment</DialogTitle>
+                    <DialogTitle>Request payment reversal</DialogTitle>
                     <DialogDescription>
-                        Reverse the {formatMoney(payment.amount)} payment
-                        recorded on {formatDateOnly(payment.payment_date)}. This
-                        releases its allocations and restores the outstanding
-                        balance
-                        {loan.status === 'closed' ? ', reopening the loan' : ''}
-                        . This cannot be undone.
+                        Ask a different administrator to reverse the{' '}
+                        {formatMoney(payment.amount)} payment recorded on{' '}
+                        {formatDateOnly(payment.payment_date)}. The payment
+                        stays live and keeps its allocations
+                        {loan.status === 'closed'
+                            ? '; approving the request reopens the loan'
+                            : ''}
+                        .
                     </DialogDescription>
                 </DialogHeader>
 
@@ -59,13 +62,20 @@ export function ReversePaymentDialog({
                     {...reversePayment.form({
                         loan: loan.id,
                         payment: payment.id,
-                        ...(returnTo ? { redirect: returnTo } : {}),
                     })}
                     options={{ preserveScroll: true }}
                     onSuccess={() => onOpenChange(false)}
                 >
                     {({ processing, errors }) => (
                         <>
+                            {returnTo && (
+                                <input
+                                    type="hidden"
+                                    name="redirect"
+                                    value={returnTo}
+                                />
+                            )}
+
                             <div className="grid gap-2">
                                 <Label htmlFor="reversal-reason">Reason</Label>
 
@@ -81,6 +91,7 @@ export function ReversePaymentDialog({
                                 <InputError
                                     message={
                                         errors.reason ??
+                                        errors.approval ??
                                         errors.payment ??
                                         errors.loan
                                     }
@@ -105,7 +116,7 @@ export function ReversePaymentDialog({
                                     ) : (
                                         <Undo2 />
                                     )}
-                                    Reverse payment
+                                    Send for approval
                                 </Button>
                             </DialogFooter>
                         </>

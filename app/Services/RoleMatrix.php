@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\ApprovalStatus;
 use App\Enums\LoanStatus;
 use App\Enums\Role;
 use App\Models\ActivityLog;
+use App\Models\ApprovalRequest;
 use App\Models\Borrower;
 use App\Models\Loan;
 use App\Models\LoanProduct;
@@ -130,6 +132,13 @@ class RoleMatrix
                 ],
             ],
             [
+                'title' => 'Approvals',
+                'abilities' => [
+                    $this->ability('View approvals', 'Open the maker-checker queue.', 'viewAny', [ApprovalRequest::class]),
+                    $this->ability('Decide approvals', 'Approve or reject another administrator\'s request.', 'decide', [$this->approval()]),
+                ],
+            ],
+            [
                 'title' => 'Audit trail',
                 'abilities' => [
                     $this->ability('View the audit trail', 'Browse every recorded administrative change.', 'viewAny', [ActivityLog::class]),
@@ -160,6 +169,20 @@ class RoleMatrix
         $payment->loan_id = $loanId;
 
         return $payment;
+    }
+
+    /**
+     * Build an unsaved pending request raised by somebody else.
+     */
+    private function approval(): ApprovalRequest
+    {
+        $approval = new ApprovalRequest([
+            'status' => ApprovalStatus::Pending,
+            'requested_by' => 1,
+        ]);
+        $approval->setAttribute('id', 1);
+
+        return $approval;
     }
 
     /**

@@ -78,6 +78,14 @@ class Payment extends Model
         return $this->hasMany(LoanPaymentAllocation::class);
     }
 
+    /**
+     * Approval requests raised against this payment.
+     */
+    public function approvalRequests(): HasMany
+    {
+        return $this->hasMany(ApprovalRequest::class);
+    }
+
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by')->withTrashed();

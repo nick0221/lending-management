@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\ApprovalStatus;
+use App\Enums\ApprovalType;
 use App\Enums\LoanEventType;
 use App\Enums\LoanStatus;
 use App\Enums\PaymentMethod;
+use App\Models\ApprovalRequest;
 use App\Models\Loan;
 use App\Models\User;
 use App\Services\RepaymentService;
@@ -21,7 +24,38 @@ test('admins can flag an active loan as defaulted', function () {
     expect($loan->fresh()->status)->toBe(LoanStatus::Defaulted);
 });
 
-test('admins can write off a loan', function () {
+test('write-off requests need a second administrator before the loan is written off', function () {
+    $requester = User::factory()->admin()->create();
+    $approver = User::factory()->admin()->create();
+
+    $loan = activeLoanWithDatedSchedule([
+        ['principal' => 100, 'interest' => 0, 'fee' => 0, 'due_date' => '2026-05-01'],
+    ]);
+
+    $this->actingAs($requester)
+        ->post(route('admin.loans.write-off', $loan), [
+            'reason' => 'The borrower absconded.',
+        ])
+        ->assertRedirect(route('admin.loans.show', $loan));
+
+    $approval = ApprovalRequest::query()->sole();
+
+    expect($loan->fresh()->status)->toBe(LoanStatus::Active)
+        ->and($approval->type)->toBe(ApprovalType::LoanWriteOff)
+        ->and($approval->status)->toBe(ApprovalStatus::Pending)
+        ->and($approval->requested_by)->toBe($requester->id);
+
+    $this->actingAs($approver)
+        ->from(route('admin.approvals.index'))
+        ->post(route('admin.approvals.approve', $approval))
+        ->assertRedirect(route('admin.approvals.index'));
+
+    expect($loan->fresh()->status)->toBe(LoanStatus::WrittenOff)
+        ->and($approval->fresh()->status)->toBe(ApprovalStatus::Approved)
+        ->and($approval->fresh()->reviewed_by)->toBe($approver->id);
+});
+
+test('write-off requests need a reason', function () {
     $admin = User::factory()->admin()->create();
 
     $loan = activeLoanWithDatedSchedule([
@@ -29,20 +63,30 @@ test('admins can write off a loan', function () {
     ]);
 
     $this->actingAs($admin)
-        ->post(route('admin.loans.write-off', $loan))
-        ->assertRedirect(route('admin.loans.show', $loan));
+        ->post(route('admin.loans.write-off', $loan), [])
+        ->assertSessionHasErrors('reason');
 
-    expect($loan->fresh()->status)->toBe(LoanStatus::WrittenOff);
+    expect($loan->fresh()->status)->toBe(LoanStatus::Active)
+        ->and(ApprovalRequest::query()->count())->toBe(0);
 });
 
-test('defaulted loans can be written off', function () {
-    $admin = User::factory()->admin()->create();
+test('defaulted loans can be written off once a second administrator approves', function () {
+    $requester = User::factory()->admin()->create();
+    $approver = User::factory()->superAdmin()->create();
 
     $loan = Loan::factory()->withStatus(LoanStatus::Defaulted)->create();
 
-    $this->actingAs($admin)
-        ->post(route('admin.loans.write-off', $loan))
+    $this->actingAs($requester)
+        ->post(route('admin.loans.write-off', $loan), [
+            'reason' => 'Recovery exhausted.',
+        ])
         ->assertRedirect(route('admin.loans.show', $loan));
+
+    expect($loan->fresh()->status)->toBe(LoanStatus::Defaulted);
+
+    $this->actingAs($approver)
+        ->post(route('admin.approvals.approve', ApprovalRequest::query()->sole()))
+        ->assertRedirect();
 
     expect($loan->fresh()->status)->toBe(LoanStatus::WrittenOff);
 });

@@ -26,6 +26,7 @@ import {
 import { dashboard } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminActivity } from '@/routes/admin/activity';
+import { index as adminApprovals } from '@/routes/admin/approvals';
 import { index as adminBorrowers } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
 import { index as adminDisbursements } from '@/routes/admin/disbursements';
@@ -86,6 +87,10 @@ const adminNavEntries: NavEntry[] = [
             {
                 title: 'Collections',
                 href: adminCollections(),
+            },
+            {
+                title: 'Approvals',
+                href: adminApprovals(),
             },
         ],
     },
