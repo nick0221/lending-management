@@ -3,6 +3,7 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Clock,
+    Download,
     Loader2,
     RotateCcw,
     ShieldCheck,
@@ -46,6 +47,7 @@ import {
 import { formatMoney, formatRelativeTime, formatDateTime } from '@/lib/format';
 import {
     approve as approveRequest,
+    exportMethod as exportApprovals,
     index as approvalsIndex,
     reject as rejectRequest,
 } from '@/routes/admin/approvals';
@@ -129,6 +131,14 @@ export default function ApprovalsIndex({
     const hasFilters =
         search !== '' || currentType !== null || currentTab !== 'pending';
 
+    const exportUrl = exportApprovals({
+        query: {
+            ...(currentTab !== 'pending' ? { tab: currentTab } : {}),
+            ...(currentType ? { type: currentType } : {}),
+            ...(search ? { search } : {}),
+        },
+    });
+
     return (
         <>
             <Head title="Approvals" />
@@ -137,6 +147,13 @@ export default function ApprovalsIndex({
                 <PageHeader
                     title="Approvals"
                     description="Financially sensitive actions wait here until a second administrator signs off. Nobody can decide their own request."
+                    actions={
+                        <Button variant="outline" asChild>
+                            <a href={exportUrl.url}>
+                                <Download /> Export CSV
+                            </a>
+                        </Button>
+                    }
                 />
 
                 <div className="grid gap-4 sm:grid-cols-3">

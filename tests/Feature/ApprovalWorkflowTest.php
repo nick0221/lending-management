@@ -277,3 +277,108 @@ test('a pending reversal disables the reversal action on the loan file', functio
             ->where('payments.0.reversal_pending', true)
         );
 });
+
+test('the shared pending approval count follows the queue', function () {
+    $requester = User::factory()->admin()->create();
+    $approver = User::factory()->admin()->create();
+    $regular = User::factory()->create();
+
+    $loan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $payment = Payment::factory()->for($loan)->create();
+
+    $approval = requestReversal($requester, $loan, $payment);
+
+    test()->actingAs($approver)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('pendingApprovals', 1));
+
+    test()->actingAs($regular)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('pendingApprovals', 0));
+
+    test()->actingAs($approver)
+        ->post(route('admin.approvals.approve', $approval))
+        ->assertRedirect();
+
+    test()->actingAs($approver)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('pendingApprovals', 0));
+});
+
+test('the approvals export honours the tab, type and search filters', function () {
+    $requester = User::factory()->admin()->create();
+    $approver = User::factory()->admin()->create();
+
+    $reversedLoan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $reversedLoan->borrower->update(['name' => 'Ada Reversal']);
+
+    $writtenLoan = Loan::factory()->withStatus(LoanStatus::Active)->create();
+    $writtenLoan->borrower->update(['name' => 'Grace Writeoff']);
+
+    requestReversal(
+        $requester,
+        $reversedLoan,
+        Payment::factory()->for($reversedLoan)->create(['amount' => 250]),
+    );
+
+    test()->actingAs($requester)
+        ->post(route('admin.loans.write-off', $writtenLoan), [
+            'reason' => 'Recovery exhausted.',
+        ])
+        ->assertRedirect();
+
+    $writeOff = ApprovalRequest::query()
+        ->where('type', ApprovalType::LoanWriteOff)
+        ->sole();
+
+    test()->actingAs($approver)
+        ->post(route('admin.approvals.reject', $writeOff), [
+            'note' => 'Still collectable.',
+        ])
+        ->assertRedirect();
+
+    $response = test()->actingAs($approver)
+        ->get(route('admin.approvals.export', [
+            'tab' => 'rejected',
+            'type' => ApprovalType::LoanWriteOff->value,
+        ]));
+
+    $response->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('text/csv');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('"Request #"')
+        ->toContain('"Review note"')
+        ->toContain('Grace Writeoff')
+        ->toContain('Still collectable.')
+        ->toContain('Loan write-off')
+        ->not->toContain('Payment reversal')
+        ->not->toContain('Ada Reversal');
+
+    expect(array_filter(explode("\n", trim($content))))->toHaveCount(2);
+
+    $searchResponse = test()->actingAs($approver)
+        ->get(route('admin.approvals.export', [
+            'search' => 'Ada Reversal',
+        ]));
+
+    $searchResponse->assertOk();
+
+    $searchContent = $searchResponse->streamedContent();
+
+    expect($searchContent)
+        ->toContain('Ada Reversal')
+        ->not->toContain('Grace Writeoff');
+});
+
+test('regular users cannot export the approval queue', function () {
+    test()->actingAs(User::factory()->create())
+        ->get(route('admin.approvals.export'))
+        ->assertForbidden();
+});

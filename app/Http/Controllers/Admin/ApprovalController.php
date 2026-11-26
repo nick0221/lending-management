@@ -8,12 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use App\Services\ApprovalService;
+use App\Services\CsvExporter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApprovalController extends Controller
 {
@@ -24,6 +26,8 @@ class ApprovalController extends Controller
      */
     private const TABS = ['pending', 'approved', 'rejected', 'all'];
 
+    public function __construct(private readonly CsvExporter $csvExporter) {}
+
     /**
      * Display the maker-checker queue.
      */
@@ -32,12 +36,9 @@ class ApprovalController extends Controller
         Gate::authorize('viewAny', ApprovalRequest::class);
 
         $actor = $request->user();
-        $tab = $request->string('tab')->toString();
-        $tab = in_array($tab, self::TABS, true) ? $tab : 'pending';
-        $type = ApprovalType::tryFrom($request->string('type')->toString());
-        $search = trim($request->string('search')->toString());
+        $filters = $this->filters($request);
 
-        $base = $this->baseQuery($type, $search);
+        $base = $this->baseQuery($filters['type'], $filters['search']);
 
         $counts = [
             'pending' => (clone $base)->where('status', ApprovalStatus::Pending)->count(),
@@ -50,7 +51,7 @@ class ApprovalController extends Controller
             'loan.borrower:id,name,phone',
             'requestedBy:id,name',
             'reviewedBy:id,name',
-        ]), $tab)
+        ]), $filters['tab'])
             ->latest()
             ->latest('id')
             ->paginate($this->perPage($request))
@@ -60,14 +61,34 @@ class ApprovalController extends Controller
         return Inertia::render('admin/approvals/index', [
             'approvals' => $approvals,
             'counts' => $counts,
-            'currentTab' => $tab,
-            'currentType' => $type?->value,
+            'currentTab' => $filters['tab'],
+            'currentType' => $filters['type']?->value,
             'types' => array_map(fn (ApprovalType $type): array => [
                 'value' => $type->value,
                 'label' => $type->label(),
             ], ApprovalType::cases()),
-            'search' => $search,
+            'search' => $filters['search'],
         ]);
+    }
+
+    /**
+     * Export the filtered queue as a CSV download.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        Gate::authorize('viewAny', ApprovalRequest::class);
+
+        $filters = $this->filters($request);
+
+        return $this->csvExporter->stream(
+            'approvals-'.now()->format('Y-m-d').'.csv',
+            $this->csvRows(
+                $this->applyTab(
+                    $this->baseQuery($filters['type'], $filters['search']),
+                    $filters['tab'],
+                ),
+            ),
+        );
     }
 
     /**
@@ -115,6 +136,72 @@ class ApprovalController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Request rejected.')]);
 
         return back();
+    }
+
+    /**
+     * Parse the queue filters shared by the page and the CSV export.
+     *
+     * @return array{tab: string, type: ApprovalType|null, search: string}
+     */
+    private function filters(Request $request): array
+    {
+        $tab = $request->string('tab')->toString();
+
+        return [
+            'tab' => in_array($tab, self::TABS, true) ? $tab : 'pending',
+            'type' => ApprovalType::tryFrom($request->string('type')->toString()),
+            'search' => trim($request->string('search')->toString()),
+        ];
+    }
+
+    /**
+     * Build the CSV rows for the filtered queue.
+     *
+     * @return \Generator<int, array<int, string|int|null>>
+     */
+    private function csvRows(Builder $query): \Generator
+    {
+        yield [
+            'Request #',
+            'Type',
+            'Status',
+            'Loan #',
+            'Borrower',
+            'Amount',
+            'Reason',
+            'Requested by',
+            'Requested at',
+            'Reviewed by',
+            'Reviewed at',
+            'Review note',
+        ];
+
+        $approvals = $query
+            ->with([
+                'loan.borrower:id,name',
+                'requestedBy:id,name',
+                'reviewedBy:id,name',
+            ])
+            ->latest()
+            ->latest('id')
+            ->lazy(500);
+
+        foreach ($approvals as $approval) {
+            yield [
+                $approval->id,
+                $approval->type->label(),
+                $approval->status->label(),
+                $approval->loan_id,
+                $approval->loan?->borrower?->name ?? __('Unknown borrower'),
+                number_format((float) $approval->amount, 2, '.', ''),
+                $approval->reason,
+                $approval->requestedBy?->name,
+                $approval->created_at?->toDateTimeString(),
+                $approval->reviewedBy?->name,
+                $approval->reviewed_at?->toDateTimeString(),
+                $approval->review_note,
+            ];
+        }
     }
 
     /**

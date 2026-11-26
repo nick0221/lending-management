@@ -48,67 +48,70 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const adminNavEntries: NavEntry[] = [
-    {
-        title: 'Overview',
-        href: adminDashboard(),
-        icon: Gauge,
-    },
-    {
-        title: 'Lending',
-        icon: HandCoins,
-        items: [
-            {
-                title: 'Borrowers',
-                href: adminBorrowers(),
-            },
-            {
-                title: 'Loan products',
-                href: adminLoanProducts(),
-            },
-            {
-                title: 'Loans',
-                href: adminLoans(),
-            },
-        ],
-    },
-    {
-        title: 'Finance',
-        icon: CircleDollarSign,
-        items: [
-            {
-                title: 'Payments',
-                href: adminPayments(),
-            },
-            {
-                title: 'Disbursements',
-                href: adminDisbursements(),
-            },
-            {
-                title: 'Collections',
-                href: adminCollections(),
-            },
-            {
-                title: 'Approvals',
-                href: adminApprovals(),
-            },
-        ],
-    },
-    {
-        title: 'Insights',
-        icon: ChartPie,
-        items: [
-            {
-                title: 'Reports',
-                href: adminReports(),
-            },
-            {
-                title: 'Notifications',
-                href: adminNotifications(),
-            },
-        ],
-    },
-];
+function adminNavEntries(pendingApprovals: number): NavEntry[] {
+    return [
+        {
+            title: 'Overview',
+            href: adminDashboard(),
+            icon: Gauge,
+        },
+        {
+            title: 'Lending',
+            icon: HandCoins,
+            items: [
+                {
+                    title: 'Borrowers',
+                    href: adminBorrowers(),
+                },
+                {
+                    title: 'Loan products',
+                    href: adminLoanProducts(),
+                },
+                {
+                    title: 'Loans',
+                    href: adminLoans(),
+                },
+            ],
+        },
+        {
+            title: 'Finance',
+            icon: CircleDollarSign,
+            items: [
+                {
+                    title: 'Payments',
+                    href: adminPayments(),
+                },
+                {
+                    title: 'Disbursements',
+                    href: adminDisbursements(),
+                },
+                {
+                    title: 'Collections',
+                    href: adminCollections(),
+                },
+                {
+                    title: 'Approvals',
+                    href: adminApprovals(),
+                    badge: pendingApprovals > 0 ? pendingApprovals : undefined,
+                },
+            ],
+        },
+        {
+            title: 'Insights',
+            icon: ChartPie,
+            items: [
+                {
+                    title: 'Reports',
+                    href: adminReports(),
+                },
+                {
+                    title: 'Notifications',
+                    href: adminNotifications(),
+                },
+            ],
+        },
+    ];
+}
 
 const footerNavItems: NavItem[] = [
     {
@@ -124,7 +127,7 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { auth } = usePage().props;
+    const { auth, pendingApprovals } = usePage().props;
     const canAccessAdmin =
         auth.user?.role === 'admin' || auth.user?.role === 'super_admin';
     const isSuperAdmin = auth.user?.role === 'super_admin';
@@ -157,7 +160,7 @@ export function AppSidebar() {
     };
 
     const navigationItems: NavEntry[] = [
-        ...adminNavEntries,
+        ...adminNavEntries(pendingApprovals),
         administrationNavItems,
     ];
 

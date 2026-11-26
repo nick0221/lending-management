@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\ApprovalStatus;
+use App\Models\ApprovalRequest;
 use App\Services\Settings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -48,6 +50,9 @@ class HandleInertiaRequests extends Middleware
             'account' => [
                 'has_borrower_profile' => $request->user()?->borrower()->exists() ?? false,
             ],
+            'pendingApprovals' => fn (): int => $request->user()?->can('viewAny', ApprovalRequest::class)
+                ? ApprovalRequest::query()->where('status', ApprovalStatus::Pending)->count()
+                : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

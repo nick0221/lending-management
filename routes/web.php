@@ -129,6 +129,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,admin'])
             ->name('payments.export');
 
         Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::get('approvals/export', [ApprovalController::class, 'export'])
+            ->middleware('throttle:reports')
+            ->name('approvals.export');
         Route::post('approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])
             ->middleware('throttle:money')
             ->name('approvals.approve');

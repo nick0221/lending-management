@@ -14,6 +14,7 @@ declare module '@inertiajs/core' {
             account: {
                 has_borrower_profile: boolean;
             };
+            pendingApprovals: number;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

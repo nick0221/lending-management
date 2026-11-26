@@ -4,6 +4,7 @@ import {
     ArrowRight,
     Banknote,
     CalendarClock,
+    ClipboardCheck,
     FileBarChart,
     Landmark,
     Plus,
@@ -31,6 +32,7 @@ import {
     formatPercent,
 } from '@/lib/format';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as adminApprovals } from '@/routes/admin/approvals';
 import { create as createBorrower } from '@/routes/admin/borrowers';
 import { index as adminCollections } from '@/routes/admin/collections';
 import { index as adminDisbursements } from '@/routes/admin/disbursements';
@@ -107,11 +109,12 @@ export default function AdminDashboard({
     recentDisbursements: RecentDisbursement[];
     myQueue: number;
 }) {
-    const { auth } = usePage().props;
+    const { auth, pendingApprovals } = usePage().props;
     const portfolioReport = reportsIndex({ query: { tab: 'portfolio' } });
     const collectionsReport = reportsIndex({ query: { tab: 'collections' } });
     const agingReport = reportsIndex({ query: { tab: 'aging' } });
     const collectionsQueue = adminCollections();
+    const approvalsQueue = adminApprovals();
 
     const attentionRows = [
         ...collections.overdue_installments,
@@ -151,6 +154,34 @@ export default function AdminDashboard({
                         </>
                     }
                 />
+
+                {pendingApprovals > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                                <ClipboardCheck className="size-4" />
+                            </span>
+
+                            <div className="min-w-0 space-y-0.5">
+                                <p className="text-sm font-medium">
+                                    {pendingApprovals} request
+                                    {pendingApprovals === 1 ? '' : 's'} awaiting
+                                    approval
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Write-offs and payment reversals wait for a
+                                    second administrator to sign off.
+                                </p>
+                            </div>
+                        </div>
+
+                        <Button size="sm" variant="outline" asChild>
+                            <Link href={approvalsQueue} prefetch>
+                                Review queue <ArrowRight />
+                            </Link>
+                        </Button>
+                    </div>
+                )}
 
                 <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard

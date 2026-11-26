@@ -6,6 +6,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -65,6 +66,14 @@ function NavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
                 <Link href={item.href} prefetch>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
+                    {item.badge ? (
+                        <Badge
+                            variant="secondary"
+                            className="ml-auto h-5 min-w-5 justify-center px-1 text-[10px] tabular-nums group-data-[collapsible=icon]:hidden"
+                        >
+                            {item.badge}
+                        </Badge>
+                    ) : null}
                 </Link>
             </SidebarMenuButton>
         </SidebarMenuItem>
@@ -132,6 +141,14 @@ function NavGroup({
                                 >
                                     <Link href={item.href} prefetch>
                                         <span>{item.title}</span>
+                                        {item.badge ? (
+                                            <Badge
+                                                variant="secondary"
+                                                className="ml-auto h-5 min-w-5 justify-center px-1 text-[10px] tabular-nums"
+                                            >
+                                                {item.badge}
+                                            </Badge>
+                                        ) : null}
                                     </Link>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
